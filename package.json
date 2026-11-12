@@ -1,0 +1,17 @@
+{
+  "name": "oh-my-usage-workspace",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "knip": "knip",
+    "lint:api": "redocly lint api/openapi.yaml --config .redocly.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.77.0",
+    "knip": "6.44.2"
+  },
+  "volta": {
+    "node": "26.13.0",
+    "pnpm": "12.18.0"
+  }
+}

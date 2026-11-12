@@ -1,0 +1,128 @@
+openapi: 3.1.0
+info:
+  title: oh-my-usage API
+  version: 0.1.0
+  license:
+    name: MIT
+    identifier: MIT
+  description: >-
+    This spec is the source of truth: the Go server (`api/rest`) and the web
+    client (`web/src/api`) are generated from it.
+servers:
+  - url: /
+    description: Same-origin API server
+# No authentication. Listen on loopback or a private network only.
+security: []
+tags:
+  - name: system
+    description: Daemon health and metadata.
+paths:
+  /api/v1/health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: Report daemon health
+      responses:
+        '200':
+          description: The daemon is serving.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/config:
+    get:
+      operationId: getConfig
+      tags: [system]
+      summary: Read the public configuration
+      description: >-
+        What the UI needs before it can render: the daemon's name and build.
+        The same object is injected into `index.html` as `window.__CONFIG__`,
+        so the first render does not wait for this request; the UI reads it
+        from there and refetches later.
+      responses:
+        '200':
+          description: The public configuration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Config'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/stream:
+    get:
+      operationId: streamEvents
+      tags: [system]
+      summary: Stream the daemon's state
+      description: >-
+        Server-sent events, each carrying a whole object. `health`: a `Health`,
+        sent on connect and then every few seconds. A `: ping` comment keeps
+        idle connections open. Every event is complete, so a client that
+        reconnects needs no resume cursor.
+      responses:
+        '200':
+          description: Server-sent `health` events.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          $ref: '#/components/responses/Problem'
+components:
+  responses:
+    Problem:
+      description: An error, as an RFC 9457 problem.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Config:
+      type: object
+      description: Public, unauthenticated configuration. Never put a secret here.
+      required: [name, version]
+      properties:
+        name:
+          type: string
+          description: The daemon's display name.
+          examples: [oh-my-usage]
+        version:
+          type: string
+          description: The build's version.
+          examples: ['0.1.0']
+    Health:
+      type: object
+      required: [status, version, at]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        version:
+          type: string
+          description: The build's version.
+          examples: ['0.1.0']
+        at:
+          type: string
+          format: date-time
+          description: The daemon's clock when it answered.
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri

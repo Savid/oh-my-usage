@@ -1,0 +1,13 @@
+/* The app's stylesheet: the tokens, the base styles, and the files Tailwind
+ * scans for classes. Stories, tests, the Foundations pages and the token
+ * tooling (whose token names read as class names) are left out, so none of
+ * their classes ship. Storybook's stylesheet is .storybook/preview.css. */
+@import './styles/tokens.css';
+@import './styles/base.css';
+
+@source './';
+@source not './design-docs';
+@source not './styles';
+@source not './test-utils';
+@source not './**/*.stories.tsx';
+@source not './**/*.test.{ts,tsx}';

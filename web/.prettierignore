@@ -1,0 +1,6 @@
+dist
+node_modules
+storybook-static
+src/routeTree.gen.ts
+embed.go
+coverage
