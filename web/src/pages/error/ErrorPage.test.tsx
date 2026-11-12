@@ -10,7 +10,7 @@ describe('ErrorPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('the stream exploded');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(reset).toHaveBeenCalledOnce();
-    expect(screen.getByRole('link', { name: 'Back home' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Back to the accounts' })).toHaveAttribute('href', '/');
   });
 
   it('falls back to a generic message for errors without one', () => {

@@ -8,12 +8,82 @@ import * as z from 'zod/mini';
 export const zConfig = z.object({
   name: z.string(),
   version: z.string(),
+  controls: z.boolean(),
+  pollIntervalSeconds: z.int().check(z.gte(1)),
 });
 
-export const zHealth = z.object({
-  status: z.enum(['ok']),
-  version: z.string(),
+/**
+ * The health of the gateway or the broker.
+ */
+export const zSourceStatus = z.object({
+  reachable: z.boolean(),
+  error: z.optional(z.string()),
+  updatedAt: z.optional(z.iso.datetime()),
+});
+
+/**
+ * One usage window of an account.
+ */
+export const zLimit = z.object({
+  id: z.string(),
+  label: z.string(),
+  windowLabel: z.optional(z.string()),
+  usedFraction: z.optional(z.number().check(z.gte(0))),
+  status: z.optional(z.enum(['ok', 'warning', 'exhausted', 'unknown'])),
+  resetsAt: z.optional(z.iso.datetime()),
+});
+
+/**
+ * An account's saved limit resets.
+ */
+export const zResets = z.object({
+  available: z.int().check(z.gte(0)),
+  usable: z.optional(z.int().check(z.gte(0))),
+  soonestExpiresAt: z.optional(z.iso.datetime()),
+});
+
+/**
+ * One login or API key with its usage.
+ */
+export const zAccount = z.object({
+  id: z.string(),
+  provider: z.string(),
+  kind: z.optional(z.enum(['oauth', 'api_key'])),
+  email: z.optional(z.string()),
+  orgName: z.optional(z.string()),
+  plan: z.optional(z.string()),
+  paused: z.boolean(),
+  pausable: z.boolean(),
+  blockedUntil: z.optional(z.iso.datetime()),
+  limits: z.array(zLimit),
+  resets: z.optional(zResets),
+  fetchedAt: z.optional(z.iso.datetime()),
+});
+
+export const zAccountList = z.object({
+  accounts: z.array(zAccount),
+  gateway: zSourceStatus,
+  gatewayVersion: z.optional(z.string()),
+  broker: z.optional(zSourceStatus),
+});
+
+export const zPauseRequest = z.object({
+  paused: z.boolean(),
+});
+
+/**
+ * One limit at the time its provider reported it.
+ */
+export const zUsageSample = z.object({
   at: z.iso.datetime(),
+  limitId: z.string(),
+  label: z.string(),
+  usedFraction: z.number().check(z.gte(0)),
+  resetsAt: z.optional(z.iso.datetime()),
+});
+
+export const zUsageHistory = z.object({
+  samples: z.array(zUsageSample),
 });
 
 /**
@@ -28,9 +98,9 @@ export const zProblem = z.object({
 });
 
 /**
- * The daemon is serving.
+ * An account's `id`.
  */
-export const zGetHealthResponse = zHealth;
+export const zAccountId = z.string().check(z.regex(/^[0-9a-f]{16}$/));
 
 /**
  * The public configuration.
@@ -38,6 +108,35 @@ export const zGetHealthResponse = zHealth;
 export const zGetConfigResponse = zConfig;
 
 /**
- * Server-sent `health` events.
+ * The accounts and the health of their sources.
  */
-export const zStreamEventsResponse = zHealth;
+export const zListAccountsResponse = zAccountList;
+
+export const zSetAccountPausedBody = zPauseRequest;
+
+export const zSetAccountPausedPath = z.object({
+  accountId: z.string().check(z.regex(/^[0-9a-f]{16}$/)),
+});
+
+/**
+ * The account as the broker now reports it.
+ */
+export const zSetAccountPausedResponse = zAccount;
+
+export const zGetAccountHistoryPath = z.object({
+  accountId: z.string().check(z.regex(/^[0-9a-f]{16}$/)),
+});
+
+export const zGetAccountHistoryQuery = z.object({
+  since: z.optional(z.iso.datetime()),
+});
+
+/**
+ * The samples.
+ */
+export const zGetAccountHistoryResponse = zUsageHistory;
+
+/**
+ * Server-sent `accounts` events.
+ */
+export const zStreamEventsResponse = zAccountList;

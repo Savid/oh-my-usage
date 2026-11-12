@@ -32,6 +32,16 @@ var boundaries = []struct {
 		allowed: []string{importguard.Module + "/internal/server"},
 		why:     "the spec is served by the server and read by nothing else in production",
 	},
+	{
+		pkg:     importguard.Module + "/internal/omp",
+		allowed: []string{importguard.Module + "/cmd/oh-my-usaged"},
+		why:     "only the entry point builds the omp clients; the monitor takes interfaces, so nothing else can reach the broker",
+	},
+	{
+		pkg:     "modernc.org/sqlite",
+		allowed: []string{importguard.Module + "/internal/store"},
+		why:     "the history store owns the database; everything else goes through it",
+	},
 }
 
 func TestBoundaries(t *testing.T) {

@@ -1,0 +1,99 @@
+{
+  "generation": 8,
+  "generatedAt": 1794526540312,
+  "serverNowMs": 1794526540312,
+  "refresher": {
+    "enabled": true,
+    "intervalMs": 60000,
+    "skewMs": 300000,
+    "nextSweepInMs": 278
+  },
+  "credentials": [
+    {
+      "id": 1,
+      "provider": "anthropic",
+      "credential": {
+        "type": "oauth",
+        "access": "SECRET-ACCESS-TOKEN",
+        "refresh": "__remote__",
+        "expires": 1794554800947,
+        "email": "one@example.com",
+        "accountId": "00000000-0000-4000-8000-0000000000a1",
+        "orgId": "00000000-0000-4000-8000-0000000000b1",
+        "orgName": "one@example.com's Organization",
+        "authorizedAt": 1794356809784
+      },
+      "identityKey": "email:one@example.com|org:00000000-0000-4000-8000-0000000000b1",
+      "rotatesInMs": 28020278
+    },
+    {
+      "id": 6,
+      "provider": "anthropic",
+      "credential": {
+        "type": "oauth",
+        "access": "SECRET-ACCESS-TOKEN",
+        "refresh": "__remote__",
+        "expires": 1794552308847,
+        "email": "two@example.com",
+        "accountId": "00000000-0000-4000-8000-0000000000a2",
+        "orgId": "00000000-0000-4000-8000-0000000000b2",
+        "orgName": "Two Org",
+        "authorizedAt": 1794523808848
+      },
+      "identityKey": "email:two@example.com|org:00000000-0000-4000-8000-0000000000b2",
+      "rotatesInMs": 25500278,
+      "blocks": [
+        {
+          "providerKey": "anthropic:oauth",
+          "blockScope": "account-policy",
+          "blockedUntilMs": 4102444800000,
+          "updatedAtMs": 1794526000000
+        },
+        {
+          "providerKey": "anthropic:oauth",
+          "blockScope": "tier:fable",
+          "blockedUntilMs": 1794600000901
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "provider": "openai-codex",
+      "credential": {
+        "type": "oauth",
+        "access": "SECRET-ACCESS-TOKEN",
+        "refresh": "__remote__",
+        "expires": 1795220840114,
+        "accountId": "00000000-0000-4000-8000-0000000000c1",
+        "orgId": "00000000-0000-4000-8000-0000000000c1",
+        "email": "codex@example.com",
+        "orgName": "pro",
+        "authorizedAt": 1794356840114
+      },
+      "identityKey": "email:codex@example.com|org:00000000-0000-4000-8000-0000000000c1",
+      "rotatesInMs": 694020278
+    },
+    {
+      "id": 4,
+      "provider": "openrouter",
+      "credential": {
+        "type": "api_key",
+        "key": "SECRET-API-KEY",
+        "source": "login"
+      },
+      "identityKey": null,
+      "rotatesInMs": null
+    },
+    {
+      "id": 5,
+      "provider": "opencode-go",
+      "credential": {
+        "type": "api_key",
+        "key": "SECRET-API-KEY",
+        "source": "login"
+      },
+      "identityKey": null,
+      "rotatesInMs": null
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { z } from 'zod/mini';
-import { getHealthQueryKey } from '@/api/@tanstack/react-query.gen';
-import { zHealth } from '@/api/zod.gen';
+import { listAccountsQueryKey } from '@/api/@tanstack/react-query.gen';
+import { zAccountList } from '@/api/zod.gen';
 
 /** The `streamEvents` operation. It is hand-routed, so there is no generated hook. */
 export const EVENT_STREAM_URL = '/api/v1/stream';
@@ -37,13 +37,13 @@ export function useEventStream(): StreamConnection {
       source = undefined;
     };
 
-    const onHealth = (message: MessageEvent<string>): void => {
-      const health = parse(zHealth, 'health', message.data);
-      if (!health) return;
+    const onAccounts = (message: MessageEvent<string>): void => {
+      const accounts = parse(zAccountList, 'accounts', message.data);
+      if (!accounts) return;
 
       attempt = 0;
       setConnection('live');
-      queryClient.setQueryData(getHealthQueryKey(), health);
+      queryClient.setQueryData(listAccountsQueryKey(), accounts);
     };
 
     // EventSource retries some failures itself and gives up on others; one
@@ -61,7 +61,7 @@ export function useEventStream(): StreamConnection {
     function connect(): void {
       listeners = new AbortController();
       source = new EventSource(EVENT_STREAM_URL);
-      source.addEventListener('health', onHealth, { signal: listeners.signal });
+      source.addEventListener('accounts', onAccounts, { signal: listeners.signal });
       source.addEventListener('error', onError, { signal: listeners.signal });
     }
 

@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY api/ api/
 COPY cmd/ cmd/
 COPY internal/ internal/
+COPY pkg/ pkg/
 COPY web/embed.go web/
 COPY --from=web /src/web/dist web/dist
 ARG VERSION=dev

@@ -1,8 +1,10 @@
 # oh-my-usage
 
-`oh-my-usaged` serves a spec-first HTTP API and an embedded React UI from one
-binary. [README.md](README.md) maps each part to its files. Before frontend
-work, read [web/AGENTS.md](web/AGENTS.md).
+`oh-my-usaged` watches an omp auth gateway (and broker, when configured) and
+serves its accounts, their usage and a pause control as a spec-first HTTP API
+and an embedded React UI, from one binary. [README.md](README.md) says what it
+reads and changes and maps each part to its files. Before frontend work, read
+[web/AGENTS.md](web/AGENTS.md).
 
 ## Commands
 
@@ -13,7 +15,7 @@ make lint test      # both sides; lint-go/test-go or lint-web/test-web for one, 
 make generate       # regenerate api/rest and web/src/api from api/openapi.yaml
 make check          # lint, generate-check, test, govulncheck, tidy-check
 make fmt            # gofumpt, goimports, prettier
-make run            # build and serve on 127.0.0.1:8080 with whatever web/dist holds
+make run            # build and serve on 127.0.0.1:8080 with whatever web/dist holds; needs OH_MY_USAGE_GATEWAY_URL and _TOKEN
 make build WEB=1    # build the binary with the real UI embedded
 ```
 
@@ -34,6 +36,10 @@ make build WEB=1    # build the binary with the real UI embedded
   planner, a reducer) goes under `pkg/`. Lint and the boundary test keep `pkg/`
   free of `internal/`, `api/`, `net/http`, `database/sql`, the process clock
   and `rand`: pass time and randomness in.
+- The daemon's own types flow inward: `internal/omp` returns `pkg/accounts`
+  types, `internal/monitor` merges and holds them, and `internal/server` turns
+  them into `api/rest` types in `convert.go`.
+- Only `cmd/oh-my-usaged` imports `internal/omp`; the monitor takes interfaces.
 - To restrict who may import a package, add an entry to `boundaries` in
   `internal/testutil/importguard/boundary_test.go`, and a `depguard` rule in
   `.golangci.yml` when lint-time feedback helps.
@@ -58,6 +64,19 @@ make build WEB=1    # build the binary with the real UI embedded
 - `getConfig` is public and injected into `index.html`: nothing in it may be a
   secret or need authentication.
 - Times in the API are UTC (`.UTC()`); the client's Zod schemas reject offsets.
+
+## omp
+
+- The broker's snapshot carries access tokens and API keys. Decode it only
+  into structs with no field for them (`internal/omp/broker.go`), and never
+  log or return a response body from the broker.
+- Tokens come from the environment or a file, never a flag, and never appear
+  in a log line, an error or `getConfig`.
+- Do not poll the gateway's `/v1/credentials/check`: every call probes every
+  account upstream.
+- A pause is an `account-policy` block with the deadline `accounts.PausedUntil()`.
+  omp sets its own blocks in that scope, so check the deadline before treating
+  a block as a pause or deleting it.
 
 ## Go
 

@@ -4,6 +4,7 @@ import {
   BORDER_COLORS,
   CONTRAST_EXEMPT,
   CONTRAST_RULES,
+  DATA_COLORS,
   STATUS_COLORS,
   SURFACE_COLORS,
   TEXT_COLORS,
@@ -68,6 +69,23 @@ export const Status: Story = {
         ok: 'text-ok: healthy, done',
         warn: 'text-warn: degraded, needs attention',
         danger: 'text-danger: failed',
+      }}
+    />
+  ),
+};
+
+export const Data: Story = {
+  render: () => (
+    <ColorSwatches
+      tokens={DATA_COLORS}
+      notes={{
+        meter: 'fill-meter: a meter below its warning level',
+        'meter-track': 'fill-meter-track: the unfilled part of that meter',
+        'warn-track': 'fill-warn-track: behind a fill-warn meter',
+        'danger-track': 'fill-danger-track: behind a fill-danger meter',
+        'series-1': 'text-series-1: the first chart series',
+        'series-2': 'text-series-2: the second chart series',
+        'series-3': 'text-series-3: the third and last chart series',
       }}
     />
   ),

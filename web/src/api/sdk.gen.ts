@@ -10,18 +10,30 @@ import type {
 } from './client';
 import { client } from './client.gen';
 import type {
+  GetAccountHistoryData,
+  GetAccountHistoryErrors,
+  GetAccountHistoryResponses,
   GetConfigData,
   GetConfigErrors,
   GetConfigResponses,
-  GetHealthData,
-  GetHealthErrors,
-  GetHealthResponses,
+  ListAccountsData,
+  ListAccountsErrors,
+  ListAccountsResponses,
+  SetAccountPausedData,
+  SetAccountPausedErrors,
+  SetAccountPausedResponses,
   StreamEventsData,
   StreamEventsErrors,
   StreamEventsResponse,
   StreamEventsResponses,
 } from './types.gen';
-import { zGetConfigResponse, zGetHealthResponse, zStreamEventsResponse } from './zod.gen';
+import {
+  zGetAccountHistoryResponse,
+  zGetConfigResponse,
+  zListAccountsResponse,
+  zSetAccountPausedResponse,
+  zStreamEventsResponse,
+} from './zod.gen';
 
 export type Options<
   TData extends TDataShape = TDataShape,
@@ -42,21 +54,9 @@ export type Options<
 };
 
 /**
- * Report daemon health
- */
-export const getHealth = <ThrowOnError extends boolean = false>(
-  options?: Options<GetHealthData, ThrowOnError>
-): RequestResult<GetHealthResponses, GetHealthErrors, ThrowOnError> =>
-  (options?.client ?? client).get<GetHealthResponses, GetHealthErrors, ThrowOnError>({
-    responseValidator: async data => await zGetHealthResponse.parseAsync(data),
-    url: '/api/v1/health',
-    ...options,
-  });
-
-/**
  * Read the public configuration
  *
- * What the UI needs before it can render: the daemon's name and build. The same object is injected into `index.html` as `window.__CONFIG__`, so the first render does not wait for this request; the UI reads it from there and refetches later.
+ * What the UI needs before it can render: the daemon's name and build, and whether accounts can be paused. The same object is injected into `index.html` as `window.__CONFIG__`, so the first render does not wait for this request; the UI reads it from there and refetches later.
  */
 export const getConfig = <ThrowOnError extends boolean = false>(
   options?: Options<GetConfigData, ThrowOnError>
@@ -68,9 +68,55 @@ export const getConfig = <ThrowOnError extends boolean = false>(
   });
 
 /**
- * Stream the daemon's state
+ * List accounts and their usage
  *
- * Server-sent events, each carrying a whole object. `health`: a `Health`, sent on connect and then every few seconds. A `: ping` comment keeps idle connections open. Every event is complete, so a client that reconnects needs no resume cursor.
+ * The accounts found by the last poll of the gateway, joined with the broker's credentials when a broker is configured. While a source is unreachable its last good data is still listed; `gateway` and `broker` say how fresh it is.
+ */
+export const listAccounts = <ThrowOnError extends boolean = false>(
+  options?: Options<ListAccountsData, ThrowOnError>
+): RequestResult<ListAccountsResponses, ListAccountsErrors, ThrowOnError> =>
+  (options?.client ?? client).get<ListAccountsResponses, ListAccountsErrors, ThrowOnError>({
+    responseValidator: async data => await zListAccountsResponse.parseAsync(data),
+    url: '/api/v1/accounts',
+    ...options,
+  });
+
+/**
+ * Pause or resume an account
+ *
+ * A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it within seconds, but still falls back to it when every other account of the provider is blocked or exhausted. Answers 409 when no broker is configured or the account has no broker credential.
+ */
+export const setAccountPaused = <ThrowOnError extends boolean = false>(
+  options: Options<SetAccountPausedData, ThrowOnError>
+): RequestResult<SetAccountPausedResponses, SetAccountPausedErrors, ThrowOnError> =>
+  (options.client ?? client).put<SetAccountPausedResponses, SetAccountPausedErrors, ThrowOnError>({
+    responseValidator: async data => await zSetAccountPausedResponse.parseAsync(data),
+    url: '/api/v1/accounts/{accountId}/pause',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
+ * Read an account's recorded usage
+ *
+ * One sample per limit each time the provider reported fresh usage, oldest first. An account with nothing recorded answers an empty list.
+ */
+export const getAccountHistory = <ThrowOnError extends boolean = false>(
+  options: Options<GetAccountHistoryData, ThrowOnError>
+): RequestResult<GetAccountHistoryResponses, GetAccountHistoryErrors, ThrowOnError> =>
+  (options.client ?? client).get<GetAccountHistoryResponses, GetAccountHistoryErrors, ThrowOnError>({
+    responseValidator: async data => await zGetAccountHistoryResponse.parseAsync(data),
+    url: '/api/v1/accounts/{accountId}/history',
+    ...options,
+  });
+
+/**
+ * Stream the accounts
+ *
+ * Server-sent events, each carrying a whole object. `accounts`: an `AccountList`, sent on connect and after every poll. A `: ping` comment keeps idle connections open. Every event is complete, so a client that reconnects needs no resume cursor.
  */
 export const streamEvents = <ThrowOnError extends boolean = false>(
   options?: Options<StreamEventsData, ThrowOnError, StreamEventsResponse>

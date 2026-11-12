@@ -42,6 +42,14 @@ The outcome of anything: `ok`, `warn`, `danger`. They are text colours (4.5:1) a
 
 <Story of={Stories.Status} />
 
+## Data
+
+Marks that draw data, used on a card. A meter fills in `meter`, then `warn` and `danger` as its limit nears, over a
+lighter track of the same colour. Chart series take `series-1` to `series-3` in that order and keep them; a chart
+draws no more than three. Text never wears these colours: a label sits beside the mark.
+
+<Story of={Stories.Data} />
+
 ## Contrast
 
 `tokens.test.ts` checks every rule below in both themes against WCAG 2.2 AA. A colour must be in a rule or exempt

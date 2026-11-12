@@ -25,7 +25,7 @@ export function AppShell({ name, connection, children }: AppShellProps): JSX.Ele
             activeProps={{ className: 'text-foreground underline underline-offset-4' }}
             inactiveProps={{ className: 'text-muted hover:text-foreground' }}
           >
-            Home
+            Accounts
           </Link>
         </nav>
         <StatusBadge tone={tone}>{label}</StatusBadge>

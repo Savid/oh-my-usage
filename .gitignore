@@ -26,3 +26,8 @@ node_modules/
 
 # Vitest output (failure screenshots, attachments, reports)
 /web/.vitest/
+
+# The usage history written by a local run.
+*.db
+*.db-shm
+*.db-wal

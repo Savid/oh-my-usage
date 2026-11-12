@@ -15,7 +15,10 @@ import (
 
 	"github.com/savid/oh-my-usage/api"
 	"github.com/savid/oh-my-usage/api/rest"
+	"github.com/savid/oh-my-usage/internal/monitor"
+	"github.com/savid/oh-my-usage/internal/store"
 	"github.com/savid/oh-my-usage/internal/ui"
+	"github.com/savid/oh-my-usage/pkg/accounts"
 )
 
 const shutdownTimeout = 5 * time.Second
@@ -26,11 +29,10 @@ type Config struct {
 	Listen string
 	// Name is the daemon's display name, reported by getConfig.
 	Name string
-	// Version is reported by the health and config endpoints.
+	// Version is reported by getConfig.
 	Version string
-	// StreamInterval is how often the event stream repeats its health event.
-	// Zero takes the default of 5 s.
-	StreamInterval time.Duration
+	// PollInterval is how often the monitor polls, reported by getConfig.
+	PollInterval time.Duration
 	// Now returns the current time; nil takes time.Now. Tests set it.
 	Now func() time.Time
 }
@@ -40,15 +42,35 @@ func (c Config) withDefaults() Config {
 		c.Name = "oh-my-usage"
 	}
 
-	if c.StreamInterval <= 0 {
-		c.StreamInterval = 5 * time.Second
-	}
-
 	if c.Now == nil {
 		c.Now = time.Now
 	}
 
 	return c
+}
+
+// Monitor is what the server reads from and asks of the account monitor.
+type Monitor interface {
+	// State returns the latest accounts and the health of their sources.
+	State() monitor.State
+	// Subscribe returns a channel that receives after each poll, and a
+	// function that ends the subscription.
+	Subscribe() (changed <-chan struct{}, cancel func())
+	// SetPaused pauses or resumes an account and returns its new state.
+	SetPaused(ctx context.Context, accountID string, paused bool) (accounts.Account, error)
+	// Controls reports whether accounts can be paused.
+	Controls() bool
+}
+
+// History reads recorded usage.
+type History interface {
+	History(ctx context.Context, accountID string, since time.Time) ([]store.Sample, error)
+}
+
+// Deps are the parts of the daemon the server serves.
+type Deps struct {
+	Monitor Monitor
+	History History
 }
 
 // Server serves /api/v1, the OpenAPI spec and the web UI on one listener.
@@ -63,12 +85,15 @@ type Server struct {
 // New builds the route table. Hand-routed operations (event streams, which
 // ogen cannot generate) are registered next to the ogen server's /api/v1/
 // catch-all; ServeMux sends each request to its most specific pattern.
-func New(log *slog.Logger, cfg Config, assets fs.FS) (*Server, error) {
+func New(log *slog.Logger, cfg Config, assets fs.FS, deps Deps) (*Server, error) {
 	cfg = cfg.withDefaults()
 	// Every line the server logs inside a request carries that request's ID.
 	log = slog.New(requestIDHandler{log.Handler()})
 	s := &Server{log: log, cfg: cfg, shutdown: make(chan struct{})}
-	s.ops = &operations{log: log, name: cfg.Name, version: cfg.Version, now: cfg.Now}
+	s.ops = &operations{
+		log: log, name: cfg.Name, version: cfg.Version, pollInterval: cfg.PollInterval, now: cfg.Now,
+		monitor: deps.Monitor, history: deps.History,
+	}
 
 	generated, err := rest.NewServer(
 		s.ops,

@@ -1,2 +1,14 @@
-export { configFixture } from './config';
-export { healthFixture, healthHandlers } from './health';
+export {
+  accountsFixture,
+  accountsHandlers,
+  historyFixture,
+  historyHandlers,
+  keyFixture,
+  neverReachedFixture,
+  pausedSeatFixture,
+  pauseHandlers,
+  seatFixture,
+  strayFixture,
+  unreachableFixture,
+} from './accounts';
+export { configFixture, configHandlers } from './config';

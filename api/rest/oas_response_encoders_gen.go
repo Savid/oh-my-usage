@@ -10,6 +10,19 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 )
 
+func encodeGetAccountHistoryResponse(response *UsageHistory, w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeGetConfigResponse(response *Config, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -23,7 +36,20 @@ func encodeGetConfigResponse(response *Config, w http.ResponseWriter) error {
 	return nil
 }
 
-func encodeGetHealthResponse(response *Health, w http.ResponseWriter) error {
+func encodeListAccountsResponse(response *AccountList, w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeSetAccountPausedResponse(response *Account, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
 

@@ -15,32 +15,20 @@ servers:
 security: []
 tags:
   - name: system
-    description: Daemon health and metadata.
+    description: Daemon metadata and the event stream.
+  - name: accounts
+    description: The logins and API keys an omp auth gateway serves, with their usage.
 paths:
-  /api/v1/health:
-    get:
-      operationId: getHealth
-      tags: [system]
-      summary: Report daemon health
-      responses:
-        '200':
-          description: The daemon is serving.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Health'
-        default:
-          $ref: '#/components/responses/Problem'
   /api/v1/config:
     get:
       operationId: getConfig
       tags: [system]
       summary: Read the public configuration
       description: >-
-        What the UI needs before it can render: the daemon's name and build.
-        The same object is injected into `index.html` as `window.__CONFIG__`,
-        so the first render does not wait for this request; the UI reads it
-        from there and refetches later.
+        What the UI needs before it can render: the daemon's name and build,
+        and whether accounts can be paused. The same object is injected into
+        `index.html` as `window.__CONFIG__`, so the first render does not wait
+        for this request; the UI reads it from there and refetches later.
       responses:
         '200':
           description: The public configuration.
@@ -50,26 +38,107 @@ paths:
                 $ref: '#/components/schemas/Config'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v1/accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List accounts and their usage
+      description: >-
+        The accounts found by the last poll of the gateway, joined with the
+        broker's credentials when a broker is configured. While a source is
+        unreachable its last good data is still listed; `gateway` and `broker`
+        say how fresh it is.
+      responses:
+        '200':
+          description: The accounts and the health of their sources.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountList'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/accounts/{accountId}/pause:
+    put:
+      operationId: setAccountPaused
+      tags: [accounts]
+      summary: Pause or resume an account
+      description: >-
+        A pause blocks the account in omp's `account-policy` scope on the
+        broker. omp moves traffic off it within seconds, but still falls back
+        to it when every other account of the provider is blocked or
+        exhausted. Answers 409 when no broker is configured or the account has
+        no broker credential.
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PauseRequest'
+      responses:
+        '200':
+          description: The account as the broker now reports it.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        default:
+          $ref: '#/components/responses/Problem'
+  /api/v1/accounts/{accountId}/history:
+    get:
+      operationId: getAccountHistory
+      tags: [accounts]
+      summary: Read an account's recorded usage
+      description: >-
+        One sample per limit each time the provider reported fresh usage,
+        oldest first. An account with nothing recorded answers an empty list.
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - name: since
+          in: query
+          description: Only samples at or after this time. Defaults to 7 days ago.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: The samples.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageHistory'
+        default:
+          $ref: '#/components/responses/Problem'
   /api/v1/stream:
     get:
       operationId: streamEvents
       tags: [system]
-      summary: Stream the daemon's state
+      summary: Stream the accounts
       description: >-
-        Server-sent events, each carrying a whole object. `health`: a `Health`,
-        sent on connect and then every few seconds. A `: ping` comment keeps
-        idle connections open. Every event is complete, so a client that
+        Server-sent events, each carrying a whole object. `accounts`: an
+        `AccountList`, sent on connect and after every poll. A `: ping` comment
+        keeps idle connections open. Every event is complete, so a client that
         reconnects needs no resume cursor.
       responses:
         '200':
-          description: Server-sent `health` events.
+          description: Server-sent `accounts` events.
           content:
             text/event-stream:
               schema:
-                $ref: '#/components/schemas/Health'
+                $ref: '#/components/schemas/AccountList'
         default:
           $ref: '#/components/responses/Problem'
 components:
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: An account's `id`.
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{16}$'
   responses:
     Problem:
       description: An error, as an RFC 9457 problem.
@@ -81,7 +150,7 @@ components:
     Config:
       type: object
       description: Public, unauthenticated configuration. Never put a secret here.
-      required: [name, version]
+      required: [name, version, controls, pollIntervalSeconds]
       properties:
         name:
           type: string
@@ -91,21 +160,167 @@ components:
           type: string
           description: The build's version.
           examples: ['0.1.0']
-    Health:
+        controls:
+          type: boolean
+          description: Whether a broker is configured, so accounts can be paused.
+        pollIntervalSeconds:
+          type: integer
+          minimum: 1
+          description: How often the gateway is polled.
+    AccountList:
       type: object
-      required: [status, version, at]
+      required: [accounts, gateway]
       properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+        gateway:
+          $ref: '#/components/schemas/SourceStatus'
+        gatewayVersion:
+          type: string
+          description: The omp version the gateway reported.
+          examples: ['18.19.0']
+        broker:
+          $ref: '#/components/schemas/SourceStatus'
+          description: Absent when no broker is configured.
+    SourceStatus:
+      type: object
+      description: The health of the gateway or the broker.
+      required: [reachable]
+      properties:
+        reachable:
+          type: boolean
+          description: Whether the last poll of it succeeded.
+        error:
+          type: string
+          description: Why the last poll failed.
+        updatedAt:
+          type: string
+          format: date-time
+          description: The last successful poll. Absent before the first.
+    Account:
+      type: object
+      description: One login or API key with its usage.
+      required: [id, provider, paused, pausable, limits]
+      properties:
+        id:
+          type: string
+          description: Stable across restarts.
+          examples: [3f6c2a9d41b07e58]
+        provider:
+          type: string
+          description: omp's provider ID.
+          examples: [anthropic]
+        kind:
+          type: string
+          enum: [oauth, api_key]
+          description: Absent when no broker credential is known for the account.
+        email:
+          type: string
+        orgName:
+          type: string
+        plan:
+          type: string
+          examples: [pro]
+        paused:
+          type: boolean
+          description: Whether the account carries a pause.
+        pausable:
+          type: boolean
+          description: Whether the account has a broker credential to pause.
+        blockedUntil:
+          type: string
+          format: date-time
+          description: >-
+            When omp's own block on the account ends, such as after a usage
+            limit. Absent when it has none.
+        limits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Limit'
+        resets:
+          $ref: '#/components/schemas/Resets'
+        fetchedAt:
+          type: string
+          format: date-time
+          description: When the provider reported the usage. Absent without a report.
+    Limit:
+      type: object
+      description: One usage window of an account.
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          examples: ['anthropic:7d']
+        label:
+          type: string
+          examples: [Claude 7 Day]
+        windowLabel:
+          type: string
+          examples: [7 Day]
+        usedFraction:
+          type: number
+          minimum: 0
+          description: >-
+            The used share, 0 to 1 and above 1 for overage. Absent when the
+            provider reported no amount.
         status:
           type: string
-          enum: [ok]
-        version:
+          enum: [ok, warning, exhausted, unknown]
+        resetsAt:
           type: string
-          description: The build's version.
-          examples: ['0.1.0']
+          format: date-time
+          description: When the window resets. Absent when the provider gave no time.
+    Resets:
+      type: object
+      description: An account's saved limit resets.
+      required: [available]
+      properties:
+        available:
+          type: integer
+          minimum: 0
+          description: How many the account holds.
+        usable:
+          type: integer
+          minimum: 0
+          description: How many can be spent now. Absent when the provider does not say.
+        soonestExpiresAt:
+          type: string
+          format: date-time
+          description: When the first of them expires.
+    PauseRequest:
+      type: object
+      required: [paused]
+      properties:
+        paused:
+          type: boolean
+    UsageHistory:
+      type: object
+      required: [samples]
+      properties:
+        samples:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageSample'
+    UsageSample:
+      type: object
+      description: One limit at the time its provider reported it.
+      required: [at, limitId, label, usedFraction]
+      properties:
         at:
           type: string
           format: date-time
-          description: The daemon's clock when it answered.
+        limitId:
+          type: string
+        label:
+          type: string
+        usedFraction:
+          type: number
+          minimum: 0
+        resetsAt:
+          type: string
+          format: date-time
     Problem:
       type: object
       description: RFC 9457 problem details.

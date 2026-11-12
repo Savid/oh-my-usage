@@ -8,20 +8,37 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// GetAccountHistory implements getAccountHistory operation.
+	//
+	// One sample per limit each time the provider reported fresh usage, oldest first. An account with
+	// nothing recorded answers an empty list.
+	//
+	// GET /api/v1/accounts/{accountId}/history
+	GetAccountHistory(ctx context.Context, params GetAccountHistoryParams) (*UsageHistory, error)
 	// GetConfig implements getConfig operation.
 	//
-	// What the UI needs before it can render: the daemon's name and build. The same object is injected
-	// into `index.html` as `window.__CONFIG__`, so the first render does not wait for this request; the UI
-	// reads it from there and refetches later.
+	// What the UI needs before it can render: the daemon's name and build, and whether accounts can be
+	// paused. The same object is injected into `index.html` as `window.__CONFIG__`, so the first render
+	// does not wait for this request; the UI reads it from there and refetches later.
 	//
 	// GET /api/v1/config
 	GetConfig(ctx context.Context) (*Config, error)
-	// GetHealth implements getHealth operation.
+	// ListAccounts implements listAccounts operation.
 	//
-	// Report daemon health.
+	// The accounts found by the last poll of the gateway, joined with the broker's credentials when a
+	// broker is configured. While a source is unreachable its last good data is still listed; `gateway`
+	// and `broker` say how fresh it is.
 	//
-	// GET /api/v1/health
-	GetHealth(ctx context.Context) (*Health, error)
+	// GET /api/v1/accounts
+	ListAccounts(ctx context.Context) (*AccountList, error)
+	// SetAccountPaused implements setAccountPaused operation.
+	//
+	// A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it
+	// within seconds, but still falls back to it when every other account of the provider is blocked or
+	// exhausted. Answers 409 when no broker is configured or the account has no broker credential.
+	//
+	// PUT /api/v1/accounts/{accountId}/pause
+	SetAccountPaused(ctx context.Context, req *PauseRequest, params SetAccountPausedParams) (*Account, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

@@ -24,7 +24,7 @@ build: web-assets
 image:
 	docker build -t oh-my-usage:local --build-arg VERSION=$(VERSION) .
 
-## run: build and start oh-my-usaged on LISTEN (default 127.0.0.1:8080)
+## run: build and start oh-my-usaged on LISTEN (default 127.0.0.1:8080); set OH_MY_USAGE_GATEWAY_URL and OH_MY_USAGE_GATEWAY_TOKEN first
 run: build
 	$(BIN_DIR)/oh-my-usaged -listen $(LISTEN)
 

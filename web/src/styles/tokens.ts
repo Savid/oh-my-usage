@@ -13,6 +13,16 @@ export const BORDER_COLORS = ['border', 'border-strong'] as const;
 export const TEXT_COLORS = ['foreground', 'muted'] as const;
 export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
 export const STATUS_COLORS = ['ok', 'warn', 'danger'] as const;
+/** Marks that draw data: meter fills and their tracks, chart series. */
+export const DATA_COLORS = [
+  'meter',
+  'meter-track',
+  'warn-track',
+  'danger-track',
+  'series-1',
+  'series-2',
+  'series-3',
+] as const;
 
 export const COLOR_TOKENS = [
   ...SURFACE_COLORS,
@@ -20,6 +30,7 @@ export const COLOR_TOKENS = [
   ...TEXT_COLORS,
   ...ACCENT_COLORS,
   ...STATUS_COLORS,
+  ...DATA_COLORS,
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
@@ -47,6 +58,12 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     minimum: 3,
   },
   {
+    name: 'Meter fills and chart series on a card',
+    foregrounds: ['meter', 'series-1', 'series-2'],
+    backgrounds: ['surface'],
+    minimum: 3,
+  },
+  {
     name: 'Text on an accent fill',
     foregrounds: ['accent-foreground'],
     backgrounds: ['accent'],
@@ -57,4 +74,8 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
 /** Colours no contrast rule covers, and why none needs to. */
 export const CONTRAST_EXEMPT: Readonly<Partial<Record<ColorToken, string>>> = {
   border: 'separates; it identifies nothing you act on',
+  'meter-track': 'the unfilled part of a meter; the figure beside it carries the value',
+  'warn-track': 'the unfilled part of a meter; the figure beside it carries the value',
+  'danger-track': 'the unfilled part of a meter; the figure beside it carries the value',
+  'series-3': 'a chart line that is always named in a legend and listed in the table beside the chart',
 };

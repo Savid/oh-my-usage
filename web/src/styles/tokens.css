@@ -39,6 +39,16 @@
   --color-ok: light-dark(#15783a, #4ade80);
   --color-warn: light-dark(#b54708, #fb923c);
   --color-danger: light-dark(#be2a2a, #f87171);
+  /* Data marks. A meter's fill, and the unfilled track behind it: a lighter step
+   * of the fill's own colour, so its state reads across the whole bar. */
+  --color-meter: light-dark(#2a78d6, #3987e5);
+  --color-meter-track: light-dark(#d6e4f7, #1c2c45);
+  --color-warn-track: light-dark(#fbe3d2, #3d2414);
+  --color-danger-track: light-dark(#f8dada, #3f1b1b);
+  /* Chart series, in this fixed order; a series keeps its colour whatever else is drawn. */
+  --color-series-1: var(--color-meter);
+  --color-series-2: light-dark(#eb6834, #d95926);
+  --color-series-3: light-dark(#1baf7a, #199e70);
 
   --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;

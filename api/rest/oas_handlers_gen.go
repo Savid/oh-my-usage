@@ -9,6 +9,7 @@ import (
 	"github.com/go-faster/errors"
 	ht "github.com/ogen-go/ogen/http"
 	"github.com/ogen-go/ogen/middleware"
+	"github.com/ogen-go/ogen/ogenerrors"
 )
 
 type codeRecorder struct {
@@ -27,11 +28,111 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 
 func recordError(string, error) {}
 
+// handleGetAccountHistoryRequest handles getAccountHistory operation.
+//
+// One sample per limit each time the provider reported fresh usage, oldest first. An account with
+// nothing recorded answers an empty list.
+//
+// GET /api/v1/accounts/{accountId}/history
+func (s *Server) handleGetAccountHistoryRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: GetAccountHistoryOperation,
+			ID:   "getAccountHistory",
+		}
+	)
+	params, err := decodeGetAccountHistoryParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response *UsageHistory
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GetAccountHistoryOperation,
+			OperationSummary: "Read an account's recorded usage",
+			OperationID:      "getAccountHistory",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "accountId",
+					In:   "path",
+				}: params.AccountId,
+				{
+					Name: "since",
+					In:   "query",
+				}: params.Since,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = GetAccountHistoryParams
+			Response = *UsageHistory
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackGetAccountHistoryParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GetAccountHistory(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GetAccountHistory(ctx, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeGetAccountHistoryResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleGetConfigRequest handles getConfig operation.
 //
-// What the UI needs before it can render: the daemon's name and build. The same object is injected
-// into `index.html` as `window.__CONFIG__`, so the first render does not wait for this request; the UI
-// reads it from there and refetches later.
+// What the UI needs before it can render: the daemon's name and build, and whether accounts can be
+// paused. The same object is injected into `index.html` as `window.__CONFIG__`, so the first render
+// does not wait for this request; the UI reads it from there and refetches later.
 //
 // GET /api/v1/config
 func (s *Server) handleGetConfigRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -105,12 +206,14 @@ func (s *Server) handleGetConfigRequest(args [0]string, argsEscaped bool, w http
 	}
 }
 
-// handleGetHealthRequest handles getHealth operation.
+// handleListAccountsRequest handles listAccounts operation.
 //
-// Report daemon health.
+// The accounts found by the last poll of the gateway, joined with the broker's credentials when a
+// broker is configured. While a source is unreachable its last good data is still listed; `gateway`
+// and `broker` say how fresh it is.
 //
-// GET /api/v1/health
-func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /api/v1/accounts
+func (s *Server) handleListAccountsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	ctx := r.Context()
@@ -121,13 +224,13 @@ func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http
 
 	var rawBody []byte
 
-	var response *Health
+	var response *AccountList
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    GetHealthOperation,
-			OperationSummary: "Report daemon health",
-			OperationID:      "getHealth",
+			OperationName:    ListAccountsOperation,
+			OperationSummary: "List accounts and their usage",
+			OperationID:      "listAccounts",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -137,7 +240,7 @@ func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *Health
+			Response = *AccountList
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -148,12 +251,12 @@ func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetHealth(ctx)
+				response, err = s.h.ListAccounts(ctx)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetHealth(ctx)
+		response, err = s.h.ListAccounts(ctx)
 	}
 	if err != nil {
 		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
@@ -172,7 +275,119 @@ func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http
 		return
 	}
 
-	if err := encodeGetHealthResponse(response, w); err != nil {
+	if err := encodeListAccountsResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleSetAccountPausedRequest handles setAccountPaused operation.
+//
+// A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it
+// within seconds, but still falls back to it when every other account of the provider is blocked or
+// exhausted. Answers 409 when no broker is configured or the account has no broker credential.
+//
+// PUT /api/v1/accounts/{accountId}/pause
+func (s *Server) handleSetAccountPausedRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: SetAccountPausedOperation,
+			ID:   "setAccountPaused",
+		}
+	)
+	params, err := decodeSetAccountPausedParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeSetAccountPausedRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *Account
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    SetAccountPausedOperation,
+			OperationSummary: "Pause or resume an account",
+			OperationID:      "setAccountPaused",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "accountId",
+					In:   "path",
+				}: params.AccountId,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *PauseRequest
+			Params   = SetAccountPausedParams
+			Response = *Account
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackSetAccountPausedParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.SetAccountPaused(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.SetAccountPaused(ctx, request, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeSetAccountPausedResponse(response, w); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)

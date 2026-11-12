@@ -16,18 +16,139 @@ export type Config = {
    * The build's version.
    */
   version: string;
+  /**
+   * Whether a broker is configured, so accounts can be paused.
+   */
+  controls: boolean;
+  /**
+   * How often the gateway is polled.
+   */
+  pollIntervalSeconds: number;
 };
 
-export type Health = {
-  status: 'ok';
+export type AccountList = {
+  accounts: Array<Account>;
+  gateway: SourceStatus;
   /**
-   * The build's version.
+   * The omp version the gateway reported.
    */
-  version: string;
+  gatewayVersion?: string;
   /**
-   * The daemon's clock when it answered.
+   * Absent when no broker is configured.
    */
+  broker?: SourceStatus;
+};
+
+/**
+ * The health of the gateway or the broker.
+ */
+export type SourceStatus = {
+  /**
+   * Whether the last poll of it succeeded.
+   */
+  reachable: boolean;
+  /**
+   * Why the last poll failed.
+   */
+  error?: string;
+  /**
+   * The last successful poll. Absent before the first.
+   */
+  updatedAt?: string;
+};
+
+/**
+ * One login or API key with its usage.
+ */
+export type Account = {
+  /**
+   * Stable across restarts.
+   */
+  id: string;
+  /**
+   * omp's provider ID.
+   */
+  provider: string;
+  /**
+   * Absent when no broker credential is known for the account.
+   */
+  kind?: 'oauth' | 'api_key';
+  email?: string;
+  orgName?: string;
+  plan?: string;
+  /**
+   * Whether the account carries a pause.
+   */
+  paused: boolean;
+  /**
+   * Whether the account has a broker credential to pause.
+   */
+  pausable: boolean;
+  /**
+   * When omp's own block on the account ends, such as after a usage limit. Absent when it has none.
+   */
+  blockedUntil?: string;
+  limits: Array<Limit>;
+  resets?: Resets;
+  /**
+   * When the provider reported the usage. Absent without a report.
+   */
+  fetchedAt?: string;
+};
+
+/**
+ * One usage window of an account.
+ */
+export type Limit = {
+  id: string;
+  label: string;
+  windowLabel?: string;
+  /**
+   * The used share, 0 to 1 and above 1 for overage. Absent when the provider reported no amount.
+   */
+  usedFraction?: number;
+  status?: 'ok' | 'warning' | 'exhausted' | 'unknown';
+  /**
+   * When the window resets. Absent when the provider gave no time.
+   */
+  resetsAt?: string;
+};
+
+/**
+ * An account's saved limit resets.
+ */
+export type Resets = {
+  /**
+   * How many the account holds.
+   */
+  available: number;
+  /**
+   * How many can be spent now. Absent when the provider does not say.
+   */
+  usable?: number;
+  /**
+   * When the first of them expires.
+   */
+  soonestExpiresAt?: string;
+};
+
+export type PauseRequest = {
+  paused: boolean;
+};
+
+export type UsageHistory = {
+  samples: Array<UsageSample>;
+};
+
+/**
+ * One limit at the time its provider reported it.
+ */
+export type UsageSample = {
   at: string;
+  limitId: string;
+  label: string;
+  usedFraction: number;
+  resetsAt?: string;
 };
 
 /**
@@ -41,30 +162,10 @@ export type Problem = {
   instance?: string;
 };
 
-export type GetHealthData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/v1/health';
-};
-
-export type GetHealthErrors = {
-  /**
-   * An error, as an RFC 9457 problem.
-   */
-  default: Problem;
-};
-
-export type GetHealthError = GetHealthErrors[keyof GetHealthErrors];
-
-export type GetHealthResponses = {
-  /**
-   * The daemon is serving.
-   */
-  200: Health;
-};
-
-export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+/**
+ * An account's `id`.
+ */
+export type AccountId = string;
 
 export type GetConfigData = {
   body?: never;
@@ -91,6 +192,96 @@ export type GetConfigResponses = {
 
 export type GetConfigResponse = GetConfigResponses[keyof GetConfigResponses];
 
+export type ListAccountsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/v1/accounts';
+};
+
+export type ListAccountsErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type ListAccountsError = ListAccountsErrors[keyof ListAccountsErrors];
+
+export type ListAccountsResponses = {
+  /**
+   * The accounts and the health of their sources.
+   */
+  200: AccountList;
+};
+
+export type ListAccountsResponse = ListAccountsResponses[keyof ListAccountsResponses];
+
+export type SetAccountPausedData = {
+  body: PauseRequest;
+  path: {
+    /**
+     * An account's `id`.
+     */
+    accountId: string;
+  };
+  query?: never;
+  url: '/api/v1/accounts/{accountId}/pause';
+};
+
+export type SetAccountPausedErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type SetAccountPausedError = SetAccountPausedErrors[keyof SetAccountPausedErrors];
+
+export type SetAccountPausedResponses = {
+  /**
+   * The account as the broker now reports it.
+   */
+  200: Account;
+};
+
+export type SetAccountPausedResponse = SetAccountPausedResponses[keyof SetAccountPausedResponses];
+
+export type GetAccountHistoryData = {
+  body?: never;
+  path: {
+    /**
+     * An account's `id`.
+     */
+    accountId: string;
+  };
+  query?: {
+    /**
+     * Only samples at or after this time. Defaults to 7 days ago.
+     */
+    since?: string;
+  };
+  url: '/api/v1/accounts/{accountId}/history';
+};
+
+export type GetAccountHistoryErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type GetAccountHistoryError = GetAccountHistoryErrors[keyof GetAccountHistoryErrors];
+
+export type GetAccountHistoryResponses = {
+  /**
+   * The samples.
+   */
+  200: UsageHistory;
+};
+
+export type GetAccountHistoryResponse = GetAccountHistoryResponses[keyof GetAccountHistoryResponses];
+
 export type StreamEventsData = {
   body?: never;
   path?: never;
@@ -109,9 +300,9 @@ export type StreamEventsError = StreamEventsErrors[keyof StreamEventsErrors];
 
 export type StreamEventsResponses = {
   /**
-   * Server-sent `health` events.
+   * Server-sent `accounts` events.
    */
-  200: Health;
+  200: AccountList;
 };
 
 export type StreamEventsResponse = StreamEventsResponses[keyof StreamEventsResponses];

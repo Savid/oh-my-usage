@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { HomePage } from '@/pages/home/HomePage';
+import { AccountsPage } from '@/pages/accounts/AccountsPage';
 
 export const Route = createFileRoute('/')({
-  component: () => <HomePage />,
-  head: () => ({ meta: [{ title: 'Home | oh-my-usage' }] }),
+  component: () => <AccountsPage />,
+  head: () => ({ meta: [{ title: 'Accounts | oh-my-usage' }] }),
 });

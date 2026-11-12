@@ -8,7 +8,7 @@ export function NotFoundPage(): JSX.Element {
       <p className="text-body text-muted">
         Nothing lives here.{' '}
         <Link to="/" className="text-accent underline">
-          Back home
+          Back to the accounts
         </Link>
       </p>
     </section>

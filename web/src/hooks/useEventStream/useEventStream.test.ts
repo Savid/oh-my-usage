@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getHealthQueryKey } from '@/api/@tanstack/react-query.gen';
+import { listAccountsQueryKey } from '@/api/@tanstack/react-query.gen';
 import { act, FakeEventSource, renderHook } from '@/test-utils';
-import { healthFixture } from '@/test-utils/handlers';
+import { accountsFixture } from '@/test-utils/handlers';
 import { EVENT_STREAM_URL, useEventStream } from './useEventStream';
 
 describe('useEventStream', () => {
@@ -9,27 +9,27 @@ describe('useEventStream', () => {
     vi.useRealTimers();
   });
 
-  it('goes live and writes each health event into the health query', () => {
+  it('goes live and writes each accounts event into the accounts query', () => {
     const { result, client } = renderHook(() => useEventStream());
     const source = FakeEventSource.latest();
 
     expect(source.url).toBe(EVENT_STREAM_URL);
     expect(result.current).toBe('connecting');
 
-    act(() => source.emit('health', healthFixture));
+    act(() => source.emit('accounts', accountsFixture));
 
     expect(result.current).toBe('live');
-    expect(client.getQueryData(getHealthQueryKey())).toEqual(healthFixture);
+    expect(client.getQueryData(listAccountsQueryKey())).toEqual(accountsFixture);
   });
 
   it('ignores an event that does not match the spec', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { result, client } = renderHook(() => useEventStream());
 
-    act(() => FakeEventSource.latest().emit('health', { status: 'exploded' }));
+    act(() => FakeEventSource.latest().emit('accounts', { accounts: 'exploded' }));
 
     expect(result.current).toBe('connecting');
-    expect(client.getQueryData(getHealthQueryKey())).toBeUndefined();
+    expect(client.getQueryData(listAccountsQueryKey())).toBeUndefined();
     expect(logged).toHaveBeenCalledOnce();
   });
 
@@ -48,7 +48,7 @@ describe('useEventStream', () => {
 
     expect(FakeEventSource.instances).toHaveLength(2);
 
-    act(() => FakeEventSource.latest().emit('health', healthFixture));
+    act(() => FakeEventSource.latest().emit('accounts', accountsFixture));
 
     expect(result.current).toBe('live');
   });

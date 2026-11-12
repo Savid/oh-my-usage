@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/savid/oh-my-usage/api/rest"
+	"github.com/savid/oh-my-usage/internal/store"
 )
 
 var testAssets = fstest.MapFS{"index.html": {Data: []byte("<!doctype html><html><head><title>app</title><!--config--></head></html>")}}
@@ -17,49 +18,61 @@ var testAssets = fstest.MapFS{"index.html": {Data: []byte("<!doctype html><html>
 // testNow is in a local zone on purpose: the API must answer in UTC.
 var testNow = time.Date(2026, 9, 26, 22, 0, 0, 0, time.FixedZone("AEST", 10*3600))
 
-func newTestServer(t *testing.T) *Server {
+// testServer is a server over fakes the test can change.
+type testServer struct {
+	*Server
+
+	monitor *fakeMonitor
+	history *fakeHistory
+}
+
+func newTestServer(t *testing.T) *testServer {
 	t.Helper()
 
 	cfg := Config{
-		Listen: "127.0.0.1:0", Name: "app", Version: "test", StreamInterval: 10 * time.Millisecond,
+		Listen: "127.0.0.1:0", Name: "app", Version: "test", PollInterval: time.Minute,
 		Now: func() time.Time { return testNow },
 	}
+	ts := &testServer{
+		monitor: newFakeMonitor(),
+		history: &fakeHistory{samples: []store.Sample{
+			{
+				AccountID: seatID, LimitID: "anthropic:7d", At: testNow.Add(-time.Hour), Provider: "anthropic",
+				Label: "Claude 7 Day", UsedFraction: 0.7, Status: "ok", ResetsAt: testNow.Add(21 * time.Hour),
+			},
+			{AccountID: seatID, LimitID: "anthropic:5h", At: testNow, Label: "Claude 5 Hour", UsedFraction: 1.2},
+		}},
+	}
 
-	s, err := New(slog.New(slog.DiscardHandler), cfg, testAssets)
+	s, err := New(slog.New(slog.DiscardHandler), cfg, testAssets, Deps{Monitor: ts.monitor, History: ts.history})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return s
+	ts.Server = s
+
+	return ts
 }
 
 func get(t *testing.T, h http.Handler, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, path, nil))
-
-	return rec
+	return send(t, h, method, path, "")
 }
 
-func TestHealth(t *testing.T) {
-	t.Parallel()
+func send(t *testing.T, h http.Handler, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
 
-	rec := get(t, newTestServer(t).Handler(), http.MethodGet, "/api/v1/health")
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
 
-	var body rest.Health
-	if err := body.UnmarshalJSON(rec.Body.Bytes()); err != nil {
-		t.Fatal(err)
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
-	if rec.Code != http.StatusOK || body.Status != rest.HealthStatusOk || body.Version != "test" || !body.At.Equal(testNow) {
-		t.Fatalf("GET /api/v1/health = %d %+v", rec.Code, body)
-	}
+	h.ServeHTTP(rec, req)
 
-	// The generated web client accepts only UTC date-times.
-	if !strings.Contains(rec.Body.String(), `"at":"2026-09-26T12:00:00Z"`) {
-		t.Errorf("health is not in UTC: %s", rec.Body.String())
-	}
+	return rec
 }
 
 func TestRoutes(t *testing.T) {
@@ -75,7 +88,7 @@ func TestRoutes(t *testing.T) {
 		{http.MethodGet, "/some/client/route", http.StatusOK, "text/html; charset=utf-8"},
 		{http.MethodGet, "/openapi.yaml", http.StatusOK, "application/yaml"},
 		{http.MethodGet, "/api/v1/missing", http.StatusNotFound, "application/problem+json"},
-		{http.MethodPost, "/api/v1/health", http.StatusMethodNotAllowed, "application/problem+json"},
+		{http.MethodPost, "/api/v1/accounts", http.StatusMethodNotAllowed, "application/problem+json"},
 	} {
 		rec := get(t, h, tc.method, tc.path)
 		if rec.Code != tc.status || rec.Header().Get("Content-Type") != tc.contentType {
@@ -99,7 +112,7 @@ func TestConfigServedAndInjected(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if rec.Code != http.StatusOK || cfg.Name != "app" || cfg.Version != "test" {
+	if rec.Code != http.StatusOK || cfg.Name != "app" || cfg.Version != "test" || !cfg.Controls || cfg.PollIntervalSeconds != 60 {
 		t.Fatalf("GET /api/v1/config = %d %+v", rec.Code, cfg)
 	}
 
@@ -113,9 +126,9 @@ func TestConfigServedAndInjected(t *testing.T) {
 func TestResponsesCarryRequestID(t *testing.T) {
 	t.Parallel()
 
-	rec := get(t, newTestServer(t).Handler(), http.MethodGet, "/api/v1/health")
+	rec := get(t, newTestServer(t).Handler(), http.MethodGet, "/api/v1/config")
 	if rec.Header().Get(requestIDHeader) == "" {
-		t.Error("health response has no request ID")
+		t.Error("config response has no request ID")
 	}
 }
 

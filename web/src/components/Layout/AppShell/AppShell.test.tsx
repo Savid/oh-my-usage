@@ -17,7 +17,7 @@ describe('AppShell', () => {
 
     expect(await screen.findByText('page body')).toBeInTheDocument();
     expect(screen.getByText('oh-my-usage')).toBeInTheDocument();
-    const home = screen.getByRole('link', { name: 'Home' });
+    const home = screen.getByRole('link', { name: 'Accounts' });
     expect(home).toHaveAttribute('href', '/');
     // The current page is marked by more than colour.
     expect(home).toHaveAttribute('aria-current', 'page');

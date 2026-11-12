@@ -1,14 +1,9 @@
 # oh-my-usage
 
-A Go daemon (`oh-my-usaged`) serving a spec-first HTTP API and an embedded React
-UI from one static binary. Running it shows a home page with the daemon's
-health, kept live over server-sent events. Its rules are tests and lint, not
-review notes: generated code matches the spec, every operation is served,
-imports respect boundaries, every style value is a contrast-checked token,
-every story is a browser test in both themes.
-
-Clone it as a base, or lift a part below. Rules and layout:
-[AGENTS.md](AGENTS.md), [web/AGENTS.md](web/AGENTS.md).
+A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway.
+`oh-my-usaged` is one static binary: it polls the gateway, serves a web UI
+that lists every account with its usage limits, keeps a usage history in
+SQLite, and can pause an account when it is also given the broker.
 
 ## Quick start
 
@@ -17,77 +12,97 @@ Go 1.27 and golangci-lint 2.15 (`.tool-versions`); Node 26 and pnpm 12
 
 ```bash
 pnpm install
-make build WEB=1 && build/bin/oh-my-usaged   # http://127.0.0.1:8080; -h lists flags
-make check                                # what CI runs
+make build WEB=1
+
+export OH_MY_USAGE_GATEWAY_TOKEN=...   # the gateway's bearer token
+build/bin/oh-my-usaged -gateway-url https://omp.example.com
+# http://127.0.0.1:8080; -h lists flags
 ```
 
-UI work: `make run` and `pnpm --dir web dev` (:5173, proxies `/api/`).
-`make storybook` (:6006). Browser tests need
-`pnpm --dir web exec playwright install chromium`. `make help` lists targets.
+To pause accounts, add the broker:
 
-## Parts
+```bash
+export OH_MY_USAGE_BROKER_TOKEN=...    # the broker's admin token
+build/bin/oh-my-usaged -gateway-url http://auth-gateway:4019 -broker-url http://auth-broker:8765
+```
 
-What each does, and where it lives.
+## Configuration
 
-- **Spec-first API.** `api/openapi.yaml` generates the Go server (ogen,
-  `api/rest/`) and the web client (hey-api: types, Zod schemas, TanStack Query
-  options, `web/src/api/`); `make generate-check` fails on stale output. The
-  daemon serves the spec at `/openapi.yaml`. `api/`, `web/openapi-ts.config.ts`,
-  `web/src/lib/api-client.ts`.
-- **Daemon.** Flags, slog (text or JSON), graceful shutdown, RFC 9457 problem
-  errors. `cmd/oh-my-usaged/`, `internal/server/{server,operations}.go`,
-  `web/src/lib/problem.ts`.
-- **Config in the page.** `getConfig`'s JSON is injected into `index.html`;
-  the UI validates it and seeds the query cache before the first render.
-  `internal/ui/handler.go` (`Inject`), `web/index.html`,
-  `web/src/lib/{config,query-client}.ts`, `web/src/hooks/useConfig/`.
-- **Request IDs.** `X-Request-Id` (the proxy's or a new one) is echoed and
-  added to every log line in the request; access log at debug, warn on 5xx.
-  `internal/server/{requestid,accesslog}.go`. Stdlib only.
-- **Event stream.** SSE, hand-routed beside ogen; a contract test fails if any
-  spec operation isn't served with its declared content type. The UI opens one
-  `EventSource`, validates each event and writes it into the query cache,
-  reconnecting with backoff. `internal/server/{sse,stream,contract_test}.go`,
-  `web/src/hooks/useEventStream/`.
-- **Embedded SPA.** `web/dist` embedded; index fallback for client routes, 404
-  for `/api/` and missing files, immutable `assets/`. `web/embed.go`,
-  `internal/ui/`. Stdlib only.
-- **Import boundaries.** Who may import what, as a Go test, with lint twins.
-  `internal/testutil/importguard/`, `api/generation_test.go`, `.golangci.yml`
-  (`depguard`, `forbidigo`).
-- **Web stack.** Vite, React 19, TypeScript, Tailwind 4, TanStack Router (file
-  routes) and Query, not-found and error pages. `web/src/{routes,pages,components}/`,
-  `web/src/main.tsx`.
-- **Design tokens.** One `@theme` of light/dark colour pairs and sizes with
-  Tailwind's defaults removed, so only tokens compile; tests check contrast in
-  both themes; Storybook Foundations pages document them. `web/src/styles/`,
-  `web/src/design-docs/`, `web/.claude/rules/styling.md`.
-- **Tests.** Go with `-race`; Vitest in jsdom; every story in Chromium under
-  each colour scheme, failing on accessibility violations, console errors and
-  unmocked `/api/` calls; MSW handlers shared by both. `web/vitest.config.ts`,
-  `web/.storybook/`, `web/src/test-utils/`.
-- **Lint.** golangci-lint, eslint (React Compiler, token-only classes, zero
-  warnings), prettier, knip, Redocly, govulncheck, tidy check. `.golangci.yml`,
-  `web/eslint.config.js`, `knip.ts`, `.redocly.yaml`.
-- **Image and CI.** Static binary on distroless, nonroot; CI runs api, go, web
-  and image jobs and builds the image without pushing it. `Dockerfile`,
-  `.github/workflows/ci.yml`.
-- **Agent guidance.** `AGENTS.md`, `web/AGENTS.md`, `web/.claude/rules/`,
-  `.agents/skills/` (also `.claude/skills`).
+| Flag | Environment | Default | |
+| --- | --- | --- | --- |
+| `-gateway-url` | `OH_MY_USAGE_GATEWAY_URL` | required | The omp auth gateway. |
+| `-gateway-token-file` | `OH_MY_USAGE_GATEWAY_TOKEN` | required | The gateway token: a file holding it, or the variable. |
+| `-broker-url` | `OH_MY_USAGE_BROKER_URL` | none | The omp auth broker. Setting it turns the pause control on. |
+| `-broker-token-file` | `OH_MY_USAGE_BROKER_TOKEN` | none | The broker admin token. |
+| `-listen` | | `127.0.0.1:8080` | HTTP listen address. |
+| `-db` | | `oh-my-usage.db` | SQLite file for the usage history. |
+| `-poll-interval` | | `1m` | Time between polls, at least `30s`. |
+| `-retention` | | `2160h` (90 days) | How long history is kept; `0` keeps it forever. |
+| `-log-format`, `-log-level` | | `text`, `INFO` | |
 
-Not included: storage, authentication (the spec declares none), TLS, metrics or
-tracing, environment or file configuration (flags only), image publishing.
+A flag wins over its variable. Tokens are never taken as flag values, so they
+do not show in the process list.
 
-## Renaming
+## What it reads and changes
 
-`git grep -il oh-my-usage` lists every file that names it; replace the name in
-each (the `go.mod` module path `github.com/savid/oh-my-usage` reaches every
-import, `importguard.go` and `.golangci.yml`), rename `cmd/oh-my-usaged/`, then run
-`make generate`.
+- **Gateway** (`GET /v1/usage`, `GET /healthz`): read-only. The gateway caches
+  for 15 s and the broker behind it for about 5 min per account, so a poll each
+  minute costs the providers nothing extra.
+- **Broker** (`GET /v1/snapshot`, `POST`/`DELETE /v1/credential/:id/block`):
+  only when configured. The snapshot carries live access tokens and API keys;
+  oh-my-usage decodes only each credential's ID, provider, identity and
+  blocks, so those secrets are never held or logged. The broker admin token
+  itself can read every stored token: treat it like the credentials.
 
-The health check is the placeholder domain: `getHealth` and `Health` in the
-spec, the stream's `health` event (`internal/server/stream.go`), `HomePage` and
-`HealthCard`, and `test-utils/handlers/health.ts`. Replace it with yours.
+## Pausing an account
+
+omp has no way to turn a disabled account back on short of logging in again,
+so the control here is a pause, not omp's `disable`. A pause is a block in
+omp's `account-policy` scope with a far-future deadline:
+
+- omp moves traffic off the account within seconds, and the pause survives
+  quota resets and broker restarts.
+- **A paused account is used last, not never.** omp still falls back to it
+  when every other account of the provider is blocked or out of quota.
+- omp sets short `account-policy` blocks of its own (a provider refusing an
+  account). Only a block with the pause's deadline counts as paused, and
+  resuming removes nothing else.
+- Redeeming a saved Codex reset in omp clears every block on that account,
+  a pause included.
+
+## Security
+
+There is no login. The UI shows account emails and, with a broker, can pause
+accounts: listen on loopback and put it behind a reverse proxy with
+authentication, or on a private network such as a tailnet.
+
+## Development
+
+```bash
+make check     # what CI runs: lint, generated-code check, tests, govulncheck, tidy
+make run       # build and serve with whatever web/dist holds; needs the gateway variables
+```
+
+UI work: run the daemon, then `pnpm --dir web dev` (:5173, proxies `/api/`;
+`API=http://host:port` points it elsewhere). `make storybook` (:6006). Browser
+tests need `pnpm --dir web exec playwright install chromium`. `make help`
+lists targets. Rules and layout: [AGENTS.md](AGENTS.md),
+[web/AGENTS.md](web/AGENTS.md).
+
+Where things live:
+
+- `api/openapi.yaml`: the API. It generates the Go server (`api/rest/`) and
+  the web client (`web/src/api/`).
+- `pkg/accounts/`: joins the gateway's usage reports with the broker's
+  credentials into accounts. Pure.
+- `internal/omp/`: the gateway and broker HTTP clients.
+- `internal/monitor/`: the poll loop, the latest state, and pausing.
+- `internal/store/`: the SQLite usage history.
+- `internal/server/`, `internal/ui/`: the API, the event stream and the
+  embedded UI.
+- `web/src/pages/accounts/`: the accounts list and the account page.
+
+Built from [Savid/skeleton](https://github.com/Savid/skeleton).
 
 ## License
 

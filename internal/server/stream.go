@@ -12,11 +12,14 @@ const (
 	streamRetry = 2 * time.Second
 )
 
-// streamEvents serves streamEvents: a `health` event on connect and every
-// StreamInterval. Replace or extend it with the events your domain publishes;
-// every event is complete, so there is no resume cursor.
+// streamEvents serves streamEvents: an `accounts` event on connect and after
+// every poll. Every event is complete, so there is no resume cursor.
 func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	// Subscribe before the first send, so a poll between the two is not missed.
+	changed, cancel := s.ops.monitor.Subscribe()
+	defer cancel()
 
 	sse, err := startSSE(w, streamRetry)
 	if err != nil {
@@ -24,14 +27,14 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	send := func() bool {
-		data, encodeErr := s.ops.health().MarshalJSON()
+		data, encodeErr := s.ops.accounts().MarshalJSON()
 		if encodeErr != nil {
-			s.log.ErrorContext(ctx, "encode health", "error", encodeErr)
+			s.log.ErrorContext(ctx, "encode accounts", "error", encodeErr)
 
 			return false
 		}
 
-		return sse.event("health", data) == nil
+		return sse.event("accounts", data) == nil
 	}
 
 	if !send() {
@@ -41,9 +44,6 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request) {
 	keepalive := time.NewTicker(streamKeepalive)
 	defer keepalive.Stop()
 
-	health := time.NewTicker(s.cfg.StreamInterval)
-	defer health.Stop()
-
 	for ok := true; ok; {
 		select {
 		case <-ctx.Done():
@@ -52,7 +52,7 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-keepalive.C:
 			ok = sse.ping() == nil
-		case <-health.C:
+		case <-changed:
 			ok = send()
 		}
 	}
