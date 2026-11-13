@@ -1,18 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
+import { KNOWN_PROVIDERS, providerName } from '@/lib/accounts';
 import { ProviderIcon } from './ProviderIcon';
 
-const PROVIDERS = [
-  'anthropic',
-  'openai-codex',
-  'opencode-go',
-  'openrouter',
-  'google-gemini-cli',
-  'kimi-code',
-  'xai-oauth',
-  'devin',
-  'some-new-provider',
-];
+// Every provider omp knows, then one it does not.
+const PROVIDERS = [...KNOWN_PROVIDERS, 'some-new-provider'];
 
 const meta = {
   title: 'Components/Data/ProviderIcon',
@@ -42,15 +34,17 @@ export const Unknown: Story = {
 
 export const Every: Story = {
   render: () => (
-    <ul className="flex gap-4 text-muted">
+    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-caption text-muted sm:grid-cols-3 lg:grid-cols-4">
       {PROVIDERS.map(provider => (
-        <li key={provider}>
-          <ProviderIcon provider={provider} />
+        <li key={provider} className="flex items-center gap-2">
+          <ProviderIcon provider={provider} size="md" decorative />
+          {providerName(provider)}
         </li>
       ))}
     </ul>
   ),
-  play: async ({ canvas }) => {
-    await expect(canvas.getAllByRole('img')).toHaveLength(PROVIDERS.length);
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelectorAll('svg')).toHaveLength(PROVIDERS.length);
+    await expect(canvasElement.querySelectorAll('[data-mark="logo"]')).toHaveLength(82);
   },
 };

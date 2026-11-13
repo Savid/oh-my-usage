@@ -52,16 +52,17 @@
   /* Data marks. A provider's usage wears the provider's own colour: its mark,
    * its gauge and the line of an account's chart. The -track step is the empty
    * part of the gauge and the deepest the glow under a chart gets, so text
-   * checked against it is readable anywhere on the row. meter is the pair for
-   * a provider with no colour of its own. */
+   * checked against it is readable anywhere on the row. mono is for a
+   * provider whose own mark is black and white; meter is for one with no
+   * colour of its own. */
   --color-meter: light-dark(#494fe4, #7285fe);
   --color-meter-track: light-dark(#dee5ff, #20265f);
   --color-anthropic: light-dark(#bd592f, #d97757);
   --color-anthropic-track: light-dark(#fee1d2, #4a200c);
   --color-openai: light-dark(#068665, #10a37f);
   --color-openai-track: light-dark(#ccf2e2, #013426);
-  --color-opencode: light-dark(#3b3d44, #cfd1d5);
-  --color-opencode-track: light-dark(#e2e4e8, #2c2e32);
+  --color-mono: light-dark(#3b3d44, #cfd1d5);
+  --color-mono-track: light-dark(#e2e4e8, #2c2e32);
   --color-openrouter: light-dark(#568502, #b1ef4a);
   --color-openrouter-track: light-dark(#d8f3ba, #233407);
   /* Chart series, in this fixed order; a series keeps its colour whatever else

@@ -28,12 +28,13 @@ const TONES = {
     line: 'stroke-openai',
     glow: 'text-openai-track',
   },
-  opencode: {
-    icon: 'text-opencode',
-    fill: 'fill-opencode',
-    track: 'fill-opencode-track',
-    line: 'stroke-opencode',
-    glow: 'text-opencode-track',
+  // For a provider whose own mark is black and white: light grey on the dark theme, dark grey on the light.
+  mono: {
+    icon: 'text-mono',
+    fill: 'fill-mono',
+    track: 'fill-mono-track',
+    line: 'stroke-mono',
+    glow: 'text-mono-track',
   },
   openrouter: {
     icon: 'text-openrouter',
@@ -53,13 +54,30 @@ const PLAIN: ProviderTone = {
   glow: 'text-meter-track',
 };
 
+// omp's provider IDs. A provider whose brand has a colour of its own that
+// would pass for the default indigo, a status colour or another provider's
+// (Google's and Meta's blues, Qwen's violet, MiniMax's red) keeps the default.
 const PROVIDER_TONES: Readonly<Record<string, ProviderTone>> = {
   anthropic: TONES.anthropic,
+  apple: TONES.mono,
+  'cline-pass': TONES.mono,
+  cursor: TONES.mono,
+  'github-copilot': TONES.mono,
+  'kimi-code': TONES.mono,
+  moonshot: TONES.mono,
+  ollama: TONES.mono,
+  'ollama-cloud': TONES.mono,
   openai: TONES.openai,
   'openai-codex': TONES.openai,
-  opencode: TONES.opencode,
-  'opencode-go': TONES.opencode,
+  'openai-codex-device': TONES.openai,
+  'opencode-go': TONES.mono,
+  'opencode-zen': TONES.mono,
   openrouter: TONES.openrouter,
+  'vercel-ai-gateway': TONES.mono,
+  xai: TONES.mono,
+  'xai-oauth': TONES.mono,
+  zai: TONES.mono,
+  'zai-coding-plan': TONES.mono,
 };
 
 /** The colour a provider's usage is drawn in. */

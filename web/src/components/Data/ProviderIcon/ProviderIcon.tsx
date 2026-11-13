@@ -36,7 +36,9 @@ export function ProviderIcon({ provider, decorative = false, size = 'sm' }: Prov
       data-mark="logo"
     >
       {!decorative && <title>{name}</title>}
-      <path d={mark.path} fillRule={mark.evenOdd ? 'evenodd' : undefined} />
+      {mark.paths.map(part => (
+        <path key={part.d} d={part.d} fillRule={mark.evenOdd ? 'evenodd' : undefined} fillOpacity={part.opacity} />
+      ))}
     </svg>
   );
 }

@@ -21,8 +21,8 @@ export const PROVIDER_COLORS = [
   'anthropic-track',
   'openai',
   'openai-track',
-  'opencode',
-  'opencode-track',
+  'mono',
+  'mono-track',
   'openrouter',
   'openrouter-track',
 ] as const;
@@ -30,7 +30,7 @@ export const PROVIDER_COLORS = [
 /** The stops of the logo's gradient, first to last. */
 export const BRAND_COLORS = ['mark-magenta', 'mark-iris', 'mark-cyan'] as const;
 
-const TRACK_COLORS = ['meter-track', 'anthropic-track', 'openai-track', 'opencode-track', 'openrouter-track'] as const;
+const TRACK_COLORS = ['meter-track', 'anthropic-track', 'openai-track', 'mono-track', 'openrouter-track'] as const;
 
 export const COLOR_TOKENS = [
   ...SURFACE_COLORS,
@@ -81,7 +81,7 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
   },
   {
     name: 'Gauge fills, chart lines and provider marks on a panel',
-    foregrounds: ['meter', 'series-1', 'anthropic', 'openai', 'opencode', 'openrouter'],
+    foregrounds: ['meter', 'series-1', 'anthropic', 'openai', 'mono', 'openrouter'],
     backgrounds: ['surface', 'raised'],
     minimum: 3,
   },

@@ -104,8 +104,8 @@ export const Providers: Story = {
         'anthropic-track': "fill-anthropic-track: its gauge's empty part, and the glow under its chart",
         openai: "text-openai: OpenAI's mark, gauge and chart line",
         'openai-track': "fill-openai-track: its gauge's empty part, and the glow under its chart",
-        opencode: "text-opencode: OpenCode's mark, gauge and chart line",
-        'opencode-track': "fill-opencode-track: its gauge's empty part, and the glow under its chart",
+        mono: 'text-mono: for a provider whose mark is black and white (OpenCode, Cursor, GitHub Copilot, xAI, Ollama…)',
+        'mono-track': "fill-mono-track: its gauge's empty part, and the glow under its chart",
         openrouter: "text-openrouter: OpenRouter's mark, gauge and chart line",
         'openrouter-track': "fill-openrouter-track: its gauge's empty part, and the glow under its chart",
       }}

@@ -11,6 +11,13 @@ describe('ProviderIcon', () => {
     expect(icon.querySelector('path')).toHaveAttribute('fill-rule', 'evenodd');
   });
 
+  it("draws each part of a mark, the fainter parts as faint as the owner's", () => {
+    render(<ProviderIcon provider="azure" />);
+
+    const parts = [...screen.getByRole('img', { name: 'Azure OpenAI' }).querySelectorAll('path')];
+    expect(parts.map(part => part.getAttribute('fill-opacity'))).toEqual(['0.75', '0.5', null]);
+  });
+
   it("draws an unknown provider's initial", () => {
     render(<ProviderIcon provider="some-new-provider" />);
 

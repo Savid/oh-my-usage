@@ -5,6 +5,7 @@ import {
   groupByProvider,
   primaryLimit,
   limitSeverity,
+  KNOWN_PROVIDERS,
   providerName,
   severityOf,
   shortLimitLabel,
@@ -23,6 +24,13 @@ describe('providerName', () => {
   it('names the providers it knows and passes the rest through', () => {
     expect(providerName('openai-codex')).toBe('OpenAI Codex');
     expect(providerName('some-new-provider')).toBe('some-new-provider');
+  });
+
+  it('knows every provider omp can hold a credential for', () => {
+    expect(KNOWN_PROVIDERS).toHaveLength(104);
+    expect(KNOWN_PROVIDERS).toEqual([...KNOWN_PROVIDERS].sort());
+    expect(providerName('google-gemini-cli')).toBe('Gemini CLI');
+    expect(providerName('zai-coding-plan')).toBe('Z.ai Coding Plan');
   });
 });
 
