@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { StreamConnection } from '@/hooks/useEventStream';
 
 export interface AppShellProps {
-  /** The daemon's display name from its configuration; undefined until known. */
+  /** The daemon's display name from its configuration, which names the mark's link; undefined until known. */
   name: string | undefined;
 
   /** Whether the daemon reads traffic from a broker; the Traffic page is linked only then. */

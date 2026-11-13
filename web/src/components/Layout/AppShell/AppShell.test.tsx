@@ -16,13 +16,17 @@ function renderShell(traffic: boolean, connection: 'live' | 'reconnecting' = 're
 }
 
 describe('AppShell', () => {
-  it('frames the page with the product name, navigation and stream state', async () => {
+  it("frames the page with the product's mark, navigation and stream state", async () => {
     renderShell(true);
 
     expect(await screen.findByText('page body')).toBeInTheDocument();
-    // The mark and the name lead home.
+    // The mark leads home and stands for the name, which is not written out.
     expect(screen.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
+    expect(screen.queryByText('oh-my-usage')).not.toBeInTheDocument();
     const home = screen.getByRole('link', { name: 'Accounts' });
+    // Each tab has an icon; the current page's wears the accent.
+    expect(home.querySelector('svg')).toHaveClass('text-accent');
+    expect(screen.getByRole('link', { name: 'Traffic' }).querySelector('svg')).not.toHaveClass('text-accent');
     expect(home).toHaveAttribute('href', '/');
     // The current page is marked by more than colour: a bar under its name.
     expect(home).toHaveAttribute('aria-current', 'page');
