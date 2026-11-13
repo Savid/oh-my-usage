@@ -1,0 +1,60 @@
+# Releases: push a tag such as v0.1.0. The Release workflow runs this:
+# binaries for Linux and macOS with the UI built in, on the GitHub release,
+# and a multi-arch image on ghcr.io/savid/oh-my-usage.
+version: 2
+project_name: oh-my-usage
+
+before:
+  hooks:
+    # The binary embeds the built UI.
+    - pnpm install --frozen-lockfile
+    - pnpm --dir web build
+
+builds:
+  - id: oh-my-usaged
+    main: ./cmd/oh-my-usaged
+    binary: oh-my-usaged
+    env:
+      - CGO_ENABLED=0
+      - GOWORK=off
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [README.md, LICENSE]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+
+dockers_v2:
+  - images: [ghcr.io/savid/oh-my-usage]
+    dockerfile: Dockerfile.release
+    platforms: [linux/amd64, linux/arm64]
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .Prerelease }}{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    labels:
+      org.opencontainers.image.title: oh-my-usage
+      org.opencontainers.image.description: A dashboard for an omp auth gateway.
+      org.opencontainers.image.source: https://github.com/Savid/oh-my-usage
+      org.opencontainers.image.licenses: MIT
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+
+release:
+  github:
+    owner: Savid
+    name: oh-my-usage
+  prerelease: auto

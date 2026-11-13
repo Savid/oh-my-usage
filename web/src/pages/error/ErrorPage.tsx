@@ -25,7 +25,7 @@ export function ErrorPage({ error, reset }: ErrorPageProps): JSX.Element {
           Try again
         </button>
         <Link to="/" className="self-center text-accent underline">
-          Back home
+          Back to the accounts
         </Link>
       </div>
     </section>

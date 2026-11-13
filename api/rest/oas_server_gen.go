@@ -8,20 +8,56 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// GetAccountHistory implements getAccountHistory operation.
+	//
+	// One sample per limit each time the provider reported fresh usage, oldest first. An account with
+	// nothing recorded answers an empty list.
+	//
+	// GET /api/v1/accounts/{accountId}/history
+	GetAccountHistory(ctx context.Context, params GetAccountHistoryParams) (*UsageHistory, error)
 	// GetConfig implements getConfig operation.
 	//
-	// What the UI needs before it can render: the daemon's name and build. The same object is injected
-	// into `index.html` as `window.__CONFIG__`, so the first render does not wait for this request; the UI
-	// reads it from there and refetches later.
+	// What the UI needs before it can render: the daemon's name and build, and whether accounts can be
+	// paused. The same object is injected into `index.html` as `window.__CONFIG__`, so the first render
+	// does not wait for this request; the UI reads it from there and refetches later.
 	//
 	// GET /api/v1/config
 	GetConfig(ctx context.Context) (*Config, error)
-	// GetHealth implements getHealth operation.
+	// GetTraffic implements getTraffic operation.
 	//
-	// Report daemon health.
+	// Requests, tokens and their cost at API prices, as the broker counts them: totals for the last hour,
+	// day and week, the last hour by minute, the last week by hour, and the week by client. Traffic is
+	// measured from the daemon's first reading of the broker on. What came before, and what passed while
+	// the daemon was stopped for over an hour, is an estimate known to the hour: it counts in the day, the
+	// week and the series by hour, and not in the last hour or the series by minute. Without a broker
+	// `available` is false and the rest is empty.
 	//
-	// GET /api/v1/health
-	GetHealth(ctx context.Context) (*Health, error)
+	// GET /api/v1/traffic
+	GetTraffic(ctx context.Context) (*Traffic, error)
+	// ListAccounts implements listAccounts operation.
+	//
+	// The accounts found by the last poll of the gateway, joined with the broker's credentials when a
+	// broker is configured. While a source is unreachable its last good data is still listed; `gateway`
+	// and `broker` say how fresh it is.
+	//
+	// GET /api/v1/accounts
+	ListAccounts(ctx context.Context) (*AccountList, error)
+	// ListUsageTrends implements listUsageTrends operation.
+	//
+	// The recorded usage of every limit of every account since `since`, thinned to about 60 points per
+	// limit: the time from the first sample in the period to now is cut into equal steps and each keeps
+	// its first sample. A limit with nothing recorded in the period is left out.
+	//
+	// GET /api/v1/trends
+	ListUsageTrends(ctx context.Context, params ListUsageTrendsParams) (*UsageTrendList, error)
+	// SetAccountPaused implements setAccountPaused operation.
+	//
+	// A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it
+	// within seconds, but still falls back to it when every other account of the provider is blocked or
+	// exhausted. Answers 409 when no broker is configured or the account has no broker credential.
+	//
+	// PUT /api/v1/accounts/{accountId}/pause
+	SetAccountPaused(ctx context.Context, req *PauseRequest, params SetAccountPausedParams) (*Account, error)
 	// NewError creates *ProblemStatusCode from error returned by handler.
 	//
 	// Used for common default response.

@@ -30,7 +30,9 @@ func TestEveryOperationIsServed(t *testing.T) {
 	operations := 0
 
 	// Request bodies, for the operations that take one.
-	bodies := map[string]string{}
+	bodies := map[string]string{"/api/v1/accounts/{accountId}/pause": `{"paused":true}`}
+	// Path parameters, filled with values the test server knows.
+	params := strings.NewReplacer("{accountId}", seatID)
 
 	for path, item := range spec.Paths {
 		for method, raw := range item {
@@ -49,7 +51,7 @@ func TestEveryOperationIsServed(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequestWithContext(ctx, strings.ToUpper(method), path, strings.NewReader(bodies[path]))
+			req := httptest.NewRequestWithContext(ctx, strings.ToUpper(method), params.Replace(path), strings.NewReader(bodies[path]))
 			req.Header.Set("Content-Type", "application/json")
 			h.ServeHTTP(rec, req)
 

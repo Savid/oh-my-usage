@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  GOWORK: 'off'
+  GOWORK: "off"
 
 jobs:
   api:
@@ -98,3 +98,9 @@ jobs:
           persist-credentials: false
       # Proves the Dockerfile builds; nothing is pushed.
       - run: docker build --build-arg VERSION=ci .
+      # Proves the release configuration is valid; the Release workflow uses it.
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.20.2
+          args: check

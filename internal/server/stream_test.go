@@ -61,13 +61,19 @@ func readEvents(t *testing.T, base string, n int) (retry string, events []event)
 	return retry, events
 }
 
-// The stream sends its retry hint, then a health event on connect and again
-// on every interval.
+// The stream sends its retry hint, then the accounts on connect and again
+// after every poll.
 func TestStreamEvents(t *testing.T) {
 	t.Parallel()
 
-	ts := httptest.NewServer(newTestServer(t).Handler())
+	srv := newTestServer(t)
+
+	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
+
+	// A poll that finished before the client connected: the stream owes the
+	// client a second event for it.
+	srv.monitor.changed <- struct{}{}
 
 	retry, events := readEvents(t, ts.URL, 2)
 
@@ -76,17 +82,17 @@ func TestStreamEvents(t *testing.T) {
 	}
 
 	for _, ev := range events {
-		if ev.name != "health" {
-			t.Fatalf("event = %q, want health", ev.name)
+		if ev.name != "accounts" {
+			t.Fatalf("event = %q, want accounts", ev.name)
 		}
 
-		var h rest.Health
-		if err := h.UnmarshalJSON(ev.data); err != nil {
+		var list rest.AccountList
+		if err := list.UnmarshalJSON(ev.data); err != nil {
 			t.Fatal(err)
 		}
 
-		if h.Version != "test" || !h.At.Equal(testNow) {
-			t.Errorf("health = %+v", h)
+		if len(list.Accounts) != 2 || list.Accounts[0].ID != seatID || !list.Gateway.Reachable {
+			t.Errorf("accounts = %+v", list)
 		}
 	}
 }

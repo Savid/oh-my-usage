@@ -25,11 +25,15 @@ async function startWorker(): Promise<SetupWorker> {
 
 /**
  * A fresh query cache and router per story, so no story sees another's state.
- * Links resolve against the app's real routes; no route is rendered.
+ * Links resolve against the app's real routes; no route is rendered. The
+ * router stands at `parameters.path` (the home page unless a story says), so
+ * a link to the page a story shows is marked as the current one.
  */
-function StoryProviders({ children }: { children: ReactNode }): JSX.Element {
+function StoryProviders({ path, children }: { path: string; children: ReactNode }): JSX.Element {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
-  const [router] = useState(() => createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) }));
+  const [router] = useState(() =>
+    createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) })
+  );
 
   return (
     <QueryClientProvider client={client}>
@@ -38,8 +42,8 @@ function StoryProviders({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
-const withProviders: Decorator = Story => (
-  <StoryProviders>
+const withProviders: Decorator = (Story, { parameters }) => (
+  <StoryProviders path={typeof parameters.path === 'string' ? parameters.path : '/'}>
     <Story />
   </StoryProviders>
 );

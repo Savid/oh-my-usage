@@ -14,7 +14,17 @@ export const Widths: Story = {
     <TokenTable
       namespace="container"
       usage={name => `max-w-${name}`}
-      notes={{ narrow: 'error and not-found pages', page: 'the main column of a page with cards' }}
+      notes={{ narrow: 'error and not-found pages', page: 'a column of prose', wide: 'the accounts pages' }}
+    />
+  ),
+};
+
+export const Breakpoints: Story = {
+  render: () => (
+    <TokenTable
+      namespace="breakpoint"
+      usage={name => `${name}:`}
+      notes={{ sm: 'wider gutters; three cells to a line', lg: "a row's cells sit beside its name" }}
     />
   ),
 };
@@ -24,7 +34,7 @@ export const Radii: Story = {
     <TokenTable
       namespace="radius"
       usage={name => `rounded-${name}`}
-      notes={{ sm: 'badges and buttons', md: 'cards and panels' }}
+      notes={{ sm: 'buttons and cells', md: 'panels' }}
     />
   ),
 };

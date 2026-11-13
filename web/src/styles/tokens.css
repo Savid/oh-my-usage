@@ -23,42 +23,204 @@
   /* The 4px step every spacing and sizing class multiplies. */
   --spacing: 0.25rem;
 
-  /* Colours: each a light-dark(light, dark) pair, resolved by the colour scheme above. */
-  --color-background: light-dark(#f6f7f9, #0b0d12);
-  --color-surface: light-dark(#ffffff, #13161e);
-  /* border separates; border-strong outlines a control. */
-  --color-border: light-dark(#dcdfe6, #262b36);
-  --color-border-strong: light-dark(#7b8394, #6e768a);
-  --color-foreground: light-dark(#161a22, #e6e8ee);
-  --color-muted: light-dark(#576072, #8b93a7);
-  /* The brand colour: links, the product name, selection, the focus ring. */
-  --color-accent: light-dark(#9a5800, #f5b83d);
-  /* Text on an accent fill. */
-  --color-accent-foreground: light-dark(#ffffff, #0b0d12);
-  --color-focus: var(--color-accent);
-  --color-ok: light-dark(#15783a, #4ade80);
-  --color-warn: light-dark(#b54708, #fb923c);
-  --color-danger: light-dark(#be2a2a, #f87171);
+  /* Where a layout changes: sm stacks become rows, lg puts a row's cells beside its name. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-lg: 64rem;
 
-  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  /* Colours: each a light-dark(light, dark) pair, resolved by the colour scheme above.
+   * Dark is the theme the app is drawn for. The greys are neutral with a trace
+   * of blue; colour is kept for data and state: each provider's own colour for
+   * its usage, amber on a figure near its limit, red on one that is spent,
+   * green for what is live. */
+  --color-background: light-dark(#f3f4f7, #090a0c);
+  --color-surface: light-dark(#ffffff, #111214);
+  /* A step above the surface: a cell, a hovered row, a pressed control. */
+  --color-raised: light-dark(#ebedf1, #1a1b1e);
+  /* border separates; border-strong outlines a control. */
+  --color-border: light-dark(#dcdee3, #282a2e);
+  --color-border-strong: light-dark(#767a84, #686c74);
+  --color-foreground: light-dark(#13161d, #eff0f3);
+  --color-muted: light-dark(#545862, #9b9ea7);
+  /* The brand colour: the product name, links, the selection, the focus ring. */
+  --color-accent: light-dark(#3e41cd, #99abfe);
+  /* Text on an accent fill. */
+  --color-accent-foreground: light-dark(#ffffff, #090a0c);
+  --color-focus: var(--color-accent);
+  --color-ok: light-dark(#007742, #45e58f);
+  --color-warn: light-dark(#905100, #fbbb2d);
+  --color-danger: light-dark(#c21725, #ff7076);
+  /* Data marks. A provider's usage wears the provider's own colour: its mark,
+   * its gauge and the line of an account's chart. The -track step is the empty
+   * part of the gauge and the deepest the glow under a chart gets, so text
+   * checked against it is readable anywhere on the row. mono is for a
+   * provider whose own mark is black and white; meter is for one with no
+   * colour of its own. */
+  --color-meter: light-dark(#494fe4, #7285fe);
+  --color-meter-track: light-dark(#dee5ff, #20265f);
+  --color-anthropic: light-dark(#bd592f, #d97757);
+  --color-anthropic-track: light-dark(#fee1d2, #4a200c);
+  --color-openai: light-dark(#068665, #10a37f);
+  --color-openai-track: light-dark(#ccf2e2, #013426);
+  --color-mono: light-dark(#3b3d44, #cfd1d5);
+  --color-mono-track: light-dark(#e2e4e8, #2c2e32);
+  --color-openrouter: light-dark(#568502, #b1ef4a);
+  --color-openrouter-track: light-dark(#d8f3ba, #233407);
+  /* Every other provider with a colour of its own, its brand colour stepped
+   * lighter or darker only as far as each theme needs to read it. */
+  /* Alibaba Cloud orange (Lobe colour mark). */
+  --color-alibaba: light-dark(#de5b00, #ff6a00);
+  --color-alibaba-track: light-dark(#ffe1d4, #4a200c);
+  /* Qwen's violet, from its chat app and mark. */
+  --color-qwen: light-dark(#615ced, #615ced);
+  --color-qwen-track: light-dark(#e3e6fe, #272950);
+  /* AWS's orange: Bedrock is AWS's. */
+  --color-aws: light-dark(#bf7201, #ff9900);
+  --color-aws-track: light-dark(#fee2c9, #452500);
+  /* Azure blue (Lobe colour mark). */
+  --color-azure: light-dark(#0078d4, #0078d4);
+  --color-azure-track: light-dark(#d8eaff, #0e2f4f);
+  /* Cerebras orange (Lobe colour mark). */
+  --color-cerebras: light-dark(#e8511e, #f15a29);
+  --color-cerebras-track: light-dark(#ffe0d7, #4b1f12);
+  /* Cloudflare orange (Lobe colour mark), Workers AI too. */
+  --color-cloudflare: light-dark(#ce6805, #f38020);
+  --color-cloudflare-track: light-dark(#fee1d0, #482205);
+  /* DeepInfra blue (Lobe colour mark). */
+  --color-deepinfra: light-dark(#4588c9, #5699db);
+  --color-deepinfra-track: light-dark(#d7eafe, #0c2f4f);
+  /* DeepSeek blue (Lobe colour mark). */
+  --color-deepseek: light-dark(#4d6bfe, #4d6bfe);
+  --color-deepseek-track: light-dark(#dfe7fe, #202b51);
+  /* Devin's teal-green, the middle of its mark. */
+  --color-devin: light-dark(#089676, #21c19a);
+  --color-devin-track: light-dark(#c8f3e3, #00372a);
+  /* Exa blue (Lobe colour mark). */
+  --color-exa: light-dark(#1f40ed, #2c56ff);
+  --color-exa-track: light-dark(#dee8fe, #1d2c51);
+  /* Fireworks purple (Lobe colour mark), Fire Pass too. */
+  --color-fireworks: light-dark(#5019c5, #6e4bef);
+  --color-fireworks-track: light-dark(#e5e5fe, #2b274f);
+  /* GitLab orange. */
+  --color-gitlab: light-dark(#e15800, #fc6d26);
+  --color-gitlab-track: light-dark(#fee1d5, #4a200e);
+  /* Gemini blue (Lobe colour mark): Gemini, Gemini CLI, Antigravity, Vertex. */
+  --color-google: light-dark(#2c81fa, #3186ff);
+  --color-google-track: light-dark(#dbe9fe, #162e50);
+  /* Groq orange-red. */
+  --color-groq: light-dark(#ee492f, #f55036);
+  --color-groq-track: light-dark(#fee0da, #4b1e16);
+  /* Hugging Face yellow (Lobe colour mark). */
+  --color-huggingface: light-dark(#9e8103, #ffd21e);
+  --color-huggingface-track: light-dark(#f3e8c3, #392c00);
+  /* Kagi yellow. */
+  --color-kagi: light-dark(#b07a02, #ffb319);
+  --color-kagi-track: light-dark(#fbe4c3, #3f2900);
+  /* Kilo Code's yellow square. */
+  --color-kilo: light-dark(#8b8803, #f8f675);
+  --color-kilo-track: light-dark(#eaebc5, #313000);
+  /* Kimi's blue dot (Lobe colour mark), Moonshot too. */
+  --color-kimi: light-dark(#1481fd, #1783ff);
+  --color-kimi-track: light-dark(#dae9ff, #142e50);
+  /* LM Studio's purple app icon. */
+  --color-lmstudio: light-dark(#7b61ff, #7b61ff);
+  --color-lmstudio-track: light-dark(#e5e5fe, #2b284f);
+  /* Meta blue (Lobe colour mark), Muse Code too. */
+  --color-meta: light-dark(#0082fb, #0082fb);
+  --color-meta-track: light-dark(#d9eaff, #132e50);
+  /* MiniMax's magenta (Lobe colour mark). */
+  --color-minimax: light-dark(#e2167e, #e2167e);
+  --color-minimax-track: light-dark(#ffdee7, #491d2d);
+  /* Mistral orange (Lobe colour mark). */
+  --color-mistral: light-dark(#ef4903, #fa500f);
+  --color-mistral-track: light-dark(#ffe0d7, #4b1f12);
+  /* Novita green (Lobe colour mark). */
+  --color-novita: light-dark(#009754, #23d57c);
+  --color-novita-track: light-dark(#cff2d9, #06381d);
+  /* NVIDIA green. */
+  --color-nvidia: light-dark(#5d9300, #76b900);
+  --color-nvidia-track: light-dark(#dcefcd, #21350a);
+  /* Perplexity turquoise (Lobe colour mark). */
+  --color-perplexity: light-dark(#0992a3, #20b8cd);
+  --color-perplexity-track: light-dark(#c2f2fa, #00353c);
+  /* Baidu AI Cloud blue (Lobe colour mark): Qianfan. */
+  --color-baidu: light-dark(#2464f5, #2464f5);
+  --color-baidu-track: light-dark(#dde8fe, #1b2c51);
+  /* Sakana AI red (Lobe colour mark). */
+  --color-sakana: light-dark(#e10600, #e10600);
+  --color-sakana-track: light-dark(#fee0db, #4b1e18);
+  /* SambaNova orange (Lobe colour mark). */
+  --color-sambanova: light-dark(#d66302, #ee7624);
+  --color-sambanova-track: light-dark(#fee1d2, #492108);
+  /* Scaleway purple. */
+  --color-scaleway: light-dark(#510099, #814bd4);
+  --color-scaleway-track: light-dark(#eae3ff, #32254c);
+  /* SiliconFlow violet (Lobe colour mark). */
+  --color-siliconflow: light-dark(#6e29f6, #763efe);
+  --color-siliconflow-track: light-dark(#e6e5fe, #2d274f);
+  /* Snowflake blue. */
+  --color-snowflake: light-dark(#098eb9, #29b5e8);
+  --color-snowflake-track: light-dark(#cceeff, #003346);
+  /* StepFun blue (Lobe colour mark). */
+  --color-stepfun: light-dark(#0160ff, #0160ff);
+  --color-stepfun-track: light-dark(#dce9fe, #192d51);
+  /* Tavily blue (Lobe colour mark). */
+  --color-tavily: light-dark(#3d81f5, #468bff);
+  --color-tavily-track: light-dark(#dce9fe, #182d50);
+  /* together.ai's pink (Lobe colour mark). */
+  --color-together: light-dark(#ed29bf, #ef2cc1);
+  --color-together-track: light-dark(#feddf1, #441e39);
+  /* Venice red-orange (Lobe colour mark). */
+  --color-venice: light-dark(#e05a2d, #e05a2d);
+  --color-venice-track: light-dark(#ffe0d7, #4a1f11);
+  /* vLLM's yellow V (Lobe colour mark). */
+  --color-vllm: light-dark(#af7b00, #fdb515);
+  --color-vllm-track: light-dark(#fae5c3, #3e2900);
+  /* Xiaomi orange. */
+  --color-xiaomi: light-dark(#de5a00, #ff6900);
+  --color-xiaomi-track: light-dark(#ffe1d4, #4a200c);
+  /* Zhipu blue (Lobe colour mark). */
+  --color-zhipu: light-dark(#3859ff, #3859ff);
+  --color-zhipu-track: light-dark(#dfe8fe, #1f2b51);
+  /* Chart series, in this fixed order; a series keeps its colour whatever else
+   * is drawn. The three stay apart for colour-blind readers, and none is a
+   * status colour. */
+  --color-series-1: var(--color-meter);
+  --color-series-2: light-dark(#0f9b89, #0daba5);
+  --color-series-3: light-dark(#93126b, #c32e85);
+  /* The logo's gradient, corner to corner: oh-my-pi's own, a step deeper in
+   * the light theme so the mark holds on a pale bar. Nothing else wears it. */
+  --color-mark-magenta: light-dark(#c9259a, #ed4abf);
+  --color-mark-iris: light-dark(#7a3ae0, #9b4dff);
+  --color-mark-cyan: light-dark(#0e8ea3, #5ad8e6);
+
+  /* One family: a monospace, so figures line up and the page reads as an instrument. */
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Type sizes in rem, so browser zoom and font settings apply; each carries its line height. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1rem;
-  --text-body: 0.875rem;
+  --text-body: 0.8125rem;
   --text-body--line-height: 1.25rem;
-  --text-title: 1rem;
-  --text-title--line-height: 1.5rem;
-  --text-heading: 1.5rem;
-  --text-heading--line-height: 2rem;
+  --text-title: 0.9375rem;
+  --text-title--line-height: 1.375rem;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.75rem;
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
 
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
+  /* Letter spacing for small capitals: tracking-caps. */
+  --tracking-caps: 0.08em;
 
-  /* Content widths: max-w-narrow, max-w-page. */
-  --container-narrow: 48rem;
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.375rem;
+
+  /* Content widths: max-w-narrow, max-w-page, max-w-wide. */
+  --container-narrow: 40rem;
   --container-page: 56rem;
+  --container-wide: 68rem;
 }

@@ -1,0 +1,61 @@
+{
+  "generatedAt": 1794531127939,
+  "clients": [
+    {
+      "installId": "install-1",
+      "hostname": "gateway-host",
+      "firstSeen": 1794357530432,
+      "lastSeen": 1794531127307,
+      "providers": [
+        {
+          "app": "gateway",
+          "provider": "anthropic",
+          "requests": 15744,
+          "inputTokens": 33572,
+          "outputTokens": 13962540,
+          "cacheReadTokens": 3938510231,
+          "cacheWriteTokens": 68159614,
+          "costUsd": 1772.41885576
+        },
+        {
+          "app": "gateway",
+          "provider": "opencode-go",
+          "requests": 38,
+          "inputTokens": 14555,
+          "outputTokens": 880,
+          "cacheReadTokens": 3968,
+          "cacheWriteTokens": 0,
+          "costUsd": 0.03395154
+        }
+      ]
+    },
+    {
+      "installId": "install-2",
+      "hostname": "laptop",
+      "firstSeen": 1794357530432,
+      "lastSeen": 1794531127307,
+      "providers": [
+        {
+          "app": "omp",
+          "provider": "anthropic",
+          "requests": 7,
+          "inputTokens": 10,
+          "outputTokens": 400,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "costUsd": 1
+        },
+        {
+          "app": "omp",
+          "provider": "anthropic",
+          "requests": 5,
+          "inputTokens": 6,
+          "outputTokens": 300,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 0,
+          "costUsd": 0.5
+        }
+      ]
+    }
+  ]
+}

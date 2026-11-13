@@ -8,11 +8,69 @@ export const THEMES = ['light', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
 
 /** Where content sits, back to front. */
-export const SURFACE_COLORS = ['background', 'surface'] as const;
+export const SURFACE_COLORS = ['background', 'surface', 'raised'] as const;
 export const BORDER_COLORS = ['border', 'border-strong'] as const;
 export const TEXT_COLORS = ['foreground', 'muted'] as const;
 export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
 export const STATUS_COLORS = ['ok', 'warn', 'danger'] as const;
+/** Marks that draw data with no provider's colour: the fallback gauge pair and the chart series. */
+export const DATA_COLORS = ['meter', 'meter-track', 'series-1', 'series-2', 'series-3'] as const;
+/** The providers with a colour of their own; mono is for one whose mark is black and white. */
+const PROVIDER_HUES = [
+  'anthropic',
+  'openai',
+  'mono',
+  'openrouter',
+  'alibaba',
+  'qwen',
+  'aws',
+  'azure',
+  'cerebras',
+  'cloudflare',
+  'deepinfra',
+  'deepseek',
+  'devin',
+  'exa',
+  'fireworks',
+  'gitlab',
+  'google',
+  'groq',
+  'huggingface',
+  'kagi',
+  'kilo',
+  'kimi',
+  'lmstudio',
+  'meta',
+  'minimax',
+  'mistral',
+  'novita',
+  'nvidia',
+  'perplexity',
+  'baidu',
+  'sakana',
+  'sambanova',
+  'scaleway',
+  'siliconflow',
+  'snowflake',
+  'stepfun',
+  'tavily',
+  'together',
+  'venice',
+  'vllm',
+  'xiaomi',
+  'zhipu',
+] as const;
+type ProviderHue = (typeof PROVIDER_HUES)[number];
+
+/** Each provider's colour, and the dim step under it. */
+export const PROVIDER_COLORS = PROVIDER_HUES.flatMap(hue => [hue, `${hue}-track` as const]) as readonly (
+  ProviderHue | `${ProviderHue}-track`
+)[];
+
+/** The logo's gradient stops, first to last. */
+export const BRAND_COLORS = ['mark-magenta', 'mark-iris', 'mark-cyan'] as const;
+
+const TRACK_COLORS = ['meter-track', ...PROVIDER_HUES.map(hue => `${hue}-track` as const)] as const;
 
 export const COLOR_TOKENS = [
   ...SURFACE_COLORS,
@@ -20,6 +78,9 @@ export const COLOR_TOKENS = [
   ...TEXT_COLORS,
   ...ACCENT_COLORS,
   ...STATUS_COLORS,
+  ...DATA_COLORS,
+  ...PROVIDER_COLORS,
+  ...BRAND_COLORS,
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
@@ -52,9 +113,29 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     backgrounds: ['accent'],
     minimum: 4.5,
   },
+  {
+    name: "Text and status figures over the glow of a row's chart",
+    foregrounds: [...TEXT_COLORS, 'warn', 'danger'],
+    backgrounds: TRACK_COLORS,
+    minimum: 4.5,
+  },
+  {
+    name: 'Gauge fills, chart lines and provider marks on a panel',
+    foregrounds: ['meter', 'series-1', ...PROVIDER_HUES],
+    backgrounds: ['surface', 'raised'],
+    minimum: 3,
+  },
+  {
+    name: "The logo's gradient on the top bar and the page",
+    foregrounds: BRAND_COLORS,
+    backgrounds: ['surface', 'background'],
+    minimum: 3,
+  },
 ];
 
 /** Colours no contrast rule covers, and why none needs to. */
 export const CONTRAST_EXEMPT: Readonly<Partial<Record<ColorToken, string>>> = {
   border: 'separates; it identifies nothing you act on',
+  'series-2': 'a chart line that is always named in a legend and listed in the table beside the chart',
+  'series-3': 'a chart line that is always named in a legend and listed in the table beside the chart',
 };

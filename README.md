@@ -1,93 +1,114 @@
+<img src="web/public/logo.svg" alt="" width="72" height="72" align="right" />
+
 # oh-my-usage
 
-A Go daemon (`oh-my-usaged`) serving a spec-first HTTP API and an embedded React
-UI from one static binary. Running it shows a home page with the daemon's
-health, kept live over server-sent events. Its rules are tests and lint, not
-review notes: generated code matches the spec, every operation is served,
-imports respect boundaries, every style value is a contrast-checked token,
-every story is a browser test in both themes.
+A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway:
+how much of each account's quota is used, when it resets, and what traffic is
+passing through. One static binary with the UI built in.
 
-Clone it as a base, or lift a part below. Rules and layout:
-[AGENTS.md](AGENTS.md), [web/AGENTS.md](web/AGENTS.md).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a total for each provider, the last hour of traffic, and a band for each account drawn over its last seven days" width="800" />
+</picture>
 
-## Quick start
+- **Accounts**: every account the gateway reports, with each usage window,
+  when it resets, and a week of history. Amber ▲ at 80% used, red ■ at 100%.
+- **An account's page**: each window's pace and whether it runs out before it
+  resets, its saved resets, and any blocks omp has put on it.
+- **Traffic** (needs the broker): requests, tokens and cost at API prices, by
+  provider, by the minute and by the hour.
+- **Pause** (needs the broker): move omp's traffic off an account and back.
 
-Go 1.27 and golangci-lint 2.15 (`.tool-versions`); Node 26 and pnpm 12
-(`package.json`).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/traffic-dark.png" />
+  <img src="docs/screenshots/traffic-light.png" alt="The Traffic page: the last hour, day and week by provider, the last hour by minute, the last week by hour, and the clients" width="800" />
+</picture>
+
+## Install
+
+**Docker**, next to omp (an image for amd64 and arm64):
+
+```yaml
+services:
+  oh-my-usage:
+    image: ghcr.io/savid/oh-my-usage:latest
+    command:
+      [
+        -gateway-url,
+        http://auth-gateway:4019,
+        -broker-url,
+        http://auth-broker:8765,
+      ]
+    environment:
+      OH_MY_USAGE_GATEWAY_TOKEN: ${OMP_AUTH_GATEWAY_TOKEN}
+      OH_MY_USAGE_BROKER_TOKEN: ${OMP_AUTH_BROKER_TOKEN} # optional
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: [oh-my-usage:/data]
+volumes:
+  oh-my-usage:
+```
+
+**Binary**: download one for Linux or macOS from the
+[releases](https://github.com/Savid/oh-my-usage/releases); the UI is built in.
+
+```bash
+export OH_MY_USAGE_GATEWAY_TOKEN=...   # the gateway's bearer token
+export OH_MY_USAGE_BROKER_TOKEN=...    # optional: the broker's admin token
+./oh-my-usaged -gateway-url http://127.0.0.1:4019 -broker-url http://127.0.0.1:8765
+```
+
+Then open http://127.0.0.1:8080.
+
+## Configuration
+
+| Flag                  | Environment                 | Default          |                                                    |
+| --------------------- | --------------------------- | ---------------- | -------------------------------------------------- |
+| `-gateway-url`        | `OH_MY_USAGE_GATEWAY_URL`   | required         | The omp auth gateway.                              |
+| `-gateway-token-file` | `OH_MY_USAGE_GATEWAY_TOKEN` | required         | Its token, from a file or the variable.            |
+| `-broker-url`         | `OH_MY_USAGE_BROKER_URL`    |                  | The omp auth broker: turns on traffic and pausing. |
+| `-broker-token-file`  | `OH_MY_USAGE_BROKER_TOKEN`  |                  | Its admin token.                                   |
+| `-listen`             | `OH_MY_USAGE_LISTEN`        | `127.0.0.1:8080` | The image sets `0.0.0.0:8080`.                     |
+| `-db`                 | `OH_MY_USAGE_DB`            | `oh-my-usage.db` | SQLite file; the image keeps it in `/data`.        |
+| `-poll-interval`      |                             | `1m`             | Gateway polls, at least `30s`.                     |
+| `-traffic-interval`   |                             | `15s`            | Broker traffic readings, at least `5s`.            |
+| `-retention`          |                             | `2160h` (90d)    | How long history is kept; `0` is forever.          |
+
+Tokens are never taken as flag values, so they stay out of the process list.
+
+## Good to know
+
+- **No login.** Listen on loopback and put it behind an authenticating proxy
+  or on a private network such as a tailnet. With a broker it can pause
+  accounts, and the broker token can read every stored credential.
+- **Cost is at API prices.** On a subscription nothing is billed per token;
+  read it as a measure of work done.
+- **Traffic before the first run is estimated.** The broker only keeps each
+  burst as one entry, so earlier history is drawn a burst per hour. From the
+  first reading on it is exact. The broker reports by provider and client,
+  not by account or model.
+- **A paused account is used last, not never.** omp still falls back to it
+  when every other account of the provider is blocked or spent. Redeeming a
+  saved Codex reset in omp also clears a pause.
+
+## Development
+
+Needs Go 1.27, Node 26 and pnpm 12.
 
 ```bash
 pnpm install
-make build WEB=1 && build/bin/oh-my-usaged   # http://127.0.0.1:8080; -h lists flags
-make check                                # what CI runs
+make build WEB=1     # build/bin/oh-my-usaged with the UI built in
+make check           # what CI runs
+make storybook       # components and pages on :6006
+pnpm --dir web dev   # UI on :5173, proxying /api/ to a running daemon
 ```
 
-UI work: `make run` and `pnpm --dir web dev` (:5173, proxies `/api/`).
-`make storybook` (:6006). Browser tests need
-`pnpm --dir web exec playwright install chromium`. `make help` lists targets.
+To release, push a tag such as `v0.1.0` from a commit CI passed on master.
+GoReleaser (`.goreleaser.yaml`) puts the binaries on a GitHub release and
+the image on `ghcr.io/savid/oh-my-usage`.
 
-## Parts
-
-What each does, and where it lives.
-
-- **Spec-first API.** `api/openapi.yaml` generates the Go server (ogen,
-  `api/rest/`) and the web client (hey-api: types, Zod schemas, TanStack Query
-  options, `web/src/api/`); `make generate-check` fails on stale output. The
-  daemon serves the spec at `/openapi.yaml`. `api/`, `web/openapi-ts.config.ts`,
-  `web/src/lib/api-client.ts`.
-- **Daemon.** Flags, slog (text or JSON), graceful shutdown, RFC 9457 problem
-  errors. `cmd/oh-my-usaged/`, `internal/server/{server,operations}.go`,
-  `web/src/lib/problem.ts`.
-- **Config in the page.** `getConfig`'s JSON is injected into `index.html`;
-  the UI validates it and seeds the query cache before the first render.
-  `internal/ui/handler.go` (`Inject`), `web/index.html`,
-  `web/src/lib/{config,query-client}.ts`, `web/src/hooks/useConfig/`.
-- **Request IDs.** `X-Request-Id` (the proxy's or a new one) is echoed and
-  added to every log line in the request; access log at debug, warn on 5xx.
-  `internal/server/{requestid,accesslog}.go`. Stdlib only.
-- **Event stream.** SSE, hand-routed beside ogen; a contract test fails if any
-  spec operation isn't served with its declared content type. The UI opens one
-  `EventSource`, validates each event and writes it into the query cache,
-  reconnecting with backoff. `internal/server/{sse,stream,contract_test}.go`,
-  `web/src/hooks/useEventStream/`.
-- **Embedded SPA.** `web/dist` embedded; index fallback for client routes, 404
-  for `/api/` and missing files, immutable `assets/`. `web/embed.go`,
-  `internal/ui/`. Stdlib only.
-- **Import boundaries.** Who may import what, as a Go test, with lint twins.
-  `internal/testutil/importguard/`, `api/generation_test.go`, `.golangci.yml`
-  (`depguard`, `forbidigo`).
-- **Web stack.** Vite, React 19, TypeScript, Tailwind 4, TanStack Router (file
-  routes) and Query, not-found and error pages. `web/src/{routes,pages,components}/`,
-  `web/src/main.tsx`.
-- **Design tokens.** One `@theme` of light/dark colour pairs and sizes with
-  Tailwind's defaults removed, so only tokens compile; tests check contrast in
-  both themes; Storybook Foundations pages document them. `web/src/styles/`,
-  `web/src/design-docs/`, `web/.claude/rules/styling.md`.
-- **Tests.** Go with `-race`; Vitest in jsdom; every story in Chromium under
-  each colour scheme, failing on accessibility violations, console errors and
-  unmocked `/api/` calls; MSW handlers shared by both. `web/vitest.config.ts`,
-  `web/.storybook/`, `web/src/test-utils/`.
-- **Lint.** golangci-lint, eslint (React Compiler, token-only classes, zero
-  warnings), prettier, knip, Redocly, govulncheck, tidy check. `.golangci.yml`,
-  `web/eslint.config.js`, `knip.ts`, `.redocly.yaml`.
-- **Image and CI.** Static binary on distroless, nonroot; CI runs api, go, web
-  and image jobs and builds the image without pushing it. `Dockerfile`,
-  `.github/workflows/ci.yml`.
-- **Agent guidance.** `AGENTS.md`, `web/AGENTS.md`, `web/.claude/rules/`,
-  `.agents/skills/` (also `.claude/skills`).
-
-Not included: storage, authentication (the spec declares none), TLS, metrics or
-tracing, environment or file configuration (flags only), image publishing.
-
-## Renaming
-
-`git grep -il oh-my-usage` lists every file that names it; replace the name in
-each (the `go.mod` module path `github.com/savid/oh-my-usage` reaches every
-import, `importguard.go` and `.golangci.yml`), rename `cmd/oh-my-usaged/`, then run
-`make generate`.
-
-The health check is the placeholder domain: `getHealth` and `Health` in the
-spec, the stream's `health` event (`internal/server/stream.go`), `HomePage` and
-`HealthCard`, and `test-utils/handlers/health.ts`. Replace it with yours.
+Rules and layout are in [AGENTS.md](AGENTS.md) and
+[web/AGENTS.md](web/AGENTS.md). The screenshots are the `Showcase` stories.
+Built from [Savid/skeleton](https://github.com/Savid/skeleton).
 
 ## License
 

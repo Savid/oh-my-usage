@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+
+# The release image: GoReleaser builds the binaries and puts each platform's
+# under $TARGETPLATFORM/ in the build context. `Dockerfile` builds from source.
+
+# /data must belong to the nonroot user before a volume is mounted on it, and
+# distroless has no shell to make it; this stage runs on the build machine.
+FROM --platform=$BUILDPLATFORM busybox:1.37.0 AS data
+RUN mkdir /data
+
+FROM gcr.io/distroless/static-debian13:nonroot
+ARG TARGETPLATFORM
+COPY --chown=65532:65532 --from=data /data /data
+COPY $TARGETPLATFORM/oh-my-usaged /usr/local/bin/oh-my-usaged
+ENV OH_MY_USAGE_LISTEN=0.0.0.0:8080 \
+    OH_MY_USAGE_DB=/data/oh-my-usage.db
+VOLUME /data
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/oh-my-usaged"]

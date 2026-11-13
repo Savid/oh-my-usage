@@ -1,4 +1,5 @@
 /* Base styles only; every value comes from tokens.css. */
+@import '@fontsource-variable/geist-mono/wght.css';
 
 @layer base {
   html,
@@ -8,7 +9,7 @@
   }
 
   body {
-    @apply bg-background font-sans text-body text-foreground antialiased;
+    @apply bg-background font-mono text-body text-foreground antialiased;
   }
 
   :focus-visible {

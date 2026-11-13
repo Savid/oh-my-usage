@@ -8,12 +8,193 @@ import * as z from 'zod/mini';
 export const zConfig = z.object({
   name: z.string(),
   version: z.string(),
+  controls: z.boolean(),
+  pollIntervalSeconds: z.int().check(z.gte(1)),
 });
 
-export const zHealth = z.object({
-  status: z.enum(['ok']),
-  version: z.string(),
+/**
+ * The health of the gateway or the broker.
+ */
+export const zSourceStatus = z.object({
+  reachable: z.boolean(),
+  error: z.optional(z.string()),
+  updatedAt: z.optional(z.iso.datetime()),
+});
+
+/**
+ * One usage window of an account.
+ */
+export const zLimit = z.object({
+  id: z.string(),
+  label: z.string(),
+  windowLabel: z.optional(z.string()),
+  usedFraction: z.optional(z.number().check(z.gte(0))),
+  status: z.optional(z.enum(['ok', 'warning', 'exhausted', 'unknown'])),
+  resetsAt: z.optional(z.iso.datetime()),
+  windowSeconds: z.optional(z.int().check(z.gte(1))),
+});
+
+/**
+ * One limit reset an account holds and has not spent.
+ */
+export const zSavedReset = z.object({
+  title: z.optional(z.string()),
+  usable: z.optional(z.boolean()),
+  clears: z.array(z.string()),
+  expiresAt: z.optional(z.iso.datetime()),
+});
+
+/**
+ * An account's saved limit resets.
+ */
+export const zResets = z.object({
+  available: z.int().check(z.gte(0)),
+  usable: z.optional(z.int().check(z.gte(0))),
+  soonestExpiresAt: z.optional(z.iso.datetime()),
+  saved: z.optional(z.array(zSavedReset)),
+});
+
+/**
+ * A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+ */
+export const zBlock = z.object({
+  scope: z.string(),
+  until: z.iso.datetime(),
+});
+
+/**
+ * One login or API key with its usage.
+ */
+export const zAccount = z.object({
+  id: z.string(),
+  provider: z.string(),
+  kind: z.optional(z.enum(['oauth', 'api_key'])),
+  email: z.optional(z.string()),
+  orgName: z.optional(z.string()),
+  plan: z.optional(z.string()),
+  paused: z.boolean(),
+  pausable: z.boolean(),
+  blockedUntil: z.optional(z.iso.datetime()),
+  blocks: z.array(zBlock),
+  limits: z.array(zLimit),
+  resets: z.optional(zResets),
+  fetchedAt: z.optional(z.iso.datetime()),
+});
+
+export const zAccountList = z.object({
+  accounts: z.array(zAccount),
+  gateway: zSourceStatus,
+  gatewayVersion: z.optional(z.string()),
+  broker: z.optional(zSourceStatus),
+});
+
+export const zPauseRequest = z.object({
+  paused: z.boolean(),
+});
+
+/**
+ * One limit at the time its provider reported it.
+ */
+export const zUsageSample = z.object({
   at: z.iso.datetime(),
+  limitId: z.string(),
+  label: z.string(),
+  usedFraction: z.number().check(z.gte(0)),
+  resetsAt: z.optional(z.iso.datetime()),
+});
+
+export const zUsageHistory = z.object({
+  samples: z.array(zUsageSample),
+});
+
+export const zTrendPoint = z.object({
+  at: z.iso.datetime(),
+  usedFraction: z.number().check(z.gte(0)),
+});
+
+/**
+ * One limit of one account over time, oldest first.
+ */
+export const zUsageTrend = z.object({
+  accountId: z.string(),
+  limitId: z.string(),
+  points: z.array(zTrendPoint),
+});
+
+export const zUsageTrendList = z.object({
+  trends: z.array(zUsageTrend),
+});
+
+/**
+ * What passed in some stretch of time.
+ */
+export const zTrafficCounts = z.object({
+  requests: z.int().check(z.gte(0)),
+  inputTokens: z.int().check(z.gte(0)),
+  outputTokens: z.int().check(z.gte(0)),
+  cacheReadTokens: z.int().check(z.gte(0)),
+  cacheWriteTokens: z.int().check(z.gte(0)),
+  costUsd: z.number().check(z.gte(0)),
+});
+
+export const zTrafficProviderCounts = z.object({
+  provider: z.string(),
+  counts: zTrafficCounts,
+});
+
+/**
+ * The traffic of a recent period, in total and by provider.
+ */
+export const zTrafficWindow = z.object({
+  id: z.enum(['hour', 'day', 'week']),
+  since: z.iso.datetime(),
+  total: zTrafficCounts,
+  providers: z.array(zTrafficProviderCounts),
+});
+
+export const zTrafficProviderSeries = z.object({
+  provider: z.string(),
+  requests: z.array(z.int().check(z.gte(0))),
+  inputTokens: z.array(z.int().check(z.gte(0))),
+  outputTokens: z.array(z.int().check(z.gte(0))),
+  cacheReadTokens: z.array(z.int().check(z.gte(0))),
+  cacheWriteTokens: z.array(z.int().check(z.gte(0))),
+  costUsd: z.array(z.number().check(z.gte(0))),
+});
+
+/**
+ * Traffic over time in equal steps, the last of them still filling. Every array of a provider has one value per step, oldest first.
+ */
+export const zTrafficSeries = z.object({
+  start: z.iso.datetime(),
+  stepSeconds: z.int().check(z.gte(1)),
+  steps: z.int().check(z.gte(1)),
+  providers: z.array(zTrafficProviderSeries),
+});
+
+/**
+ * One client's traffic to one provider over the last week.
+ */
+export const zTrafficClient = z.object({
+  installId: z.string(),
+  hostname: z.string(),
+  app: z.string(),
+  provider: z.string(),
+  counts: zTrafficCounts,
+});
+
+/**
+ * What is passing through the gateway, as the broker counts it.
+ */
+export const zTraffic = z.object({
+  available: z.boolean(),
+  updatedAt: z.optional(z.iso.datetime()),
+  error: z.optional(z.string()),
+  measuredSince: z.optional(z.iso.datetime()),
+  windows: z.array(zTrafficWindow),
+  minutes: zTrafficSeries,
+  hours: zTrafficSeries,
+  clients: z.array(zTrafficClient),
 });
 
 /**
@@ -28,9 +209,9 @@ export const zProblem = z.object({
 });
 
 /**
- * The daemon is serving.
+ * An account's `id`.
  */
-export const zGetHealthResponse = zHealth;
+export const zAccountId = z.string().check(z.regex(/^[0-9a-f]{16}$/));
 
 /**
  * The public configuration.
@@ -38,6 +219,49 @@ export const zGetHealthResponse = zHealth;
 export const zGetConfigResponse = zConfig;
 
 /**
- * Server-sent `health` events.
+ * The accounts and the health of their sources.
  */
-export const zStreamEventsResponse = zHealth;
+export const zListAccountsResponse = zAccountList;
+
+export const zSetAccountPausedBody = zPauseRequest;
+
+export const zSetAccountPausedPath = z.object({
+  accountId: z.string().check(z.regex(/^[0-9a-f]{16}$/)),
+});
+
+/**
+ * The account as the broker now reports it.
+ */
+export const zSetAccountPausedResponse = zAccount;
+
+export const zGetAccountHistoryPath = z.object({
+  accountId: z.string().check(z.regex(/^[0-9a-f]{16}$/)),
+});
+
+export const zGetAccountHistoryQuery = z.object({
+  since: z.optional(z.iso.datetime()),
+});
+
+/**
+ * The samples.
+ */
+export const zGetAccountHistoryResponse = zUsageHistory;
+
+export const zListUsageTrendsQuery = z.object({
+  since: z.optional(z.iso.datetime()),
+});
+
+/**
+ * One trend per limit that has samples.
+ */
+export const zListUsageTrendsResponse = zUsageTrendList;
+
+/**
+ * The traffic.
+ */
+export const zGetTrafficResponse = zTraffic;
+
+/**
+ * Server-sent `accounts` and `traffic` events.
+ */
+export const zStreamEventsResponse = zAccountList;

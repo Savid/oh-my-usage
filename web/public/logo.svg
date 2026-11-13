@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="oh-my-usage">
+  <!-- oh-my-pi's pi, with its legs turned into usage meters: each fills, and empties when its window resets. -->
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="14" y1="16" x2="50" y2="56">
+      <stop offset="0" stop-color="#ed4abf"/>
+      <stop offset=".5" stop-color="#9b4dff"/>
+      <stop offset="1" stop-color="#5ad8e6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#111214"/>
+  <path fill="url(#g)" opacity=".3" d="M14 16h36v8H40v32h-8V24h-6v22h-8V24h-4z"/>
+  <path fill="url(#g)" d="M14 16h36v8H14z"/>
+  <rect fill="url(#g)" x="18" y="24" width="8" height="13">
+    <animate attributeName="height" values="13;22;22;0;13" keyTimes="0;0.3565;0.4279;0.4851;1" dur="7s" repeatCount="indefinite"/>
+  </rect>
+  <rect fill="url(#g)" x="32" y="24" width="8" height="23">
+    <animate attributeName="height" values="23;32;32;0;23" keyTimes="0;0.2654;0.2967;0.3217;1" dur="16s" repeatCount="indefinite"/>
+  </rect>
+</svg>

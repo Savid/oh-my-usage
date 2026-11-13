@@ -16,18 +16,322 @@ export type Config = {
    * The build's version.
    */
   version: string;
+  /**
+   * Whether a broker is configured, so accounts can be paused.
+   */
+  controls: boolean;
+  /**
+   * How often the gateway is polled.
+   */
+  pollIntervalSeconds: number;
 };
 
-export type Health = {
-  status: 'ok';
+export type AccountList = {
+  accounts: Array<Account>;
+  gateway: SourceStatus;
   /**
-   * The build's version.
+   * The omp version the gateway reported.
    */
-  version: string;
+  gatewayVersion?: string;
   /**
-   * The daemon's clock when it answered.
+   * Absent when no broker is configured.
    */
+  broker?: SourceStatus;
+};
+
+/**
+ * The health of the gateway or the broker.
+ */
+export type SourceStatus = {
+  /**
+   * Whether the last poll of it succeeded.
+   */
+  reachable: boolean;
+  /**
+   * Why the last poll failed.
+   */
+  error?: string;
+  /**
+   * The last successful poll. Absent before the first.
+   */
+  updatedAt?: string;
+};
+
+/**
+ * One login or API key with its usage.
+ */
+export type Account = {
+  /**
+   * Stable across restarts.
+   */
+  id: string;
+  /**
+   * omp's provider ID.
+   */
+  provider: string;
+  /**
+   * Absent when no broker credential is known for the account.
+   */
+  kind?: 'oauth' | 'api_key';
+  email?: string;
+  orgName?: string;
+  plan?: string;
+  /**
+   * Whether the account carries a pause.
+   */
+  paused: boolean;
+  /**
+   * Whether the account has a broker credential to pause.
+   */
+  pausable: boolean;
+  /**
+   * When omp's own block on the account ends, such as after a usage limit. Absent when it has none.
+   */
+  blockedUntil?: string;
+  /**
+   * omp's own live blocks on the account, the one that ends last first. A pause is not among them.
+   */
+  blocks: Array<Block>;
+  limits: Array<Limit>;
+  resets?: Resets;
+  /**
+   * When the provider reported the usage. Absent without a report.
+   */
+  fetchedAt?: string;
+};
+
+/**
+ * One usage window of an account.
+ */
+export type Limit = {
+  id: string;
+  label: string;
+  windowLabel?: string;
+  /**
+   * The used share, 0 to 1 and above 1 for overage. Absent when the provider reported no amount.
+   */
+  usedFraction?: number;
+  status?: 'ok' | 'warning' | 'exhausted' | 'unknown';
+  /**
+   * When the window resets. Absent when the provider gave no time.
+   */
+  resetsAt?: string;
+  /**
+   * How long the window lasts. Absent when the provider did not say.
+   */
+  windowSeconds?: number;
+};
+
+/**
+ * An account's saved limit resets.
+ */
+export type Resets = {
+  /**
+   * How many the account holds.
+   */
+  available: number;
+  /**
+   * How many can be spent now. Absent when the provider does not say.
+   */
+  usable?: number;
+  /**
+   * When the first of them expires.
+   */
+  soonestExpiresAt?: string;
+  /**
+   * The resets the provider described. It may list fewer than `available`.
+   */
+  saved?: Array<SavedReset>;
+};
+
+/**
+ * One limit reset an account holds and has not spent.
+ */
+export type SavedReset = {
+  /**
+   * The provider's name for it. Absent when it gave none.
+   */
+  title?: string;
+  /**
+   * Whether it can be spent now. Absent when the provider does not say.
+   */
+  usable?: boolean;
+  /**
+   * The `id` of each limit that spending it would reset.
+   */
+  clears: Array<string>;
+  /**
+   * When it expires. Absent when it does not.
+   */
+  expiresAt?: string;
+};
+
+/**
+ * A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+ */
+export type Block = {
+  /**
+   * What the block covers, as omp names it.
+   */
+  scope: string;
+  until: string;
+};
+
+export type PauseRequest = {
+  paused: boolean;
+};
+
+export type UsageHistory = {
+  samples: Array<UsageSample>;
+};
+
+/**
+ * One limit at the time its provider reported it.
+ */
+export type UsageSample = {
   at: string;
+  limitId: string;
+  label: string;
+  usedFraction: number;
+  resetsAt?: string;
+};
+
+export type UsageTrendList = {
+  trends: Array<UsageTrend>;
+};
+
+/**
+ * One limit of one account over time, oldest first.
+ */
+export type UsageTrend = {
+  accountId: string;
+  limitId: string;
+  points: Array<TrendPoint>;
+};
+
+export type TrendPoint = {
+  at: string;
+  usedFraction: number;
+};
+
+/**
+ * What is passing through the gateway, as the broker counts it.
+ */
+export type Traffic = {
+  /**
+   * Whether a broker is configured. Without one the rest is empty.
+   */
+  available: boolean;
+  /**
+   * When traffic was last collected. Absent before the first collection.
+   */
+  updatedAt?: string;
+  /**
+   * Why the last collection failed. Absent when it succeeded.
+   */
+  error?: string;
+  /**
+   * When traffic began to be measured: the daemon's first reading of the broker. What is reported before it is an estimate. Absent before the first reading.
+   */
+  measuredSince?: string;
+  /**
+   * Totals for the last hour, day and week, in that order.
+   */
+  windows: Array<TrafficWindow>;
+  minutes: TrafficSeries;
+  hours: TrafficSeries;
+  /**
+   * The last week by client, application and provider, the costliest first.
+   */
+  clients: Array<TrafficClient>;
+};
+
+/**
+ * What passed in some stretch of time.
+ */
+export type TrafficCounts = {
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /**
+   * What the tokens would cost at the provider's API prices. On a subscription nothing is billed per token; it measures work done.
+   */
+  costUsd: number;
+};
+
+/**
+ * The traffic of a recent period, in total and by provider.
+ */
+export type TrafficWindow = {
+  id: 'hour' | 'day' | 'week';
+  since: string;
+  total: TrafficCounts;
+  /**
+   * The providers with traffic in the period, the costliest first.
+   */
+  providers: Array<TrafficProviderCounts>;
+};
+
+export type TrafficProviderCounts = {
+  provider: string;
+  counts: TrafficCounts;
+};
+
+/**
+ * Traffic over time in equal steps, the last of them still filling. Every array of a provider has one value per step, oldest first.
+ */
+export type TrafficSeries = {
+  /**
+   * When the first step begins.
+   */
+  start: string;
+  stepSeconds: number;
+  steps: number;
+  /**
+   * The providers with traffic in the series, the costliest first.
+   */
+  providers: Array<TrafficProviderSeries>;
+};
+
+export type TrafficProviderSeries = {
+  provider: string;
+  requests: Array<number>;
+  /**
+   * Input tokens that were not read from a cache.
+   */
+  inputTokens: Array<number>;
+  /**
+   * Output tokens.
+   */
+  outputTokens: Array<number>;
+  /**
+   * Input tokens read from a cache.
+   */
+  cacheReadTokens: Array<number>;
+  /**
+   * Input tokens written to a cache.
+   */
+  cacheWriteTokens: Array<number>;
+  costUsd: Array<number>;
+};
+
+/**
+ * One client's traffic to one provider over the last week.
+ */
+export type TrafficClient = {
+  /**
+   * The client installation that sent it.
+   */
+  installId: string;
+  hostname: string;
+  /**
+   * The application that sent it; `gateway` for requests that named none.
+   */
+  app: string;
+  provider: string;
+  counts: TrafficCounts;
 };
 
 /**
@@ -41,30 +345,10 @@ export type Problem = {
   instance?: string;
 };
 
-export type GetHealthData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/v1/health';
-};
-
-export type GetHealthErrors = {
-  /**
-   * An error, as an RFC 9457 problem.
-   */
-  default: Problem;
-};
-
-export type GetHealthError = GetHealthErrors[keyof GetHealthErrors];
-
-export type GetHealthResponses = {
-  /**
-   * The daemon is serving.
-   */
-  200: Health;
-};
-
-export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+/**
+ * An account's `id`.
+ */
+export type AccountId = string;
 
 export type GetConfigData = {
   body?: never;
@@ -91,6 +375,151 @@ export type GetConfigResponses = {
 
 export type GetConfigResponse = GetConfigResponses[keyof GetConfigResponses];
 
+export type ListAccountsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/v1/accounts';
+};
+
+export type ListAccountsErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type ListAccountsError = ListAccountsErrors[keyof ListAccountsErrors];
+
+export type ListAccountsResponses = {
+  /**
+   * The accounts and the health of their sources.
+   */
+  200: AccountList;
+};
+
+export type ListAccountsResponse = ListAccountsResponses[keyof ListAccountsResponses];
+
+export type SetAccountPausedData = {
+  body: PauseRequest;
+  path: {
+    /**
+     * An account's `id`.
+     */
+    accountId: string;
+  };
+  query?: never;
+  url: '/api/v1/accounts/{accountId}/pause';
+};
+
+export type SetAccountPausedErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type SetAccountPausedError = SetAccountPausedErrors[keyof SetAccountPausedErrors];
+
+export type SetAccountPausedResponses = {
+  /**
+   * The account as the broker now reports it.
+   */
+  200: Account;
+};
+
+export type SetAccountPausedResponse = SetAccountPausedResponses[keyof SetAccountPausedResponses];
+
+export type GetAccountHistoryData = {
+  body?: never;
+  path: {
+    /**
+     * An account's `id`.
+     */
+    accountId: string;
+  };
+  query?: {
+    /**
+     * Only samples at or after this time. Defaults to 7 days ago.
+     */
+    since?: string;
+  };
+  url: '/api/v1/accounts/{accountId}/history';
+};
+
+export type GetAccountHistoryErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type GetAccountHistoryError = GetAccountHistoryErrors[keyof GetAccountHistoryErrors];
+
+export type GetAccountHistoryResponses = {
+  /**
+   * The samples.
+   */
+  200: UsageHistory;
+};
+
+export type GetAccountHistoryResponse = GetAccountHistoryResponses[keyof GetAccountHistoryResponses];
+
+export type ListUsageTrendsData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Only samples at or after this time. Defaults to 7 days ago.
+     */
+    since?: string;
+  };
+  url: '/api/v1/trends';
+};
+
+export type ListUsageTrendsErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type ListUsageTrendsError = ListUsageTrendsErrors[keyof ListUsageTrendsErrors];
+
+export type ListUsageTrendsResponses = {
+  /**
+   * One trend per limit that has samples.
+   */
+  200: UsageTrendList;
+};
+
+export type ListUsageTrendsResponse = ListUsageTrendsResponses[keyof ListUsageTrendsResponses];
+
+export type GetTrafficData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/v1/traffic';
+};
+
+export type GetTrafficErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type GetTrafficError = GetTrafficErrors[keyof GetTrafficErrors];
+
+export type GetTrafficResponses = {
+  /**
+   * The traffic.
+   */
+  200: Traffic;
+};
+
+export type GetTrafficResponse = GetTrafficResponses[keyof GetTrafficResponses];
+
 export type StreamEventsData = {
   body?: never;
   path?: never;
@@ -109,9 +538,9 @@ export type StreamEventsError = StreamEventsErrors[keyof StreamEventsErrors];
 
 export type StreamEventsResponses = {
   /**
-   * Server-sent `health` events.
+   * Server-sent `accounts` and `traffic` events.
    */
-  200: Health;
+  200: AccountList;
 };
 
 export type StreamEventsResponse = StreamEventsResponses[keyof StreamEventsResponses];

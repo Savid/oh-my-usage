@@ -5,8 +5,8 @@ import * as Stories from './Typography.stories';
 
 # Typography
 
-Two families: `font-sans` for everything, and `font-mono` for identifiers, versions, times and anything a reader might
-copy. Both are system stacks.
+One family, `font-mono`: Geist Mono, shipped with the app, then the system's monospace. Figures line up in every
+row without help, and `tabular-nums` keeps a changing number from shifting its neighbours.
 
 <Story of={Stories.Families} />
 
@@ -18,6 +18,12 @@ Sizes are named for their role, in rem so browser zoom and font settings apply. 
 <Story of={Stories.Scale} />
 
 <Story of={Stories.Sizes} />
+
+## Small capitals
+
+Labels in `text-micro` are set in capitals with `tracking-caps`, which opens them up enough to read at that size.
+
+<Story of={Stories.Tracking} />
 
 ## Weights
 
