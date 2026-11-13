@@ -15,22 +15,62 @@ export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
 export const STATUS_COLORS = ['ok', 'warn', 'danger'] as const;
 /** Marks that draw data with no provider's colour: the fallback gauge pair and the chart series. */
 export const DATA_COLORS = ['meter', 'meter-track', 'series-1', 'series-2', 'series-3'] as const;
-/** Each provider's colour, and the dim step under it. */
-export const PROVIDER_COLORS = [
+/** The providers with a colour of their own; mono is for one whose mark is black and white. */
+const PROVIDER_HUES = [
   'anthropic',
-  'anthropic-track',
   'openai',
-  'openai-track',
   'mono',
-  'mono-track',
   'openrouter',
-  'openrouter-track',
+  'alibaba',
+  'qwen',
+  'aws',
+  'azure',
+  'cerebras',
+  'cloudflare',
+  'deepinfra',
+  'deepseek',
+  'devin',
+  'exa',
+  'fireworks',
+  'gitlab',
+  'google',
+  'groq',
+  'huggingface',
+  'kagi',
+  'kilo',
+  'kimi',
+  'lmstudio',
+  'meta',
+  'minimax',
+  'mistral',
+  'novita',
+  'nvidia',
+  'perplexity',
+  'baidu',
+  'sakana',
+  'sambanova',
+  'scaleway',
+  'siliconflow',
+  'snowflake',
+  'stepfun',
+  'tavily',
+  'together',
+  'venice',
+  'vllm',
+  'xiaomi',
+  'zhipu',
 ] as const;
+type ProviderHue = (typeof PROVIDER_HUES)[number];
 
-/** The stops of the logo's gradient, first to last. */
+/** Each provider's colour, and the dim step under it. */
+export const PROVIDER_COLORS = PROVIDER_HUES.flatMap(hue => [hue, `${hue}-track` as const]) as readonly (
+  ProviderHue | `${ProviderHue}-track`
+)[];
+
+/** The logo's gradient stops, first to last. */
 export const BRAND_COLORS = ['mark-magenta', 'mark-iris', 'mark-cyan'] as const;
 
-const TRACK_COLORS = ['meter-track', 'anthropic-track', 'openai-track', 'mono-track', 'openrouter-track'] as const;
+const TRACK_COLORS = ['meter-track', ...PROVIDER_HUES.map(hue => `${hue}-track` as const)] as const;
 
 export const COLOR_TOKENS = [
   ...SURFACE_COLORS,
@@ -81,7 +121,7 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
   },
   {
     name: 'Gauge fills, chart lines and provider marks on a panel',
-    foregrounds: ['meter', 'series-1', 'anthropic', 'openai', 'mono', 'openrouter'],
+    foregrounds: ['meter', 'series-1', ...PROVIDER_HUES],
     backgrounds: ['surface', 'raised'],
     minimum: 3,
   },

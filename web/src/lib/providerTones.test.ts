@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { KNOWN_PROVIDERS } from './accounts';
+import { providerMark } from './providerMarks';
 import { providerTone } from './providerTones';
 
 describe('providerTone', () => {
@@ -10,10 +12,19 @@ describe('providerTone', () => {
   });
 
   it('draws a provider whose mark is black and white in grey', () => {
-    for (const provider of ['opencode-go', 'cursor', 'github-copilot', 'xai-oauth', 'ollama', 'zai', 'kimi-code']) {
+    for (const provider of ['opencode-go', 'cursor', 'github-copilot', 'xai-oauth', 'ollama', 'zai']) {
       expect(providerTone(provider), provider).toBe(providerTone('opencode-zen'));
     }
     expect(providerTone('cursor').glow).toBe('text-mono-track');
+  });
+
+  it("gives every provider with a mark its brand's colour, shared by the brand's products", () => {
+    const plain = providerTone('some-new-provider');
+    expect(KNOWN_PROVIDERS.filter(provider => providerMark(provider) && providerTone(provider) === plain)).toEqual([]);
+    expect(KNOWN_PROVIDERS.filter(provider => !providerMark(provider) && providerTone(provider) !== plain)).toEqual([]);
+    expect(providerTone('google-antigravity')).toBe(providerTone('google-gemini-cli'));
+    expect(providerTone('muse-code').fill).toBe('fill-meta');
+    expect(providerTone('moonshot').line).toBe('stroke-kimi');
   });
 
   it("falls back to the app's data colour for a provider it has no colour for", () => {

@@ -20,10 +20,11 @@ Every figure is quota **used**.
   then the account's name and when that window resets; its other windows are
   the small values on the right. A figure turns amber with a ▲ at four
   fifths used and red with a ■ at all of it.
-- **Colour**: a provider's mark, gauge and chart wear its own colour
-  (Anthropic orange, OpenAI green, OpenRouter lime, and grey for a brand that
-  is black and white: OpenCode, Cursor, GitHub Copilot, xAI, Ollama, Z.ai,
-  Kimi), so colour says whose usage it is and the figure says how bad it is.
+- **Colour**: a provider's mark, gauge and chart wear its brand's colour
+  (Anthropic orange, OpenAI green, OpenRouter lime, Google blue, MiniMax
+  magenta… and grey for a brand that is black and white: OpenCode, Cursor,
+  GitHub Copilot, xAI, Ollama, Z.ai), so colour says whose usage it is and
+  the figure says how bad it is.
   Every provider omp 18.19.0 can hold a credential for has a name, and 82 of
   its 104 have their mark; the rest show their initial.
 - **An account's page**: the same band, then a card for each usage window

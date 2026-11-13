@@ -13,7 +13,8 @@ interface TableProps {
 /** The table every Foundations block draws. */
 export function Table({ caption, head, rows }: TableProps): JSX.Element {
   return (
-    <Block className="overflow-x-auto">
+    // It may scroll sideways on a narrow screen, so it can take focus and is named by its caption.
+    <Block className="overflow-x-auto" label={caption ?? head.join(', ')}>
       <table className="w-full table-fixed border-collapse">
         {caption === undefined ? null : <caption className="pb-2 text-left text-muted">{caption}</caption>}
         <thead>

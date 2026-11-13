@@ -48,10 +48,11 @@ A provider's usage wears the provider's own colour: its mark, its gauge and the 
 state is carried by the figure instead, which turns amber and then red, each with a mark. An account's row is drawn
 over a chart of what it had used: a line with a glow under it that fades towards the foot of the row. The `-track`
 colours are the deepest that glow gets, and the row's text is checked against them. `src/lib/providerTones.ts` maps
-a provider to its classes. A provider whose mark is black and white (OpenCode, Cursor, GitHub Copilot, xAI, Ollama,
-Z.ai, Kimi and others) gets `mono`. One with no colour of its own gets `meter`, and so does one whose brand colour
-would pass for `meter`, a status colour or another provider's: Google's and Meta's blues, Qwen's violet, MiniMax's
-red.
+a provider to its classes. Every provider with a mark wears its brand's colour, stepped lighter or darker only as far
+as each theme needs to read it (tokens.css says where each came from); a provider's products share it (Gemini, Gemini
+CLI, Antigravity and Vertex are all Google's blue). One whose mark is black and white (OpenCode, Cursor, GitHub
+Copilot, xAI, Ollama, Z.ai and others) gets `mono`, and one with no mark gets `meter`. Several brands share a hue
+(many are orange or blue), so the mark and name beside a gauge always say whose it is.
 
 <Story of={Stories.Providers} />
 
