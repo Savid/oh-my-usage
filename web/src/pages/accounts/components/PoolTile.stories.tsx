@@ -14,8 +14,8 @@ const meta = {
       limitId: 'anthropic:7d',
       label: '7 Day',
       seats: 2,
-      left: 0.9,
-      leftFraction: 0.45,
+      used: 1.1,
+      usedFraction: 0.55,
       severity: 'normal',
       nextReset: at(20 * HOUR),
       staggered: true,
@@ -36,7 +36,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article', { name: 'Anthropic 7 Day' })).toHaveTextContent('45%');
+    await expect(canvas.getByRole('article', { name: 'Anthropic 7 Day' })).toHaveTextContent('55%');
     await expect(canvas.getByText('20h')).toBeInTheDocument();
   },
 };
@@ -48,8 +48,8 @@ export const OneSeat: Story = {
       limitId: 'codex:7d',
       label: '7 days',
       seats: 1,
-      left: 0.32,
-      leftFraction: 0.32,
+      used: 0.68,
+      usedFraction: 0.68,
       severity: 'normal',
       nextReset: at(110 * HOUR),
       staggered: false,
@@ -60,17 +60,17 @@ export const OneSeat: Story = {
   },
 };
 
-export const Low: Story = {
-  args: { pool: { ...meta.args.pool, left: 0.16, leftFraction: 0.08, severity: 'warn' } },
+export const NearLimit: Story = {
+  args: { pool: { ...meta.args.pool, used: 1.84, usedFraction: 0.92, severity: 'warn' } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('left, low')).toBeInTheDocument();
+    await expect(canvas.getByText('used, near limit')).toBeInTheDocument();
   },
 };
 
 export const Spent: Story = {
-  args: { pool: { ...meta.args.pool, left: 0, leftFraction: 0, severity: 'danger' } },
+  args: { pool: { ...meta.args.pool, used: 2, usedFraction: 1, severity: 'danger' } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('left, spent')).toBeInTheDocument();
+    await expect(canvas.getByText('used, spent')).toBeInTheDocument();
   },
 };
 

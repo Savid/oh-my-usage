@@ -21,7 +21,7 @@ describe('toSeries', () => {
       ['7d', 'Claude 7 Day', 2],
       ['5h', '5h', 1],
     ]);
-    expect(series[0]?.points[1]).toEqual({ time: NOW_MS - HOUR, left: 0.8 });
+    expect(series[0]?.points[1]).toEqual({ time: NOW_MS - HOUR, used: 0.2 });
   });
 });
 
@@ -39,9 +39,9 @@ describe('valueAt', () => {
     if (!series) throw new Error('no series');
 
     expect(valueAt(series, NOW_MS - 5 * HOUR)).toBeUndefined();
-    expect(valueAt(series, NOW_MS - 4 * HOUR)).toBe(0.9);
-    expect(valueAt(series, NOW_MS - 3 * HOUR)).toBe(0.9);
-    expect(valueAt(series, NOW_MS)).toBe(0.7);
+    expect(valueAt(series, NOW_MS - 4 * HOUR)).toBe(0.1);
+    expect(valueAt(series, NOW_MS - 3 * HOUR)).toBe(0.1);
+    expect(valueAt(series, NOW_MS)).toBe(0.3);
   });
 });
 

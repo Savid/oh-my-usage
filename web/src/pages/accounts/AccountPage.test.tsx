@@ -29,7 +29,7 @@ describe('AccountPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'one@example.com' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
-    expect(await screen.findByRole('img', { name: 'Share left of each limit over time' })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
   });
 
   it('asks for the last seven days', async () => {
@@ -45,7 +45,7 @@ describe('AccountPage', () => {
     );
     renderPage();
 
-    await screen.findByRole('img', { name: 'Share left of each limit over time' });
+    await screen.findByRole('img', { name: 'Used share of each limit over time' });
 
     // Seven days back, within the five-minute step the start is held to.
     const day = 24 * 3_600_000;
@@ -82,7 +82,7 @@ describe('AccountPage', () => {
     renderPage('00000000000000ff');
 
     expect(await screen.findByText('The gateway no longer reports this account.')).toBeInTheDocument();
-    expect(await screen.findByRole('img', { name: 'Share left of each limit over time' })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
   });
 
   it('says when nothing is recorded yet', async () => {

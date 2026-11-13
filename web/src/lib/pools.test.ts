@@ -33,23 +33,23 @@ describe('poolLimits', () => {
     ]);
 
     const [week, fiveHour, codex] = pools;
-    // A quarter of one seat and three quarters of the other: one seat's worth, half of the two.
-    expect(week?.left).toBeCloseTo(1);
-    expect(week?.leftFraction).toBeCloseTo(0.5);
+    // Three quarters of one seat and a quarter of the other: one seat's worth, half of the two.
+    expect(week?.used).toBeCloseTo(1);
+    expect(week?.usedFraction).toBeCloseTo(0.5);
     expect(week?.severity).toBe('normal');
     expect(week?.nextReset).toBe(at(20 * HOUR));
     expect(week?.staggered).toBe(true);
 
     // The seat that does not report its five-hour window is not counted in it.
-    expect(fiveHour?.leftFraction).toBeCloseTo(0.5);
+    expect(fiveHour?.usedFraction).toBeCloseTo(0.5);
     expect(fiveHour?.staggered).toBe(false);
 
-    expect(codex?.leftFraction).toBeCloseTo(0.1);
+    expect(codex?.usedFraction).toBeCloseTo(0.9);
     expect(codex?.severity).toBe('warn');
     expect(codex?.nextReset).toBeUndefined();
   });
 
-  it('never counts overage as less than nothing, and ignores resets that have passed', () => {
+  it('counts an account over its limit as one, and ignores resets that have passed', () => {
     const [pool] = poolLimits(
       [
         account('a', 'x', [{ id: 'w', label: 'Week', usedFraction: 1.6, resetsAt: at(-HOUR) }]),
@@ -58,7 +58,8 @@ describe('poolLimits', () => {
       NOW_MS
     );
 
-    expect(pool?.left).toBe(0);
+    expect(pool?.used).toBe(2);
+    expect(pool?.usedFraction).toBe(1);
     expect(pool?.severity).toBe('danger');
     expect(pool?.nextReset).toBeUndefined();
   });

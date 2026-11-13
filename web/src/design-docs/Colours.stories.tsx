@@ -83,12 +83,12 @@ export const Data: Story = {
     <ColorSwatches
       tokens={DATA_COLORS}
       notes={{
-        meter: 'fill-meter: what is left in a gauge',
+        meter: 'fill-meter: what is used in a gauge',
         'meter-track': "fill-meter-track: the wash of a row's chart, and a gauge's empty part",
         'meter-edge': 'stroke-meter-edge: the line along the top of that wash',
-        'warn-track': 'fill-warn-track: the wash when little is left',
+        'warn-track': 'fill-warn-track: the wash when nearly all is used',
         'warn-edge': 'stroke-warn-edge: its line',
-        'danger-track': 'fill-danger-track: the wash when nothing is left',
+        'danger-track': 'fill-danger-track: the wash when all is used',
         'danger-edge': 'stroke-danger-edge: its line',
         'series-1': 'text-series-1: the first chart series',
         'series-2': 'text-series-2: the second chart series',

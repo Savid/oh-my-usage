@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('heading', { level: 2, name: 'one@example.com' })).toBeInTheDocument();
-    await expect(await canvas.findByRole('img', { name: 'Share left of each limit over time' })).toBeInTheDocument();
+    await expect(await canvas.findByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
   },
 };
 

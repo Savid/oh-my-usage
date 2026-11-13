@@ -72,7 +72,7 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
         className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3"
       >
         <h2 id="history-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-          Quota left, last 7 days
+          Quota used, last 7 days
         </h2>
 
         {history.isPending ? (

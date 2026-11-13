@@ -15,15 +15,15 @@ describe('UsageHistoryChart', () => {
   it('draws a line per limit and reads out the latest values', () => {
     const { container } = render(<UsageHistoryChart samples={historyFixture.samples} />);
 
-    expect(screen.getByRole('img', { name: 'Share left of each limit over time' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
     expect(container.querySelectorAll('path')).toHaveLength(2);
     expect(screen.getByText(/^Latest /)).toBeInTheDocument();
 
     const legend = within(screen.getByRole('list'));
     expect(legend.getByText('Claude 7 Day')).toBeInTheDocument();
-    expect(legend.getByText('24%')).toBeInTheDocument();
+    expect(legend.getByText('76%')).toBeInTheDocument();
     expect(legend.getByText('Claude 7 Day (Fable)')).toBeInTheDocument();
-    expect(legend.getByText('8%')).toBeInTheDocument();
+    expect(legend.getByText('92%')).toBeInTheDocument();
   });
 
   it('reads out the values under the pointer and goes back to the latest', () => {
@@ -36,7 +36,7 @@ describe('UsageHistoryChart', () => {
     fireEvent.pointerMove(plot, { clientX: 320 });
 
     expect(screen.getByText(/^At /)).toBeInTheDocument();
-    expect(within(screen.getByRole('list')).getByText('70%')).toBeInTheDocument();
+    expect(within(screen.getByRole('list')).getByText('30%')).toBeInTheDocument();
     expect(screen.getByTestId('crosshair')).toBeInTheDocument();
 
     fireEvent.pointerLeave(plot);
@@ -56,12 +56,12 @@ describe('UsageHistoryChart', () => {
       within(rows[1]!)
         .getAllByRole('cell', { hidden: true })
         .map(cell => cell.textContent)
-    ).toEqual(['90%', '']);
+    ).toEqual(['10%', '']);
     expect(
       within(rows[3]!)
         .getAllByRole('cell', { hidden: true })
         .map(cell => cell.textContent)
-    ).toEqual(['80%', '60%']);
+    ).toEqual(['20%', '40%']);
   });
 
   it('draws at most three limits and says so', () => {
@@ -73,17 +73,18 @@ describe('UsageHistoryChart', () => {
     expect(screen.getByText('Showing the first 3 of 4 limits.')).toBeInTheDocument();
   });
 
-  it('shows overage as nothing left, never less', () => {
-    render(<UsageHistoryChart samples={[sample('7d', -1, 0.9), sample('7d', 0, 1.3)]} />);
+  it('reads out overage as it is, with the line stopped at the top', () => {
+    const { container } = render(<UsageHistoryChart samples={[sample('7d', -1, 0.9), sample('7d', 0, 1.3)]} />);
 
-    expect(within(screen.getByRole('list')).getByText('0%')).toBeInTheDocument();
+    expect(within(screen.getByRole('list')).getByText('130%')).toBeInTheDocument();
+    expect(container.querySelector('path')?.getAttribute('d')).toMatch(/ 12\.0$/);
   });
 
   it('draws a single sample', () => {
     const { container } = render(<UsageHistoryChart samples={[sample('7d', 0, 0.4)]} />);
 
     expect(container.querySelectorAll('circle')).toHaveLength(1);
-    expect(within(screen.getByRole('list')).getByText('60%')).toBeInTheDocument();
+    expect(within(screen.getByRole('list')).getByText('40%')).toBeInTheDocument();
   });
 
   it('says when nothing is recorded', () => {

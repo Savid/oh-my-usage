@@ -10,8 +10,8 @@ import { useCharts } from './hooks/useCharts';
 
 /**
  * The whole fleet on one screen. First, for each provider, how much of its
- * main usage window is left in total and when it resets; then every account
- * on a line of its own, drawn over the last seven days of what it had left.
+ * main usage window is used in total and when it resets; then every account
+ * on a line of its own, drawn over the last seven days of what it had used.
  */
 export function AccountsPage(): JSX.Element {
   const now = useNow();
@@ -73,7 +73,7 @@ export function AccountsPage(): JSX.Element {
           )}
 
           <p className="px-1 text-micro text-muted">
-            Figures are quota left; each row is drawn over its last 7 days.
+            Figures are quota used; each row is drawn over its last 7 days.
             {list.gatewayVersion && ` omp ${list.gatewayVersion}.`}
             {controls &&
               list.accounts.length > 0 &&

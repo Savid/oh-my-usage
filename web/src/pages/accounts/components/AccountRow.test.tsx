@@ -17,7 +17,7 @@ import { AccountRow } from './AccountRow';
 const base = { trends: trendsFixture.trends, start: NOW_MS - 7 * 24 * 3_600_000, now: NOW_MS, controls: true };
 
 describe('AccountRow', () => {
-  it('leads with what the main window has left, over a chart of it', () => {
+  it('leads with how much of the main window is used, over a chart of it', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
     const row = screen.getByRole('article', { name: 'one@example.com' });
@@ -29,7 +29,7 @@ describe('AccountRow', () => {
     expect(within(row).getByRole('img', { name: 'Anthropic' })).toBeInTheDocument();
     expect(within(row).getByText('One Org · 2 resets, 1 usable')).toBeInTheDocument();
     // Both weekly windows reset together; the first listed leads.
-    expect(row).toHaveTextContent('24%left');
+    expect(row).toHaveTextContent('76%used');
     expect(row).toHaveTextContent('7 Day · resets in 21h');
     expect(row).toHaveAttribute('data-severity', 'normal');
     expect(row).toHaveAttribute('data-chart', 'history');
@@ -40,14 +40,14 @@ describe('AccountRow', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
     const others = within(screen.getByRole('list')).getAllByRole('listitem');
-    expect(others.map(item => item.textContent)).toEqual(['5 Hour not reported', '7 Day Fable 8% · 21h']);
+    expect(others.map(item => item.textContent)).toEqual(['5 Hour not reported', '7 Day Fable 92% · 21h']);
     // The Fable window is nearly spent, and says so in more than position.
-    expect(within(others[1]!).getByText('8%')).toHaveClass('text-warn');
+    expect(within(others[1]!).getByText('92%')).toHaveClass('text-warn');
     // Each sits on its own solid chip, so the chart never runs through it.
     expect(others[1]).toHaveClass('bg-surface');
   });
 
-  it('marks a main window that is low or spent, in more than colour', () => {
+  it('marks a main window that is nearly or wholly spent, in more than colour', () => {
     const { rerender } = render(
       <AccountRow
         {...base}
@@ -56,7 +56,7 @@ describe('AccountRow', () => {
     );
 
     expect(screen.getByRole('article')).toHaveAttribute('data-severity', 'warn');
-    expect(screen.getByRole('article')).toHaveTextContent('▲10%left, low');
+    expect(screen.getByRole('article')).toHaveTextContent('▲90%used, near its limit');
 
     rerender(
       <AccountRow
@@ -66,8 +66,8 @@ describe('AccountRow', () => {
     );
 
     expect(screen.getByRole('article')).toHaveAttribute('data-severity', 'danger');
-    // Overage is nothing left, never less.
-    expect(screen.getByRole('article')).toHaveTextContent('■0%left, spent');
+    // Overage shows as it is.
+    expect(screen.getByRole('article')).toHaveTextContent('■130%used, spent');
   });
 
   it('starts its chart where its own history starts', () => {
@@ -91,7 +91,7 @@ describe('AccountRow', () => {
     // Two hours of history in a seven-day period: the line still runs edge to edge.
     expect(container.querySelector('article > svg path:nth-of-type(2)')).toHaveAttribute(
       'd',
-      'M0.00 1.00 L50.00 10.75 L100.00 20.50'
+      'M0.00 40.00 L50.00 30.25 L100.00 20.50'
     );
   });
 

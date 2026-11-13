@@ -81,7 +81,7 @@ export const NoUsage: Story = {
   },
 };
 
-export const Low: Story = {
+export const NearLimit: Story = {
   args: { account: { ...strayFixture, limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 0.9 }] } },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('article')).toHaveAttribute('data-severity', 'warn');

@@ -28,11 +28,11 @@ describe('AccountsPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Accounts' })).toBeInTheDocument();
 
     const totals = within(await screen.findByRole('region', { name: 'Totals' }));
-    // Two Claude seats with 24% and 81% of the week left; one Codex seat with 34%.
+    // Two Claude seats with 76% and 19% of the week used; one Codex seat with 66%.
     expect(totals.getByRole('article', { name: 'Anthropic 7 Day' })).toHaveTextContent(
-      'Anthropic7 Day · 2 seats53%leftnext reset 21h'
+      'Anthropic7 Day · 2 seats48%usednext reset 21h'
     );
-    expect(totals.getByRole('article', { name: 'OpenAI Codex 7 days' })).toHaveTextContent('34%leftresets in 4d 14h');
+    expect(totals.getByRole('article', { name: 'OpenAI Codex 7 days' })).toHaveTextContent('66%usedresets in 4d 14h');
     // The API key reports no usage, so it has no total.
     expect(totals.getAllByRole('article')).toHaveLength(2);
 

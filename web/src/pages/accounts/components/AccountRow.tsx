@@ -6,14 +6,7 @@ import type { Account, AccountList, Limit, TrendPoint } from '@/api';
 import { listAccountsQueryKey, setAccountPausedMutation } from '@/api/@tanstack/react-query.gen';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
-import {
-  accountTitle,
-  leftFraction,
-  limitSeverity,
-  primaryLimit,
-  shortLimitLabel,
-  type LimitSeverity,
-} from '@/lib/accounts';
+import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitSeverity } from '@/lib/accounts';
 import { formatPercent, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
@@ -50,7 +43,7 @@ const figureClasses: Record<LimitSeverity, string> = {
 // A mark and a word go with the colour, so the state never rests on colour alone.
 const severityMarks: Record<LimitSeverity, { mark: string; word: string } | undefined> = {
   normal: undefined,
-  warn: { mark: '▲', word: ', low' },
+  warn: { mark: '▲', word: ', near its limit' },
   danger: { mark: '■', word: ', spent' },
 };
 
@@ -86,31 +79,31 @@ function about(account: Account, now: number): string {
 }
 
 /**
- * The row's chart: what the account had left of its main window over time.
+ * The row's chart: how much of its main window the account had used over time.
  * With recorded usage it is a wash under a line, ending at the current value;
  * without, a level wash at the current value, which claims a level and no
  * history.
  */
 function chart(
   points: readonly TrendPoint[],
-  left: number,
+  used: number,
   start: number,
   now: number
 ): SparkPaths & { level: boolean } {
   const recorded: SparkPoint[] = points
-    .map(point => ({ time: Date.parse(point.at), value: 1 - point.usedFraction }))
+    .map(point => ({ time: Date.parse(point.at), value: point.usedFraction }))
     .filter(point => point.time >= start && point.time <= now);
 
   // The chart spans the row, so it begins where this account's history does:
   // one recorded for less than the period would otherwise leave a gap.
   const from = Math.max(start, recorded[0]?.time ?? start);
-  const drawn = sparkPaths([...recorded, { time: now, value: left }], from, now, WIDTH, HEIGHT);
+  const drawn = sparkPaths([...recorded, { time: now, value: used }], from, now, WIDTH, HEIGHT);
   if (recorded.length > 0 && drawn) return { ...drawn, level: false };
 
   const flat = sparkPaths(
     [
-      { time: 0, value: left },
-      { time: 1, value: left },
+      { time: 0, value: used },
+      { time: 1, value: used },
     ],
     0,
     1,
@@ -126,7 +119,7 @@ function resetIn(limit: Limit, now: number): string | undefined {
 
 /**
  * One account as a band across the page, drawn over a chart of what it had
- * left. It leads with the big figure for its main usage window (the one that
+ * used. It leads with the big figure for its main usage window (the one that
  * resets last), then who it is and when that window resets. To the right, its
  * other windows as small values, whether it is taking traffic, and the pause
  * control when a broker is configured. Everything written sits on solid
@@ -151,16 +144,16 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const meta = about(account, now);
 
   const primary = primaryLimit(account.limits);
-  const left = primary ? leftFraction(primary) : undefined;
+  const used = primary?.usedFraction;
   const severity = primary ? limitSeverity(primary) : 'normal';
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
   const others = account.limits.filter(limit => limit !== primary);
   const drawn =
-    primary && left !== undefined
+    primary && used !== undefined
       ? chart(
           trends.find(trend => trend.accountId === account.id && trend.limitId === primary.id)?.points ?? [],
-          left,
+          used,
           start,
           now
         )
@@ -208,7 +201,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
         )}
       >
         <div className="flex min-w-0 items-center gap-4 lg:flex-1">
-          {primary && left !== undefined ? (
+          {primary && used !== undefined ? (
             <p className="w-24 shrink-0 text-right">
               <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
                 {marked && (
@@ -216,7 +209,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                     {marked.mark}
                   </span>
                 )}
-                {formatPercent(left)}
+                {formatPercent(used)}
               </span>
               <span
                 className={clsx(
@@ -224,7 +217,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                   severity === 'normal' ? 'text-muted' : figureClasses[severity]
                 )}
               >
-                left{marked && <span className="sr-only">{marked.word}</span>}
+                used{marked && <span className="sr-only">{marked.word}</span>}
               </span>
             </p>
           ) : (
@@ -263,7 +256,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {/* Each small value sits on its own solid chip, so the chart never runs through it. */}
           <ul className="flex flex-wrap gap-1.5 text-micro text-muted">
             {others.map(limit => {
-              const share = leftFraction(limit);
+              const share = limit.usedFraction;
               const otherReset = resetIn(limit, now);
               return (
                 <li

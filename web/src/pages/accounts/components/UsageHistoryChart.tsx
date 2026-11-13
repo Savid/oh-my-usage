@@ -22,7 +22,7 @@ const keyClasses = ['text-series-1', 'text-series-2', 'text-series-3'];
 
 interface Scale {
   x: (time: number) => number;
-  y: (left: number) => number;
+  y: (used: number) => number;
 }
 
 function scale(times: readonly number[], plotWidth: number): Scale {
@@ -33,18 +33,19 @@ function scale(times: readonly number[], plotWidth: number): Scale {
 
   return {
     x: time => PLOT.left + ((time - start) / span) * plotWidth,
-    y: left => PLOT.top + (1 - left) * PLOT_HEIGHT,
+    // A limit run over stops at the top; the readout and the table give its figure.
+    y: used => PLOT.top + (1 - Math.min(1, Math.max(0, used))) * PLOT_HEIGHT,
   };
 }
 
 function linePath(series: Series, { x, y }: Scale): string {
   return series.points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'}${x(point.time).toFixed(1)} ${y(point.left).toFixed(1)}`)
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${x(point.time).toFixed(1)} ${y(point.used).toFixed(1)}`)
     .join(' ');
 }
 
 /**
- * What an account had left of each limit over time, one line per limit. The readout
+ * How much of each limit an account had used over time, one line per limit. The readout
  * above the plot is the legend: it names each line and gives its value, the
  * latest one or the one under the pointer. Every value is also in the table.
  */
@@ -109,7 +110,7 @@ export function UsageHistoryChart({ samples }: UsageHistoryChartProps): JSX.Elem
       <div ref={frame}>
         <svg
           role="img"
-          aria-label="Share left of each limit over time"
+          aria-label="Used share of each limit over time"
           viewBox={`0 0 ${width} ${HEIGHT}`}
           className="block h-60 w-full"
         >
@@ -171,7 +172,7 @@ export function UsageHistoryChart({ samples }: UsageHistoryChartProps): JSX.Elem
                 {/* The end dot, ringed in the surface colour so it stays clear where lines cross. */}
                 <circle
                   cx={scaled.x(end.time)}
-                  cy={scaled.y(end.left)}
+                  cy={scaled.y(end.used)}
                   r="4"
                   strokeWidth="2"
                   className={clsx('stroke-surface', dotClasses[index])}

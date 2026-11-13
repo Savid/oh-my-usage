@@ -25,13 +25,13 @@ const trackClasses: Record<LimitSeverity, string> = {
 
 // A word goes with the colour, so the state never rests on colour alone.
 const severityWords: Record<LimitSeverity, string> = {
-  normal: 'left',
-  warn: 'left, low',
-  danger: 'left, spent',
+  normal: 'used',
+  warn: 'used, near limit',
+  danger: 'used, spent',
 };
 
 /**
- * What the page opens on: how much of one usage window is left across all of
+ * What the page opens on: how much of one usage window is used across all of
  * a provider's accounts, and how long until it resets.
  */
 export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
@@ -57,7 +57,7 @@ export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
 
       <div className="flex items-baseline gap-2">
         <span className={clsx('text-display font-semibold tabular-nums', figureClasses[severity])}>
-          {formatPercent(pool.leftFraction)}
+          {formatPercent(pool.usedFraction)}
         </span>
         <span className={clsx('text-caption', severity === 'normal' ? 'text-muted' : figureClasses[severity])}>
           {severityWords[severity]}
@@ -70,11 +70,11 @@ export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
         )}
       </div>
 
-      {/* A fuel gauge: the filled part is what is left. */}
+      {/* The filled part is what is used. */}
       <div className="h-1.5 overflow-hidden rounded-sm">
         <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
           <rect width="100" height="1" className={trackClasses[severity]} />
-          <rect width={pool.leftFraction * 100} height="1" className={fillClasses[severity]} />
+          <rect width={pool.usedFraction * 100} height="1" className={fillClasses[severity]} />
         </svg>
       </div>
     </article>

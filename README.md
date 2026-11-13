@@ -2,21 +2,21 @@
 
 A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway.
 `oh-my-usaged` is one static binary: it polls the gateway, serves a web UI
-that shows how much quota is left and when it resets, keeps a usage history in
+that shows how much quota is used and when it resets, keeps a usage history in
 SQLite, and can pause an account when it is also given the broker.
 
 ## What you see
 
-Every figure is quota **left**, not used.
+Every figure is quota **used**.
 
-- **Totals**, one per provider: how much of its main usage window is left
+- **Totals**, one per provider: how much of its main usage window is used
   across all its accounts, and how long until the next reset. The main window
   is the one that resets last: a week rather than five hours.
 - **Accounts**, one band each, drawn over the last seven days of what the
-  account had left. A band leads with the large figure for its main window,
+  account had used. A band leads with the large figure for its main window,
   then the account's name and when that window resets; its other windows are
-  the small values on the right. A figure turns amber with a ▲ at a fifth left
-  and red with a ■ at nothing.
+  the small values on the right. A figure turns amber with a ▲ at four
+  fifths used and red with a ■ at all of it.
 - **An account's page**: the same band, and a chart of every window over the
   last seven days, with a table of the same values.
 

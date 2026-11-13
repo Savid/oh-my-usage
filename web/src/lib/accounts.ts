@@ -71,25 +71,19 @@ export function primaryLimit(limits: readonly Limit[]): Limit | undefined {
 /** How close a limit is to stopping the account. */
 export type LimitSeverity = 'normal' | 'warn' | 'danger';
 
-/** At or below this share left, a limit is drawn as a warning. */
-const WARN_LEFT = 0.2;
+/** At or above this used share, a limit is drawn as a warning. */
+const WARN_USED = 0.8;
 
-/** The share of a limit still unused, from 0 to 1; nothing when the provider reported no amount. */
-export function leftFraction(limit: Limit): number | undefined {
-  return limit.usedFraction === undefined ? undefined : Math.min(1, Math.max(0, 1 - limit.usedFraction));
-}
-
-/** The severity of a share left: spent, nearly spent, or neither. */
-export function severityOf(left: number): LimitSeverity {
-  // A sliver above the threshold in floating point (1 - 0.8) still counts as at it.
-  if (left <= 0) return 'danger';
-  if (left <= WARN_LEFT + 1e-9) return 'warn';
+/** The severity of a used share: spent, nearly spent, or neither. */
+export function severityOf(used: number): LimitSeverity {
+  if (used >= 1) return 'danger';
+  if (used >= WARN_USED) return 'warn';
   return 'normal';
 }
 
-/** A limit's severity, from the provider's own status first and its share left second. */
+/** A limit's severity, from the provider's own status first and its used share second. */
 export function limitSeverity(limit: Limit): LimitSeverity {
-  const fromShare = severityOf(leftFraction(limit) ?? 1);
+  const fromShare = severityOf(limit.usedFraction ?? 0);
   if (limit.status === 'exhausted' || fromShare === 'danger') return 'danger';
   if (limit.status === 'warning' || fromShare === 'warn') return 'warn';
   return 'normal';

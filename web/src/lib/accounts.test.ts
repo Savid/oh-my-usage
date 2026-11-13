@@ -3,7 +3,6 @@ import type { Account } from '@/api';
 import {
   accountTitle,
   groupByProvider,
-  leftFraction,
   primaryLimit,
   limitSeverity,
   providerName,
@@ -79,22 +78,14 @@ describe('primaryLimit', () => {
   });
 });
 
-describe('leftFraction', () => {
-  it('is what is not used, between nothing and all of it', () => {
-    expect(leftFraction({ id: 'a', label: 'A', usedFraction: 0.76 })).toBeCloseTo(0.24);
-    expect(leftFraction({ id: 'a', label: 'A', usedFraction: 1.4 })).toBe(0);
-    expect(leftFraction({ id: 'a', label: 'A', usedFraction: 0 })).toBe(1);
-    expect(leftFraction({ id: 'a', label: 'A' })).toBeUndefined();
-  });
-});
-
 describe('severityOf', () => {
-  it('warns at a fifth left and alarms at none', () => {
-    expect(severityOf(1)).toBe('normal');
-    expect(severityOf(0.21)).toBe('normal');
-    expect(severityOf(1 - 0.8)).toBe('warn');
-    expect(severityOf(0.01)).toBe('warn');
-    expect(severityOf(0)).toBe('danger');
+  it('warns at four fifths used and alarms at all of it', () => {
+    expect(severityOf(0)).toBe('normal');
+    expect(severityOf(0.79)).toBe('normal');
+    expect(severityOf(0.8)).toBe('warn');
+    expect(severityOf(0.99)).toBe('warn');
+    expect(severityOf(1)).toBe('danger');
+    expect(severityOf(1.4)).toBe('danger');
   });
 });
 
