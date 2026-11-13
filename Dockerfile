@@ -28,10 +28,16 @@ ARG VERSION=dev
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     GOWORK=off CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/oh-my-usaged ./cmd/oh-my-usaged
+# /data must belong to the nonroot user before a volume is mounted on it.
+RUN mkdir /out/data
 
-# Static binary on distroless, running as nonroot.
+# Static binary on distroless, running as nonroot. Dockerfile.release is the
+# same image around the binaries GoReleaser builds.
 FROM gcr.io/distroless/static-debian13:nonroot
+COPY --chown=65532:65532 --from=go /out/data /data
 COPY --from=go /out/oh-my-usaged /usr/local/bin/oh-my-usaged
+ENV OH_MY_USAGE_LISTEN=0.0.0.0:8080 \
+    OH_MY_USAGE_DB=/data/oh-my-usage.db
+VOLUME /data
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/oh-my-usaged"]
-CMD ["-listen", "0.0.0.0:8080"]

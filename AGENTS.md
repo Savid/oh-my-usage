@@ -23,6 +23,12 @@ make build WEB=1    # build the binary with the real UI embedded
   touched.
 - `make generate-check` compares generated code with git, so it fails until
   regenerated code is committed.
+- Releases: a `v*` tag runs `.github/workflows/release.yml`, which runs
+  GoReleaser: binaries for Linux and macOS (amd64, arm64) on the GitHub
+  release, and an image from `Dockerfile.release` on
+  `ghcr.io/savid/oh-my-usage`. `Dockerfile` builds the same image from
+  source; keep the two final stages alike. `goreleaser check` validates the
+  config (CI runs it).
 - Run Go through `make`. Run directly, Go needs `GOWORK=off` and a `web/dist`
   for `web/embed.go`: `make web-placeholder` creates a stub. Never commit
   `web/dist`.

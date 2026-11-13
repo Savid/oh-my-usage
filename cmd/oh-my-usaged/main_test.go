@@ -22,10 +22,28 @@ func TestParse(t *testing.T) {
 
 	for name, tc := range map[string]struct {
 		args    []string
+		env     map[string]string
 		want    options
 		wantErr string
 	}{
 		"defaults": {args: nil, want: defaults},
+		"listen and db from the environment": {
+			env: map[string]string{envListen: "0.0.0.0:8080", envDB: "/data/oh-my-usage.db"},
+			want: func() options {
+				o := defaults
+				o.listen, o.db = "0.0.0.0:8080", "/data/oh-my-usage.db"
+				return o
+			}(),
+		},
+		"a flag wins over its variable": {
+			args: []string{"-listen", ":9000"},
+			env:  map[string]string{envListen: "0.0.0.0:8080"},
+			want: func() options {
+				o := defaults
+				o.listen = ":9000"
+				return o
+			}(),
+		},
 		"everything set": {
 			args: []string{
 				"-listen", ":9000", "-log-format", "json", "-log-level", "debug", "-version",
@@ -53,7 +71,7 @@ func TestParse(t *testing.T) {
 
 			var stderr bytes.Buffer
 
-			got, err := parse(tc.args, &stderr)
+			got, err := parse(tc.args, env(tc.env), &stderr)
 
 			switch {
 			case tc.wantErr == "" && err != nil:

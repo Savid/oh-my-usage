@@ -40,6 +40,10 @@ const (
 	envGatewayToken = "OH_MY_USAGE_GATEWAY_TOKEN" //nolint:gosec // G101: a variable's name, not a credential
 	envBrokerURL    = "OH_MY_USAGE_BROKER_URL"
 	envBrokerToken  = "OH_MY_USAGE_BROKER_TOKEN" //nolint:gosec // G101: a variable's name, not a credential
+	// The listen address and the database have variables so a container image
+	// can set them and still take the rest as flags.
+	envListen = "OH_MY_USAGE_LISTEN"
+	envDB     = "OH_MY_USAGE_DB"
 )
 
 const (
@@ -79,12 +83,13 @@ type options struct {
 // errHelp is returned when -h or -help was given; usage has been printed.
 var errHelp = errors.New("help requested")
 
-func parse(args []string, stderr io.Writer) (options, error) {
+func parse(args []string, getenv func(string) string, stderr io.Writer) (options, error) {
 	o := options{logLevel: slog.LevelInfo}
 
 	fs := flag.NewFlagSet("oh-my-usaged", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fs.StringVar(&o.listen, "listen", "127.0.0.1:8080", "HTTP listen address")
+	fs.StringVar(&o.listen, "listen", firstNonEmpty(getenv(envListen), "127.0.0.1:8080"),
+		"HTTP listen address (or "+envListen+")")
 	fs.StringVar(&o.logFormat, "log-format", "text", "log format: text or json")
 	fs.TextVar(&o.logLevel, "log-level", o.logLevel, "log level: DEBUG, INFO, WARN or ERROR")
 	fs.BoolVar(&o.version, "version", false, "print the version and exit")
@@ -92,7 +97,8 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.gatewayTokenFile, "gateway-token-file", "", "file holding the gateway token (or set "+envGatewayToken+")")
 	fs.StringVar(&o.brokerURL, "broker-url", "", "omp auth broker URL; enables pausing accounts (or "+envBrokerURL+")")
 	fs.StringVar(&o.brokerTokenFile, "broker-token-file", "", "file holding the broker admin token (or set "+envBrokerToken+")")
-	fs.StringVar(&o.db, "db", "oh-my-usage.db", "SQLite file for the usage history")
+	fs.StringVar(&o.db, "db", firstNonEmpty(getenv(envDB), "oh-my-usage.db"),
+		"SQLite file for the usage history and the traffic record (or "+envDB+")")
 	fs.DurationVar(&o.pollInterval, "poll-interval", time.Minute, "time between polls of the gateway, at least 30s")
 	fs.DurationVar(&o.trafficInterval, "traffic-interval", 15*time.Second,
 		"time between readings of the broker's traffic, at least 5s")
@@ -190,7 +196,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 func run(args []string, getenv func(string) string, stdout, stderr io.Writer) error {
-	o, err := parse(args, stderr)
+	o, err := parse(args, getenv, stderr)
 	if errors.Is(err, errHelp) {
 		return nil
 	}
