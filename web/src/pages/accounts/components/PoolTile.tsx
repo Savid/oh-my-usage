@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import clsx from 'clsx';
 import { providerName, type LimitSeverity } from '@/lib/accounts';
 import { formatPercent, formatShort } from '@/lib/format';
+import { providerTone } from '@/lib/providerTones';
 import type { PoolTileProps } from './PoolTile.types';
 import { ProviderIcon } from './ProviderIcon';
 
@@ -9,18 +10,6 @@ const figureClasses: Record<LimitSeverity, string> = {
   normal: 'text-foreground',
   warn: 'text-warn',
   danger: 'text-danger',
-};
-
-const fillClasses: Record<LimitSeverity, string> = {
-  normal: 'fill-meter',
-  warn: 'fill-warn',
-  danger: 'fill-danger',
-};
-
-const trackClasses: Record<LimitSeverity, string> = {
-  normal: 'fill-meter-track',
-  warn: 'fill-warn-track',
-  danger: 'fill-danger-track',
 };
 
 // A word goes with the colour, so the state never rests on colour alone.
@@ -36,6 +25,7 @@ const severityWords: Record<LimitSeverity, string> = {
  */
 export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
   const { severity } = pool;
+  const tone = providerTone(pool.provider);
   const reset = pool.nextReset ? formatShort(Date.parse(pool.nextReset) - now) : undefined;
 
   return (
@@ -70,11 +60,11 @@ export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
         )}
       </div>
 
-      {/* The filled part is what is used. */}
+      {/* The filled part is what is used, in the provider's colour; the figure above carries the state. */}
       <div className="h-1.5 overflow-hidden rounded-sm">
         <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
-          <rect width="100" height="1" className={trackClasses[severity]} />
-          <rect width={pool.usedFraction * 100} height="1" className={fillClasses[severity]} />
+          <rect width="100" height="1" className={tone.track} />
+          <rect width={pool.usedFraction * 100} height="1" className={tone.fill} />
         </svg>
       </div>
     </article>

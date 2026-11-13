@@ -17,6 +17,9 @@ Every figure is quota **used**.
   then the account's name and when that window resets; its other windows are
   the small values on the right. A figure turns amber with a ▲ at four
   fifths used and red with a ■ at all of it.
+- **Colour**: a provider's mark, gauge and chart wear its own colour
+  (Anthropic orange, OpenAI green, OpenCode grey, OpenRouter lime), so colour
+  says whose usage it is and the figure says how bad it is.
 - **An account's page**: the same band, and a chart of every window over the
   last seven days, with a table of the same values.
 
@@ -45,17 +48,17 @@ build/bin/oh-my-usaged -gateway-url http://auth-gateway:4019 -broker-url http://
 
 ## Configuration
 
-| Flag | Environment | Default | |
-| --- | --- | --- | --- |
-| `-gateway-url` | `OH_MY_USAGE_GATEWAY_URL` | required | The omp auth gateway. |
-| `-gateway-token-file` | `OH_MY_USAGE_GATEWAY_TOKEN` | required | The gateway token: a file holding it, or the variable. |
-| `-broker-url` | `OH_MY_USAGE_BROKER_URL` | none | The omp auth broker. Setting it turns the pause control on. |
-| `-broker-token-file` | `OH_MY_USAGE_BROKER_TOKEN` | none | The broker admin token. |
-| `-listen` | | `127.0.0.1:8080` | HTTP listen address. |
-| `-db` | | `oh-my-usage.db` | SQLite file for the usage history. |
-| `-poll-interval` | | `1m` | Time between polls, at least `30s`. |
-| `-retention` | | `2160h` (90 days) | How long history is kept; `0` keeps it forever. |
-| `-log-format`, `-log-level` | | `text`, `INFO` | |
+| Flag                        | Environment                 | Default           |                                                             |
+| --------------------------- | --------------------------- | ----------------- | ----------------------------------------------------------- |
+| `-gateway-url`              | `OH_MY_USAGE_GATEWAY_URL`   | required          | The omp auth gateway.                                       |
+| `-gateway-token-file`       | `OH_MY_USAGE_GATEWAY_TOKEN` | required          | The gateway token: a file holding it, or the variable.      |
+| `-broker-url`               | `OH_MY_USAGE_BROKER_URL`    | none              | The omp auth broker. Setting it turns the pause control on. |
+| `-broker-token-file`        | `OH_MY_USAGE_BROKER_TOKEN`  | none              | The broker admin token.                                     |
+| `-listen`                   |                             | `127.0.0.1:8080`  | HTTP listen address.                                        |
+| `-db`                       |                             | `oh-my-usage.db`  | SQLite file for the usage history.                          |
+| `-poll-interval`            |                             | `1m`              | Time between polls, at least `30s`.                         |
+| `-retention`                |                             | `2160h` (90 days) | How long history is kept; `0` keeps it forever.             |
+| `-log-format`, `-log-level` |                             | `text`, `INFO`    |                                                             |
 
 A flag wins over its variable. Tokens are never taken as flag values, so they
 do not show in the process list.

@@ -71,14 +71,6 @@ export function AccountsPage(): JSX.Element {
               ))}
             </section>
           )}
-
-          <p className="px-1 text-micro text-muted">
-            Figures are quota used; each row is drawn over its last 7 days.
-            {list.gatewayVersion && ` omp ${list.gatewayVersion}.`}
-            {controls &&
-              list.accounts.length > 0 &&
-              ' A paused account is used last, not never: omp falls back to it when the others are blocked or spent.'}
-          </p>
         </>
       )}
     </section>

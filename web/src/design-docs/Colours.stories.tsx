@@ -5,6 +5,7 @@ import {
   CONTRAST_EXEMPT,
   CONTRAST_RULES,
   DATA_COLORS,
+  PROVIDER_COLORS,
   STATUS_COLORS,
   SURFACE_COLORS,
   TEXT_COLORS,
@@ -83,16 +84,29 @@ export const Data: Story = {
     <ColorSwatches
       tokens={DATA_COLORS}
       notes={{
-        meter: 'fill-meter: what is used in a gauge',
-        'meter-track': "fill-meter-track: the wash of a row's chart, and a gauge's empty part",
-        'meter-edge': 'stroke-meter-edge: the line along the top of that wash',
-        'warn-track': 'fill-warn-track: the wash when nearly all is used',
-        'warn-edge': 'stroke-warn-edge: its line',
-        'danger-track': 'fill-danger-track: the wash when all is used',
-        'danger-edge': 'stroke-danger-edge: its line',
+        meter: 'fill-meter: what is used, for a provider with no colour of its own',
+        'meter-track': "fill-meter-track: that gauge's empty part, and the glow under its chart",
         'series-1': 'text-series-1: the first chart series',
         'series-2': 'text-series-2: the second chart series',
         'series-3': 'text-series-3: the third and last chart series',
+      }}
+    />
+  ),
+};
+
+export const Providers: Story = {
+  render: () => (
+    <ColorSwatches
+      tokens={PROVIDER_COLORS}
+      notes={{
+        anthropic: "text-anthropic: Anthropic's mark, gauge and chart line",
+        'anthropic-track': "fill-anthropic-track: its gauge's empty part, and the glow under its chart",
+        openai: "text-openai: OpenAI's mark, gauge and chart line",
+        'openai-track': "fill-openai-track: its gauge's empty part, and the glow under its chart",
+        opencode: "text-opencode: OpenCode's mark, gauge and chart line",
+        'opencode-track': "fill-opencode-track: its gauge's empty part, and the glow under its chart",
+        openrouter: "text-openrouter: OpenRouter's mark, gauge and chart line",
+        'openrouter-track': "fill-openrouter-track: its gauge's empty part, and the glow under its chart",
       }}
     />
   ),

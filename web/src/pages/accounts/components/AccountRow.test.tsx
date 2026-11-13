@@ -99,7 +99,7 @@ describe('AccountRow', () => {
     const { container } = render(<AccountRow {...base} trends={[]} account={seatFixture} />);
 
     expect(screen.getByRole('article')).toHaveAttribute('data-chart', 'level');
-    // The row's own chart, not the provider's mark: a wash and no line.
+    // The row's own chart, not the provider's mark: a glow and no line.
     expect(container.querySelectorAll('article > svg path')).toHaveLength(1);
   });
 

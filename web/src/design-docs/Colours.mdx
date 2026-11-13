@@ -31,7 +31,7 @@ button, and reaches 3:1 on every surface.
 
 ## Accent
 
-The brand colour: links, the product name and selected text. `accent-foreground` is text on an accent fill. `focus`
+The brand colour, an indigo: links, the product name and selected text. `accent-foreground` is text on an accent fill. `focus`
 is the focus ring; it follows `accent`, and `src/styles/base.css` draws it outside every `:focus-visible` element.
 
 <Story of={Stories.Accent} />
@@ -44,9 +44,16 @@ The outcome of anything: `ok`, `warn`, `danger`. They are text colours (4.5:1) a
 
 ## Data
 
-Marks that draw data, used on a panel. An account's row is drawn over a chart of what it had used: a dim wash with
-a line along its top, in the lime family while there is room, then amber and red as it fills. The row's text sits on
-that wash, so it is checked against it. A gauge fills in `meter`, `warn` or `danger`.
+A provider's usage wears the provider's own colour: its mark, its gauge and the line of an account's chart. The
+state is carried by the figure instead, which turns amber and then red, each with a mark. An account's row is drawn
+over a chart of what it had used: a line with a glow under it that fades towards the foot of the row. The `-track`
+colours are the deepest that glow gets, and the row's text is checked against them. `src/lib/providerTones.ts` maps
+a provider to its classes; one with no colour of its own gets `meter`.
+
+<Story of={Stories.Providers} />
+
+The detail chart draws up to three series. Their colours stay apart for colour-blind readers, and none is a status
+or provider colour.
 
 <Story of={Stories.Data} />
 

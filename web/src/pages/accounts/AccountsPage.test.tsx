@@ -39,7 +39,6 @@ describe('AccountsPage', () => {
     const rows = within(screen.getByRole('region', { name: 'Every account' })).getAllByRole('article');
     expect(rows).toHaveLength(4);
     expect(rows[0]).toHaveAccessibleName('one@example.com');
-    expect(screen.getByText(/omp 18\.19\.0/)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -55,21 +54,19 @@ describe('AccountsPage', () => {
     expect(container.querySelectorAll('[data-chart="none"]')).toHaveLength(1);
   });
 
-  it('offers pause controls and explains them only when a broker is configured', async () => {
+  it('offers pause controls only when a broker is configured', async () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok);
     const { unmount } = renderPage(true);
 
     // Two of the four accounts are pausable and not paused; one is paused.
     expect(await screen.findAllByRole('button', { name: 'Pause' })).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
-    expect(screen.getByText(/A paused account is used last, not never/)).toBeInTheDocument();
 
     unmount();
     renderPage(false);
 
     expect(await screen.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText(/A paused account is used last/)).not.toBeInTheDocument();
   });
 
   it('says while it is loading', () => {
@@ -100,7 +97,6 @@ describe('AccountsPage', () => {
 
     expect(await screen.findByText('The gateway reports no accounts.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Totals' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/A paused account is used last/)).not.toBeInTheDocument();
   });
 
   it('falls back to current levels when the history cannot be read', async () => {

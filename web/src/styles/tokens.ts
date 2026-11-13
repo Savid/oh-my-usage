@@ -13,19 +13,21 @@ export const BORDER_COLORS = ['border', 'border-strong'] as const;
 export const TEXT_COLORS = ['foreground', 'muted'] as const;
 export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
 export const STATUS_COLORS = ['ok', 'warn', 'danger'] as const;
-/** Marks that draw data: meter fills and their tracks, chart series. */
-export const DATA_COLORS = [
-  'meter',
-  'meter-track',
-  'meter-edge',
-  'warn-track',
-  'warn-edge',
-  'danger-track',
-  'danger-edge',
-  'series-1',
-  'series-2',
-  'series-3',
+/** Marks that draw data with no provider's colour: the fallback gauge pair and the chart series. */
+export const DATA_COLORS = ['meter', 'meter-track', 'series-1', 'series-2', 'series-3'] as const;
+/** Each provider's colour, and the dim step under it. */
+export const PROVIDER_COLORS = [
+  'anthropic',
+  'anthropic-track',
+  'openai',
+  'openai-track',
+  'opencode',
+  'opencode-track',
+  'openrouter',
+  'openrouter-track',
 ] as const;
+
+const TRACK_COLORS = ['meter-track', 'anthropic-track', 'openai-track', 'opencode-track', 'openrouter-track'] as const;
 
 export const COLOR_TOKENS = [
   ...SURFACE_COLORS,
@@ -34,6 +36,7 @@ export const COLOR_TOKENS = [
   ...ACCENT_COLORS,
   ...STATUS_COLORS,
   ...DATA_COLORS,
+  ...PROVIDER_COLORS,
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
@@ -67,26 +70,14 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     minimum: 4.5,
   },
   {
-    name: "Text over the wash of a row's chart",
-    foregrounds: TEXT_COLORS,
-    backgrounds: ['meter-track', 'warn-track', 'danger-track'],
+    name: "Text and status figures over the glow of a row's chart",
+    foregrounds: [...TEXT_COLORS, 'warn', 'danger'],
+    backgrounds: TRACK_COLORS,
     minimum: 4.5,
   },
   {
-    name: 'A warning figure over its own wash',
-    foregrounds: ['warn'],
-    backgrounds: ['warn-track'],
-    minimum: 4.5,
-  },
-  {
-    name: 'A spent figure over its own wash',
-    foregrounds: ['danger'],
-    backgrounds: ['danger-track'],
-    minimum: 4.5,
-  },
-  {
-    name: 'Gauge fills and the first chart series on a panel',
-    foregrounds: ['meter', 'series-1'],
+    name: 'Gauge fills, chart lines and provider marks on a panel',
+    foregrounds: ['meter', 'series-1', 'anthropic', 'openai', 'opencode', 'openrouter'],
     backgrounds: ['surface', 'raised'],
     minimum: 3,
   },
@@ -95,9 +86,6 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
 /** Colours no contrast rule covers, and why none needs to. */
 export const CONTRAST_EXEMPT: Readonly<Partial<Record<ColorToken, string>>> = {
   border: 'separates; it identifies nothing you act on',
-  'meter-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
-  'warn-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
-  'danger-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
   'series-2': 'a chart line that is always named in a legend and listed in the table beside the chart',
   'series-3': 'a chart line that is always named in a legend and listed in the table beside the chart',
 };

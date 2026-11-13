@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useId, type JSX } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import clsx from 'clsx';
@@ -9,6 +9,7 @@ import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.t
 import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitSeverity } from '@/lib/accounts';
 import { formatPercent, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
+import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
 import type { AccountRowProps } from './AccountRow.types';
 import { ProviderIcon } from './ProviderIcon';
@@ -19,20 +20,6 @@ const STALE_MS = 15 * 60_000;
 // The chart's own units; it stretches to the whole row.
 const WIDTH = 100;
 const HEIGHT = 40;
-
-// The chart is the row's background: a wash with a line along its top, both
-// dim enough that the text over them stays readable.
-const washClasses: Record<LimitSeverity, string> = {
-  normal: 'fill-meter-track',
-  warn: 'fill-warn-track',
-  danger: 'fill-danger-track',
-};
-
-const edgeClasses: Record<LimitSeverity, string> = {
-  normal: 'stroke-meter-edge',
-  warn: 'stroke-warn-edge',
-  danger: 'stroke-danger-edge',
-};
 
 const figureClasses: Record<LimitSeverity, string> = {
   normal: 'text-foreground',
@@ -80,8 +67,8 @@ function about(account: Account, now: number): string {
 
 /**
  * The row's chart: how much of its main window the account had used over time.
- * With recorded usage it is a wash under a line, ending at the current value;
- * without, a level wash at the current value, which claims a level and no
+ * With recorded usage it is a glow under a line, ending at the current value;
+ * without, a level glow at the current value, which claims a level and no
  * history.
  */
 function chart(
@@ -119,7 +106,7 @@ function resetIn(limit: Limit, now: number): string | undefined {
 
 /**
  * One account as a band across the page, drawn over a chart of what it had
- * used. It leads with the big figure for its main usage window (the one that
+ * used, in its provider's colour. It leads with the big figure for its main usage window (the one that
  * resets last), then who it is and when that window resets. To the right, its
  * other windows as small values, whether it is taking traffic, and the pause
  * control when a broker is configured. Everything written sits on solid
@@ -127,6 +114,7 @@ function resetIn(limit: Limit, now: number): string | undefined {
  */
 export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
+  const glowId = useId();
   const pause = useMutation({
     ...setAccountPausedMutation(),
     // The answer is the account as the broker now reports it; the event
@@ -140,7 +128,9 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const headingId = `account-${account.id}`;
-  const { tone, label } = state(account, now);
+  const { tone: stateTone, label } = state(account, now);
+  // The chart wears the provider's colour; the figure carries the state.
+  const tone = providerTone(account.provider);
   const meta = about(account, now);
 
   const primary = primaryLimit(account.limits);
@@ -168,13 +158,21 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
     >
       {drawn && (
         <>
+          {/* A glow under a line, deepest under the line and fading towards the foot of
+              the row. Its stops take the text colour, which is how a gradient wears a token. */}
           <svg
             aria-hidden="true"
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             preserveAspectRatio="none"
             className="absolute inset-0 size-full"
           >
-            <path d={drawn.area} className={washClasses[severity]} />
+            <defs>
+              <linearGradient id={glowId} x1="0" y1="0" x2="0" y2="1" className={tone.glow}>
+                <stop offset="0" stopColor="currentColor" />
+                <stop offset="1" stopColor="currentColor" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+            <path d={drawn.area} fill={`url(#${glowId})`} />
             {drawn.line && (
               <path
                 d={drawn.line}
@@ -182,14 +180,14 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                 strokeWidth="1.5"
                 strokeLinejoin="round"
                 vectorEffect="non-scaling-stroke"
-                className={edgeClasses[severity]}
+                className={tone.line}
               />
             )}
           </svg>
           {/* Solid ground under the figure and the name; the chart shows through as it fades. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-65% to-transparent lg:w-176"
+            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-85% to-transparent lg:w-176 lg:via-65%"
           />
         </>
       )}
@@ -283,7 +281,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5 lg:ml-2">
             <span className="flex h-6 items-center rounded-sm border border-border bg-surface px-2">
-              <StatusBadge tone={tone}>{label}</StatusBadge>
+              <StatusBadge tone={stateTone}>{label}</StatusBadge>
             </span>
             {controls && account.pausable && (
               <button
