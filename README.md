@@ -82,15 +82,6 @@ Rules and layout are in [AGENTS.md](AGENTS.md) and
 [web/AGENTS.md](web/AGENTS.md). The screenshots are the `Showcase` stories.
 Built from [Savid/skeleton](https://github.com/Savid/skeleton).
 
-## Credits
-
-- [Geist Mono](https://vercel.com/font) (SIL Open Font License).
-- The logo is [oh-my-pi](https://github.com/can1357/oh-my-pi)'s mark (MIT),
-  its legs redrawn as usage meters.
-- Provider marks from [Simple Icons](https://simpleicons.org) (CC0) and
-  [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT), each its owner's
-  trademark, used only to name the provider.
-
 ## License
 
 [MIT](LICENSE)
