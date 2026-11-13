@@ -14,4 +14,5 @@ export {
   unreachableFixture,
 } from './accounts';
 export { configFixture, configHandlers } from './config';
+export { showcaseHandlers } from './showcase';
 export { quietTrafficFixture, staleTrafficFixture, trafficFixture, trafficHandlers } from './traffic';

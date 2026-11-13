@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
-import { accountsHandlers, configHandlers, trafficHandlers, trendsHandlers } from '@/test-utils/handlers';
+import { AppShell } from '@/components/Layout/AppShell';
+import {
+  accountsHandlers,
+  configHandlers,
+  showcaseHandlers,
+  trafficHandlers,
+  trendsHandlers,
+} from '@/test-utils/handlers';
 import { AccountsPage } from './AccountsPage';
 
 const meta = {
@@ -12,11 +19,15 @@ const meta = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok] },
   },
   decorators: [
-    Story => (
-      <div className="p-2 sm:p-3">
+    // The page as the app frames it; a story that draws the top bar brings its own frame.
+    (Story, { parameters }) =>
+      parameters.shell === true ? (
         <Story />
-      </div>
-    ),
+      ) : (
+        <div className="p-2 sm:p-3">
+          <Story />
+        </div>
+      ),
   ],
 } satisfies Meta<typeof AccountsPage>;
 
@@ -28,6 +39,27 @@ export const Default: Story = {
     const totals = await canvas.findByRole('region', { name: 'Totals' });
     await expect(within(totals).getByRole('article', { name: 'Anthropic 7 Day' })).toBeInTheDocument();
     await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
+  },
+};
+
+/**
+ * The homepage in full use, under the top bar: two Claude seats (one busy,
+ * one paused with its 5-hour window spent), a Codex seat, SuperGrok, OpenCode
+ * Go and an OpenRouter key, a week of history through each window's resets,
+ * and a week of traffic through the gateway. Times count from when it opens.
+ */
+export const Showcase: Story = {
+  parameters: { shell: true, msw: { handlers: showcaseHandlers } },
+  render: () => (
+    <AppShell name="oh-my-usage" traffic connection="live">
+      <AccountsPage />
+    </AppShell>
+  ),
+  play: async ({ canvas }) => {
+    const every = await canvas.findByRole('region', { name: 'Every account' });
+    await expect(within(every).getAllByRole('article')).toHaveLength(6);
+    await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
+    await expect(within(canvas.getByRole('navigation')).getByRole('link', { name: 'Traffic' })).toBeInTheDocument();
   },
 };
 
