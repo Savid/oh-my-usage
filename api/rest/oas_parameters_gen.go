@@ -154,6 +154,71 @@ func decodeGetAccountHistoryParams(args [1]string, argsEscaped bool, r *http.Req
 	return params, nil
 }
 
+// ListUsageTrendsParams is parameters of listUsageTrends operation.
+type ListUsageTrendsParams struct {
+	// Only samples at or after this time. Defaults to 7 days ago.
+	Since OptDateTime `json:",omitempty,omitzero"`
+}
+
+func unpackListUsageTrendsParams(packed middleware.Parameters) (params ListUsageTrendsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "since",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Since = v.(OptDateTime)
+		}
+	}
+	return params
+}
+
+func decodeListUsageTrendsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListUsageTrendsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: since.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "since",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotSinceVal time.Time
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToDateTime(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotSinceVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Since.SetTo(paramsDotSinceVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "since",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // SetAccountPausedParams is parameters of setAccountPaused operation.
 type SetAccountPausedParams struct {
 	// An account's `id`.

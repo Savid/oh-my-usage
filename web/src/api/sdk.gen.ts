@@ -19,6 +19,9 @@ import type {
   ListAccountsData,
   ListAccountsErrors,
   ListAccountsResponses,
+  ListUsageTrendsData,
+  ListUsageTrendsErrors,
+  ListUsageTrendsResponses,
   SetAccountPausedData,
   SetAccountPausedErrors,
   SetAccountPausedResponses,
@@ -31,6 +34,7 @@ import {
   zGetAccountHistoryResponse,
   zGetConfigResponse,
   zListAccountsResponse,
+  zListUsageTrendsResponse,
   zSetAccountPausedResponse,
   zStreamEventsResponse,
 } from './zod.gen';
@@ -110,6 +114,20 @@ export const getAccountHistory = <ThrowOnError extends boolean = false>(
   (options.client ?? client).get<GetAccountHistoryResponses, GetAccountHistoryErrors, ThrowOnError>({
     responseValidator: async data => await zGetAccountHistoryResponse.parseAsync(data),
     url: '/api/v1/accounts/{accountId}/history',
+    ...options,
+  });
+
+/**
+ * Read every account's usage, thinned for small charts
+ *
+ * The recorded usage of every limit of every account since `since`, thinned to about 60 points per limit: the time from the first sample in the period to now is cut into equal steps and each keeps its first sample. A limit with nothing recorded in the period is left out.
+ */
+export const listUsageTrends = <ThrowOnError extends boolean = false>(
+  options?: Options<ListUsageTrendsData, ThrowOnError>
+): RequestResult<ListUsageTrendsResponses, ListUsageTrendsErrors, ThrowOnError> =>
+  (options?.client ?? client).get<ListUsageTrendsResponses, ListUsageTrendsErrors, ThrowOnError>({
+    responseValidator: async data => await zListUsageTrendsResponse.parseAsync(data),
+    url: '/api/v1/trends',
     ...options,
   });
 

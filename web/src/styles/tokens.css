@@ -23,52 +23,72 @@
   /* The 4px step every spacing and sizing class multiplies. */
   --spacing: 0.25rem;
 
-  /* Colours: each a light-dark(light, dark) pair, resolved by the colour scheme above. */
-  --color-background: light-dark(#f6f7f9, #0b0d12);
-  --color-surface: light-dark(#ffffff, #13161e);
+  /* Where a layout changes: sm stacks become rows, lg puts a row's cells beside its name. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-lg: 64rem;
+
+  /* Colours: each a light-dark(light, dark) pair, resolved by the colour scheme above.
+   * Dark is the theme the app is drawn for: near-black, hairline borders, one lime accent. */
+  --color-background: light-dark(#f2f3ee, #090a09);
+  --color-surface: light-dark(#fbfcf8, #0f1110);
+  /* A step above the surface: a cell, a hovered row, a pressed control. */
+  --color-raised: light-dark(#eceee5, #161917);
   /* border separates; border-strong outlines a control. */
-  --color-border: light-dark(#dcdfe6, #262b36);
-  --color-border-strong: light-dark(#7b8394, #6e768a);
-  --color-foreground: light-dark(#161a22, #e6e8ee);
-  --color-muted: light-dark(#576072, #8b93a7);
-  /* The brand colour: links, the product name, selection, the focus ring. */
-  --color-accent: light-dark(#9a5800, #f5b83d);
+  --color-border: light-dark(#dcdfd3, #1f2421);
+  --color-border-strong: light-dark(#7c8472, #5d6860);
+  --color-foreground: light-dark(#141612, #e9ede9);
+  --color-muted: light-dark(#596151, #8d978f);
+  /* The brand colour: the product name, links, the selection, the focus ring, healthy usage. */
+  --color-accent: light-dark(#3d6010, #b8f34a);
   /* Text on an accent fill. */
-  --color-accent-foreground: light-dark(#ffffff, #0b0d12);
+  --color-accent-foreground: light-dark(#ffffff, #090a09);
   --color-focus: var(--color-accent);
-  --color-ok: light-dark(#15783a, #4ade80);
-  --color-warn: light-dark(#b54708, #fb923c);
-  --color-danger: light-dark(#be2a2a, #f87171);
-  /* Data marks. A meter's fill, and the unfilled track behind it: a lighter step
-   * of the fill's own colour, so its state reads across the whole bar. */
-  --color-meter: light-dark(#2a78d6, #3987e5);
-  --color-meter-track: light-dark(#d6e4f7, #1c2c45);
-  --color-warn-track: light-dark(#fbe3d2, #3d2414);
-  --color-danger-track: light-dark(#f8dada, #3f1b1b);
+  --color-ok: var(--color-accent);
+  --color-warn: light-dark(#964400, #f5a524);
+  --color-danger: light-dark(#b82020, #ff6b6b);
+  /* Data marks. meter fills a gauge. A row's chart is a wash (track) with a
+   * line along its top (edge), both dim steps of the same colour, so text
+   * laid over them stays readable and the row's state reads at a glance. */
+  --color-meter: var(--color-accent);
+  --color-meter-track: light-dark(#dde9c8, #18240c);
+  --color-meter-edge: light-dark(#a3c56c, #45661a);
+  --color-warn-track: light-dark(#f5e3c6, #2c1f09);
+  --color-warn-edge: light-dark(#dcb26a, #7a5514);
+  --color-danger-track: light-dark(#f6d8d8, #301414);
+  --color-danger-edge: light-dark(#e0a0a0, #7d3030);
   /* Chart series, in this fixed order; a series keeps its colour whatever else is drawn. */
-  --color-series-1: var(--color-meter);
+  --color-series-1: light-dark(#2a78d6, #3987e5);
   --color-series-2: light-dark(#eb6834, #d95926);
   --color-series-3: light-dark(#1baf7a, #199e70);
 
-  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  /* One family: a monospace, so figures line up and the page reads as an instrument. */
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Type sizes in rem, so browser zoom and font settings apply; each carries its line height. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1rem;
-  --text-body: 0.875rem;
+  --text-body: 0.8125rem;
   --text-body--line-height: 1.25rem;
-  --text-title: 1rem;
-  --text-title--line-height: 1.5rem;
-  --text-heading: 1.5rem;
-  --text-heading--line-height: 2rem;
+  --text-title: 0.9375rem;
+  --text-title--line-height: 1.375rem;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.75rem;
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
 
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
+  /* Letter spacing for small capitals: tracking-caps. */
+  --tracking-caps: 0.08em;
 
-  /* Content widths: max-w-narrow, max-w-page. */
-  --container-narrow: 48rem;
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.375rem;
+
+  /* Content widths: max-w-narrow, max-w-page, max-w-wide. */
+  --container-narrow: 40rem;
   --container-page: 56rem;
+  --container-wide: 68rem;
 }

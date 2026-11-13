@@ -3,7 +3,14 @@
 import { queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { getAccountHistory, getConfig, listAccounts, type Options, setAccountPaused } from '../sdk.gen';
+import {
+  getAccountHistory,
+  getConfig,
+  listAccounts,
+  listUsageTrends,
+  type Options,
+  setAccountPaused,
+} from '../sdk.gen';
 import type {
   GetAccountHistoryData,
   GetAccountHistoryError,
@@ -14,6 +21,9 @@ import type {
   ListAccountsData,
   ListAccountsError,
   ListAccountsResponse,
+  ListUsageTrendsData,
+  ListUsageTrendsError,
+  ListUsageTrendsResponse,
   SetAccountPausedData,
   SetAccountPausedError,
   SetAccountPausedResponse,
@@ -150,4 +160,31 @@ export const getAccountHistoryOptions = (options: Options<GetAccountHistoryData>
       return data;
     },
     queryKey: getAccountHistoryQueryKey(options),
+  });
+
+export const listUsageTrendsQueryKey = (options?: Options<ListUsageTrendsData>) =>
+  createQueryKey('listUsageTrends', options);
+
+/**
+ * Read every account's usage, thinned for small charts
+ *
+ * The recorded usage of every limit of every account since `since`, thinned to about 60 points per limit: the time from the first sample in the period to now is cut into equal steps and each keeps its first sample. A limit with nothing recorded in the period is left out.
+ */
+export const listUsageTrendsOptions = (options?: Options<ListUsageTrendsData>) =>
+  queryOptions<
+    ListUsageTrendsResponse,
+    ListUsageTrendsError,
+    ListUsageTrendsResponse,
+    ReturnType<typeof listUsageTrendsQueryKey>
+  >({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listUsageTrends({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listUsageTrendsQueryKey(options),
   });

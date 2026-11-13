@@ -9,5 +9,6 @@ const (
 	GetAccountHistoryOperation OperationName = "GetAccountHistory"
 	GetConfigOperation         OperationName = "GetConfig"
 	ListAccountsOperation      OperationName = "ListAccounts"
+	ListUsageTrendsOperation   OperationName = "ListUsageTrends"
 	SetAccountPausedOperation  OperationName = "SetAccountPaused"
 )

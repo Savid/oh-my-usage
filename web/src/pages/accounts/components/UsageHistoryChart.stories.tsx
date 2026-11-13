@@ -35,9 +35,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
+    await expect(canvas.getByRole('img', { name: 'Share left of each limit over time' })).toBeInTheDocument();
     // The readout above the plot; the table repeats the values.
-    await expect(within(canvas.getByRole('list')).getByText('76%')).toBeInTheDocument();
+    await expect(within(canvas.getByRole('list')).getByText('24%')).toBeInTheDocument();
   },
 };
 
@@ -66,14 +66,15 @@ export const Empty: Story = {
 export const SingleSample: Story = {
   args: { samples: [{ at: at(0), limitId: '7d', label: 'Claude 7 Day', usedFraction: 0.4 }] },
   play: async ({ canvas }) => {
-    await expect(within(canvas.getByRole('list')).getByText('40%')).toBeInTheDocument();
+    await expect(within(canvas.getByRole('list')).getByText('60%')).toBeInTheDocument();
   },
 };
 
-export const Overage: Story = {
+export const Spent: Story = {
   args: { samples: climb('credits', 'Monthly credits', 0.7, 0.05) },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('150%')).toBeInTheDocument();
+    // The last samples run over the limit: nothing left, never less.
+    await expect(within(canvas.getByRole('list')).getByText('0%')).toBeInTheDocument();
   },
 };
 

@@ -8,7 +8,7 @@ export const THEMES = ['light', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
 
 /** Where content sits, back to front. */
-export const SURFACE_COLORS = ['background', 'surface'] as const;
+export const SURFACE_COLORS = ['background', 'surface', 'raised'] as const;
 export const BORDER_COLORS = ['border', 'border-strong'] as const;
 export const TEXT_COLORS = ['foreground', 'muted'] as const;
 export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
@@ -17,8 +17,11 @@ export const STATUS_COLORS = ['ok', 'warn', 'danger'] as const;
 export const DATA_COLORS = [
   'meter',
   'meter-track',
+  'meter-edge',
   'warn-track',
+  'warn-edge',
   'danger-track',
+  'danger-edge',
   'series-1',
   'series-2',
   'series-3',
@@ -58,24 +61,43 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     minimum: 3,
   },
   {
-    name: 'Meter fills and chart series on a card',
-    foregrounds: ['meter', 'series-1', 'series-2'],
-    backgrounds: ['surface'],
-    minimum: 3,
-  },
-  {
     name: 'Text on an accent fill',
     foregrounds: ['accent-foreground'],
     backgrounds: ['accent'],
     minimum: 4.5,
+  },
+  {
+    name: "Text over the wash of a row's chart",
+    foregrounds: TEXT_COLORS,
+    backgrounds: ['meter-track', 'warn-track', 'danger-track'],
+    minimum: 4.5,
+  },
+  {
+    name: 'A warning figure over its own wash',
+    foregrounds: ['warn'],
+    backgrounds: ['warn-track'],
+    minimum: 4.5,
+  },
+  {
+    name: 'A spent figure over its own wash',
+    foregrounds: ['danger'],
+    backgrounds: ['danger-track'],
+    minimum: 4.5,
+  },
+  {
+    name: 'Gauge fills and the first chart series on a panel',
+    foregrounds: ['meter', 'series-1'],
+    backgrounds: ['surface', 'raised'],
+    minimum: 3,
   },
 ];
 
 /** Colours no contrast rule covers, and why none needs to. */
 export const CONTRAST_EXEMPT: Readonly<Partial<Record<ColorToken, string>>> = {
   border: 'separates; it identifies nothing you act on',
-  'meter-track': 'the unfilled part of a meter; the figure beside it carries the value',
-  'warn-track': 'the unfilled part of a meter; the figure beside it carries the value',
-  'danger-track': 'the unfilled part of a meter; the figure beside it carries the value',
+  'meter-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
+  'warn-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
+  'danger-edge': "the top of a row's chart, behind its text; the figures on the row carry the values",
+  'series-2': 'a chart line that is always named in a legend and listed in the table beside the chart',
   'series-3': 'a chart line that is always named in a legend and listed in the table beside the chart',
 };

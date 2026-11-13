@@ -232,3 +232,54 @@ func TestGetAccountHistory(t *testing.T) {
 		t.Errorf("store failure = %d %s; want a 500 that hides the cause", failed.Code, failed.Body.String())
 	}
 }
+
+func TestListUsageTrends(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t)
+	h := srv.Handler()
+
+	rec := get(t, h, http.MethodGet, "/api/v1/trends")
+
+	var list rest.UsageTrendList
+	if err := list.UnmarshalJSON(rec.Body.Bytes()); err != nil {
+		t.Fatalf("%d %s: %v", rec.Code, rec.Body.String(), err)
+	}
+
+	if rec.Code != http.StatusOK || len(list.Trends) != 2 {
+		t.Fatalf("= %d %+v", rec.Code, list)
+	}
+
+	week := list.Trends[0]
+	if week.AccountId != seatID || week.LimitId != "anthropic:7d" || len(week.Points) != 2 || week.Points[1].UsedFraction != 0.76 {
+		t.Errorf("trend = %+v", week)
+	}
+
+	if !strings.Contains(rec.Body.String(), `"at":"2026-09-26T11:00:00Z"`) {
+		t.Errorf("point time is not in UTC: %s", rec.Body.String())
+	}
+
+	// Seven days up to now by default, thinned to a fixed number of steps.
+	if !srv.history.since.Equal(testNow.Add(-7*24*time.Hour)) || !srv.history.until.Equal(testNow) || srv.history.steps != 60 {
+		t.Errorf("read %v to %v in %d steps", srv.history.since, srv.history.until, srv.history.steps)
+	}
+
+	get(t, h, http.MethodGet, "/api/v1/trends?since=2026-09-25T12:00:00Z")
+
+	if want := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC); !srv.history.since.Equal(want) {
+		t.Errorf("since = %v, want %v", srv.history.since, want)
+	}
+
+	srv.history.trends = nil
+
+	empty := get(t, h, http.MethodGet, "/api/v1/trends")
+	if empty.Code != http.StatusOK || strings.TrimSpace(empty.Body.String()) != `{"trends":[]}` {
+		t.Errorf("no trends = %d %s", empty.Code, empty.Body.String())
+	}
+
+	srv.history.err = errBoom
+
+	if failed := get(t, h, http.MethodGet, "/api/v1/trends"); failed.Code != http.StatusInternalServerError {
+		t.Errorf("store failure = %d", failed.Code)
+	}
+}

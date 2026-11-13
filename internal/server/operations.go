@@ -11,8 +11,12 @@ import (
 	"github.com/savid/oh-my-usage/internal/monitor"
 )
 
-// defaultHistory is how far back getAccountHistory reads without `since`.
+// defaultHistory is how far back the history operations read without `since`.
 const defaultHistory = 7 * 24 * time.Hour
+
+// trendSteps is how many points listUsageTrends keeps per limit: enough for
+// a chart a couple of hundred pixels wide.
+const trendSteps = 60
 
 // operations implements the ogen-generated operations. Adding an operation
 // to api/openapi.yaml and running `make generate` fails the build until its
@@ -101,6 +105,35 @@ func (a *operations) GetAccountHistory(
 		}
 
 		out.Samples = append(out.Samples, sample)
+	}
+
+	return out, nil
+}
+
+func (a *operations) ListUsageTrends(
+	ctx context.Context, params rest.ListUsageTrendsParams,
+) (*rest.UsageTrendList, error) {
+	now := a.now()
+
+	since := now.Add(-defaultHistory)
+	if v, ok := params.Since.Get(); ok {
+		since = v
+	}
+
+	trends, err := a.history.Trends(ctx, since, now, trendSteps)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &rest.UsageTrendList{Trends: make([]rest.UsageTrend, 0, len(trends))}
+
+	for _, t := range trends {
+		trend := rest.UsageTrend{AccountId: t.AccountID, LimitId: t.LimitID, Points: make([]rest.TrendPoint, 0, len(t.Points))}
+		for _, p := range t.Points {
+			trend.Points = append(trend.Points, rest.TrendPoint{At: p.At.UTC(), UsedFraction: p.UsedFraction})
+		}
+
+		out.Trends = append(out.Trends, trend)
 	}
 
 	return out, nil

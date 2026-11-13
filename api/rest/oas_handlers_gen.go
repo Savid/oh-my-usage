@@ -284,6 +284,103 @@ func (s *Server) handleListAccountsRequest(args [0]string, argsEscaped bool, w h
 	}
 }
 
+// handleListUsageTrendsRequest handles listUsageTrends operation.
+//
+// The recorded usage of every limit of every account since `since`, thinned to about 60 points per
+// limit: the time from the first sample in the period to now is cut into equal steps and each keeps
+// its first sample. A limit with nothing recorded in the period is left out.
+//
+// GET /api/v1/trends
+func (s *Server) handleListUsageTrendsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: ListUsageTrendsOperation,
+			ID:   "listUsageTrends",
+		}
+	)
+	params, err := decodeListUsageTrendsParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response *UsageTrendList
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    ListUsageTrendsOperation,
+			OperationSummary: "Read every account's usage, thinned for small charts",
+			OperationID:      "listUsageTrends",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "since",
+					In:   "query",
+				}: params.Since,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = ListUsageTrendsParams
+			Response = *UsageTrendList
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackListUsageTrendsParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.ListUsageTrends(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.ListUsageTrends(ctx, params)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeListUsageTrendsResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleSetAccountPausedRequest handles setAccountPaused operation.
 //
 // A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it

@@ -201,6 +201,83 @@ func (s *Store) History(ctx context.Context, accountID string, since time.Time) 
 	return samples, nil
 }
 
+// Trend is one limit of one account over time, oldest first.
+type Trend struct {
+	AccountID string
+	LimitID   string
+	Points    []TrendPoint
+}
+
+// TrendPoint is a limit's used share at a moment.
+type TrendPoint struct {
+	At           time.Time
+	UsedFraction float64
+}
+
+// Trends returns every limit's samples from since to until, thinned for a
+// small chart: the time from the first sample in that period to until is cut
+// into equal steps and each keeps its first sample, so a chart starts where
+// the history does. Starting at the first sample also keeps a short history
+// from collapsing into one step of a long period.
+func (s *Store) Trends(ctx context.Context, since, until time.Time, steps int) ([]Trend, error) {
+	var first sql.NullInt64
+
+	err := s.db.QueryRowContext(ctx,
+		"SELECT MIN(recorded_at) FROM usage_samples WHERE recorded_at >= ? AND recorded_at <= ?",
+		since.UnixMilli(), until.UnixMilli()).Scan(&first)
+	if err != nil {
+		return nil, fmt.Errorf("query trends: %w", err)
+	}
+
+	if !first.Valid {
+		return []Trend{}, nil
+	}
+
+	start := first.Int64
+	width := max(1, (until.UnixMilli()-start)/int64(max(1, steps))+1)
+
+	// With one MIN() in the list, SQLite takes the other columns from the row
+	// that holds the minimum: here, each step's first sample.
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT account_id, limit_id, MIN(recorded_at), used_fraction
+		FROM usage_samples
+		WHERE recorded_at >= ? AND recorded_at <= ?
+		GROUP BY account_id, limit_id, (recorded_at - ?) / ?
+		ORDER BY account_id, limit_id, 3`, start, until.UnixMilli(), start, width)
+	if err != nil {
+		return nil, fmt.Errorf("query trends: %w", err)
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	trends := []Trend{}
+
+	for rows.Next() {
+		var (
+			accountID, limitID string
+			recordedAt         int64
+			used               float64
+		)
+
+		if err = rows.Scan(&accountID, &limitID, &recordedAt, &used); err != nil {
+			return nil, fmt.Errorf("scan trend: %w", err)
+		}
+
+		if n := len(trends); n == 0 || trends[n-1].AccountID != accountID || trends[n-1].LimitID != limitID {
+			trends = append(trends, Trend{AccountID: accountID, LimitID: limitID})
+		}
+
+		last := &trends[len(trends)-1]
+		last.Points = append(last.Points, TrendPoint{At: time.UnixMilli(recordedAt).UTC(), UsedFraction: used})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("read trends: %w", err)
+	}
+
+	return trends, nil
+}
+
 // Prune deletes samples older than before and reports how many.
 func (s *Store) Prune(ctx context.Context, before time.Time) (int64, error) {
 	res, err := s.db.ExecContext(ctx, "DELETE FROM usage_samples WHERE recorded_at < ?", before.UnixMilli())

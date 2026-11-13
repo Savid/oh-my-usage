@@ -2,8 +2,24 @@
 
 A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway.
 `oh-my-usaged` is one static binary: it polls the gateway, serves a web UI
-that lists every account with its usage limits, keeps a usage history in
+that shows how much quota is left and when it resets, keeps a usage history in
 SQLite, and can pause an account when it is also given the broker.
+
+## What you see
+
+Every figure is quota **left**, not used.
+
+- **Totals**, one per provider: how much of its main usage window is left
+  across all its accounts, and how long until the next reset. The main window
+  is the one that resets last: a week rather than five hours.
+- **Accounts**, one band each, drawn over the last seven days of what the
+  account had left. The large figure is its main window; its other windows are
+  the small values beside it. A figure turns amber with a ▲ at a fifth left
+  and red with a ■ at nothing.
+- **An account's page**: the same band, and a chart of every window over the
+  last seven days, with a table of the same values.
+
+The layout is one column on a phone and fills the width of a desktop.
 
 ## Quick start
 
@@ -100,9 +116,21 @@ Where things live:
 - `internal/store/`: the SQLite usage history.
 - `internal/server/`, `internal/ui/`: the API, the event stream and the
   embedded UI.
-- `web/src/pages/accounts/`: the accounts list and the account page.
+- `web/src/pages/accounts/`: the accounts page and the account page.
+- `web/src/lib/`: what the pages work out: totals (`pools.ts`), an account's
+  main window (`accounts.ts`), chart paths (`sparkline.ts`), provider marks
+  (`providerMarks.ts`).
+- `web/src/styles/tokens.css`: the theme. Dark is the one it is drawn for.
 
 Built from [Savid/skeleton](https://github.com/Savid/skeleton).
+
+## Credits
+
+- The typeface is [Geist Mono](https://vercel.com/font) (SIL Open Font
+  License), shipped in the binary.
+- Provider marks are from [Simple Icons](https://simpleicons.org) (CC0) and
+  [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT). Each is its
+  owner's trademark, used only to name the provider.
 
 ## License
 

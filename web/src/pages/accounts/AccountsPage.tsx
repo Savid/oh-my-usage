@@ -1,64 +1,84 @@
 import type { JSX } from 'react';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
-import { groupByProvider, providerName } from '@/lib/accounts';
-import { AccountCard } from './components/AccountCard';
+import { headlinePools, poolLimits } from '@/lib/pools';
+import { AccountRow } from './components/AccountRow';
+import { PoolTile } from './components/PoolTile';
 import { SourceAlerts } from './components/SourceAlerts';
 import { useAccounts } from './hooks/useAccounts';
+import { useCharts } from './hooks/useCharts';
 
-/** Every account the gateway serves, grouped by provider, with its usage. */
+/**
+ * The whole fleet on one screen. First, for each provider, how much of its
+ * main usage window is left in total and when it resets; then every account
+ * on a line of its own, drawn over the last seven days of what it had left.
+ */
 export function AccountsPage(): JSX.Element {
   const now = useNow();
   const config = useConfig();
   const accounts = useAccounts();
+  const charts = useCharts(now);
   const controls = config.data?.controls ?? false;
+  const list = accounts.data;
+  const pools = list ? headlinePools(poolLimits(list.accounts, now)) : [];
 
   return (
-    <section className="mx-auto flex max-w-page flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-heading font-semibold">Accounts</h1>
-        {accounts.data?.gatewayVersion && (
-          <p className="text-caption text-muted">omp gateway {accounts.data.gatewayVersion}</p>
-        )}
-      </div>
+    <section className="flex flex-col gap-2">
+      <h1 className="sr-only">Accounts</h1>
 
       {accounts.isPending ? (
-        <p role="status" className="text-body text-muted">
+        <p role="status" className="px-1 text-caption text-muted">
           Loading the accounts…
         </p>
-      ) : !accounts.data ? (
-        <p role="alert" className="text-body text-danger">
+      ) : !list ? (
+        <p role="alert" className="px-1 text-caption text-danger">
           Could not reach oh-my-usage.
         </p>
       ) : (
         <>
-          <SourceAlerts list={accounts.data} stale={accounts.isError} now={now} />
-
-          {accounts.data.accounts.length === 0 ? (
-            <p className="text-body text-muted">The gateway reports no accounts.</p>
-          ) : (
-            groupByProvider(accounts.data.accounts).map(group => (
-              <section
-                key={group.provider}
-                aria-labelledby={`provider-${group.provider}`}
-                className="flex flex-col gap-3"
-              >
-                <h2 id={`provider-${group.provider}`} className="text-title font-semibold">
-                  {providerName(group.provider)}
-                </h2>
-                {group.accounts.map(account => (
-                  <AccountCard key={account.id} account={account} now={now} controls={controls} />
-                ))}
-              </section>
-            ))
-          )}
-
-          {controls && accounts.data.accounts.length > 0 && (
-            <p className="text-caption text-muted">
-              A paused account is used last, not never: omp still falls back to it when every other account of its
-              provider is blocked or out of quota.
+          <SourceAlerts list={list} stale={accounts.isError} now={now} />
+          {charts.failed && (
+            <p role="alert" className="px-1 text-caption text-danger">
+              Could not load the usage history. The rows show current levels only.
             </p>
           )}
+
+          {pools.length > 0 && (
+            <section aria-label="Totals" className="flex flex-wrap gap-2">
+              {pools.map(pool => (
+                <PoolTile key={pool.provider} pool={pool} now={now} />
+              ))}
+            </section>
+          )}
+
+          {list.accounts.length === 0 ? (
+            <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>
+          ) : (
+            <section
+              aria-label="Every account"
+              className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface"
+            >
+              {list.accounts.map(account => (
+                <AccountRow
+                  key={account.id}
+                  account={account}
+                  trends={charts.trends}
+                  start={charts.since}
+                  now={now}
+                  controls={controls}
+                  headingLevel={2}
+                />
+              ))}
+            </section>
+          )}
+
+          <p className="px-1 text-micro text-muted">
+            Figures are quota left; each row is drawn over its last 7 days.
+            {list.gatewayVersion && ` omp ${list.gatewayVersion}.`}
+            {controls &&
+              list.accounts.length > 0 &&
+              ' A paused account is used last, not never: omp falls back to it when the others are blocked or spent.'}
+          </p>
         </>
       )}
     </section>

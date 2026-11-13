@@ -9,7 +9,7 @@ interface BlockProps {
 /** The frame every Foundations block renders in, on the page background of the toolbar's theme. */
 export function Block({ children, className }: BlockProps): JSX.Element {
   return (
-    <div className={clsx('my-6 rounded-md bg-background p-4 font-sans text-body text-foreground', className)}>
+    <div className={clsx('my-6 rounded-md bg-background p-4 font-mono text-body text-foreground', className)}>
       {children}
     </div>
   );

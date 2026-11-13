@@ -151,6 +151,24 @@ export type UsageSample = {
   resetsAt?: string;
 };
 
+export type UsageTrendList = {
+  trends: Array<UsageTrend>;
+};
+
+/**
+ * One limit of one account over time, oldest first.
+ */
+export type UsageTrend = {
+  accountId: string;
+  limitId: string;
+  points: Array<TrendPoint>;
+};
+
+export type TrendPoint = {
+  at: string;
+  usedFraction: number;
+};
+
 /**
  * RFC 9457 problem details.
  */
@@ -281,6 +299,36 @@ export type GetAccountHistoryResponses = {
 };
 
 export type GetAccountHistoryResponse = GetAccountHistoryResponses[keyof GetAccountHistoryResponses];
+
+export type ListUsageTrendsData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Only samples at or after this time. Defaults to 7 days ago.
+     */
+    since?: string;
+  };
+  url: '/api/v1/trends';
+};
+
+export type ListUsageTrendsErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type ListUsageTrendsError = ListUsageTrendsErrors[keyof ListUsageTrendsErrors];
+
+export type ListUsageTrendsResponses = {
+  /**
+   * One trend per limit that has samples.
+   */
+  200: UsageTrendList;
+};
+
+export type ListUsageTrendsResponse = ListUsageTrendsResponses[keyof ListUsageTrendsResponses];
 
 export type StreamEventsData = {
   body?: never;

@@ -18,6 +18,17 @@ export function formatUntil(iso: string, now: number): string {
   return formatDuration(Date.parse(iso) - now);
 }
 
+/** A length of time in letters, for tight spaces: "45s", "12m", "4h", "1d 8h", "5d". */
+export function formatShort(ms: number): string {
+  const seconds = Math.max(0, ms / 1000);
+  if (seconds < 90) return `${Math.round(seconds)}s`;
+  if (seconds < 5400) return `${Math.round(seconds / 60)}m`;
+
+  const hours = Math.round(seconds / 3600);
+  if (hours < 24) return `${hours}h`;
+  return hours % 24 === 0 ? `${hours / 24}d` : `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
 /** A share as a whole percent: 0.756 is "76%". Overage stays above 100%. */
 export function formatPercent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`;

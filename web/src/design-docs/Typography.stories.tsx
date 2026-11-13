@@ -12,11 +12,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Families: Story = {
   render: () => (
-    <TokenTable
-      namespace="font"
-      usage={name => `font-${name}`}
-      notes={{ sans: 'the default, set on body', mono: 'ids, versions, times, code' }}
-    />
+    <TokenTable namespace="font" usage={name => `font-${name}`} notes={{ mono: 'everything; set on body' }} />
   ),
 };
 
@@ -30,10 +26,12 @@ export const Sizes: Story = {
       namespace="text"
       usage={name => `text-${name}`}
       notes={{
-        caption: 'labels over values, badges',
+        micro: 'small capitals: cell labels, badges, section names',
+        caption: 'secondary lines and notes',
         body: 'running text and controls (the page default)',
-        title: 'card titles',
-        heading: 'the page heading (one per page)',
+        title: 'the page heading, and the figure in a cell',
+        heading: "error and not-found pages, and a total's figure",
+        display: "the figure an account's row leads with",
       }}
     />
   ),
@@ -41,6 +39,20 @@ export const Sizes: Story = {
 
 export const Weights: Story = {
   render: () => (
-    <TokenTable namespace="font-weight" usage={name => `font-${name}`} notes={{ semibold: 'titles and headings' }} />
+    <TokenTable
+      namespace="font-weight"
+      usage={name => `font-${name}`}
+      notes={{ medium: 'names in a row', semibold: 'headings and figures' }}
+    />
+  ),
+};
+
+export const Tracking: Story = {
+  render: () => (
+    <TokenTable
+      namespace="tracking"
+      usage={name => `tracking-${name}`}
+      notes={{ caps: 'with uppercase, on text-micro labels' }}
+    />
   ),
 };

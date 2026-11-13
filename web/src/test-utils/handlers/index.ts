@@ -9,6 +9,8 @@ export {
   pauseHandlers,
   seatFixture,
   strayFixture,
+  trendsFixture,
+  trendsHandlers,
   unreachableFixture,
 } from './accounts';
 export { configFixture, configHandlers } from './config';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAge, formatDateTime, formatPercent, formatUntil } from './format';
+import { formatAge, formatDateTime, formatPercent, formatShort, formatUntil } from './format';
 
 const now = Date.parse('2026-09-26T12:00:00Z');
 
@@ -27,6 +27,18 @@ describe('formatUntil', () => {
 
   it('stops at zero once the time has passed', () => {
     expect(formatUntil('2026-09-26T11:00:00Z', now)).toBe('0.0 s');
+  });
+});
+
+describe('formatShort', () => {
+  it('uses one letter per unit and never goes negative', () => {
+    expect(formatShort(45_000)).toBe('45s');
+    expect(formatShort(12 * 60_000)).toBe('12m');
+    expect(formatShort(4 * 3_600_000)).toBe('4h');
+    expect(formatShort(23.4 * 3_600_000)).toBe('23h');
+    expect(formatShort(32 * 3_600_000)).toBe('1d 8h');
+    expect(formatShort(5 * 86_400_000)).toBe('5d');
+    expect(formatShort(-1000)).toBe('0s');
   });
 });
 

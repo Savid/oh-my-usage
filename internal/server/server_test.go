@@ -41,6 +41,11 @@ func newTestServer(t *testing.T) *testServer {
 				Label: "Claude 7 Day", UsedFraction: 0.7, Status: "ok", ResetsAt: testNow.Add(21 * time.Hour),
 			},
 			{AccountID: seatID, LimitID: "anthropic:5h", At: testNow, Label: "Claude 5 Hour", UsedFraction: 1.2},
+		}, trends: []store.Trend{
+			{AccountID: seatID, LimitID: "anthropic:7d", Points: []store.TrendPoint{
+				{At: testNow.Add(-time.Hour), UsedFraction: 0.7}, {At: testNow, UsedFraction: 0.76},
+			}},
+			{AccountID: strayID, LimitID: "weekly", Points: []store.TrendPoint{{At: testNow, UsedFraction: 0}}},
 		}},
 	}
 

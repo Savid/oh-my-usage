@@ -1028,6 +1028,32 @@ func (s *SourceStatus) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
+// Ref: #/components/schemas/TrendPoint
+type TrendPoint struct {
+	At           time.Time `json:"at"`
+	UsedFraction float64   `json:"usedFraction"`
+}
+
+// GetAt returns the value of At.
+func (s *TrendPoint) GetAt() time.Time {
+	return s.At
+}
+
+// GetUsedFraction returns the value of UsedFraction.
+func (s *TrendPoint) GetUsedFraction() float64 {
+	return s.UsedFraction
+}
+
+// SetAt sets the value of At.
+func (s *TrendPoint) SetAt(val time.Time) {
+	s.At = val
+}
+
+// SetUsedFraction sets the value of UsedFraction.
+func (s *TrendPoint) SetUsedFraction(val float64) {
+	s.UsedFraction = val
+}
+
 // Ref: #/components/schemas/UsageHistory
 type UsageHistory struct {
 	Samples []UsageSample `json:"samples"`
@@ -1101,4 +1127,57 @@ func (s *UsageSample) SetUsedFraction(val float64) {
 // SetResetsAt sets the value of ResetsAt.
 func (s *UsageSample) SetResetsAt(val OptDateTime) {
 	s.ResetsAt = val
+}
+
+// One limit of one account over time, oldest first.
+// Ref: #/components/schemas/UsageTrend
+type UsageTrend struct {
+	AccountId string       `json:"accountId"`
+	LimitId   string       `json:"limitId"`
+	Points    []TrendPoint `json:"points"`
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *UsageTrend) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetLimitId returns the value of LimitId.
+func (s *UsageTrend) GetLimitId() string {
+	return s.LimitId
+}
+
+// GetPoints returns the value of Points.
+func (s *UsageTrend) GetPoints() []TrendPoint {
+	return s.Points
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *UsageTrend) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetLimitId sets the value of LimitId.
+func (s *UsageTrend) SetLimitId(val string) {
+	s.LimitId = val
+}
+
+// SetPoints sets the value of Points.
+func (s *UsageTrend) SetPoints(val []TrendPoint) {
+	s.Points = val
+}
+
+// Ref: #/components/schemas/UsageTrendList
+type UsageTrendList struct {
+	Trends []UsageTrend `json:"trends"`
+}
+
+// GetTrends returns the value of Trends.
+func (s *UsageTrendList) GetTrends() []UsageTrend {
+	return s.Trends
+}
+
+// SetTrends sets the value of Trends.
+func (s *UsageTrendList) SetTrends(val []UsageTrend) {
+	s.Trends = val
 }

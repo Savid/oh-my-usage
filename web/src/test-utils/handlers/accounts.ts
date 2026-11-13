@@ -1,5 +1,5 @@
 import { delay, http, HttpResponse } from 'msw';
-import type { Account, AccountList, PauseRequest, UsageHistory, UsageSample } from '@/api';
+import type { Account, AccountList, PauseRequest, UsageHistory, UsageSample, UsageTrendList } from '@/api';
 import { at } from '@/test-utils/time';
 
 const HOUR = 3_600_000;
@@ -105,7 +105,37 @@ export const neverReachedFixture: AccountList = {
   gateway: { reachable: false, error: 'GET /v1/usage: connection refused' },
 };
 
+/** A limit's thinned history over the last week: `steps` points climbing from `from` by `perStep`. */
+function trend(
+  accountId: string,
+  limitId: string,
+  from: number,
+  perStep: number,
+  steps = 28
+): UsageTrendList['trends'][number] {
+  return {
+    accountId,
+    limitId,
+    points: Array.from({ length: steps }, (_, step) => ({
+      at: at((step - steps) * 6 * HOUR),
+      usedFraction: Math.round((from + step * perStep) * 100) / 100,
+    })),
+  };
+}
+
+/** Recorded usage for the accounts that report any; the API key has none. */
+export const trendsFixture: UsageTrendList = {
+  trends: [
+    trend(seatFixture.id, 'anthropic:7d', 0.06, 0.025),
+    trend(seatFixture.id, 'anthropic:7d:fable', 0.2, 0.026),
+    trend(pausedSeatFixture.id, 'anthropic:5h', 0.1, 0.033),
+    trend(pausedSeatFixture.id, 'anthropic:7d', 0.02, 0.006),
+    trend(strayFixture.id, 'codex:7d', 0.3, 0.013),
+  ],
+};
+
 const LIST = '/api/v1/accounts';
+const TRENDS = '/api/v1/trends';
 const PAUSE = '/api/v1/accounts/:accountId/pause';
 const HISTORY = '/api/v1/accounts/:accountId/history';
 
@@ -123,6 +153,17 @@ export const accountsHandlers = {
   pending: http.get(LIST, async () => {
     await delay('infinite');
     return HttpResponse.json(accountsFixture);
+  }),
+};
+
+/** MSW handlers for GET /api/v1/trends. */
+export const trendsHandlers = {
+  ok: http.get(TRENDS, () => HttpResponse.json(trendsFixture)),
+  empty: http.get(TRENDS, () => HttpResponse.json({ trends: [] } satisfies UsageTrendList)),
+  down: http.get(TRENDS, () => new HttpResponse(null, { status: 502 })),
+  pending: http.get(TRENDS, async () => {
+    await delay('infinite');
+    return HttpResponse.json(trendsFixture);
   }),
 };
 

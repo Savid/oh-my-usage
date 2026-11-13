@@ -86,6 +86,24 @@ export const zUsageHistory = z.object({
   samples: z.array(zUsageSample),
 });
 
+export const zTrendPoint = z.object({
+  at: z.iso.datetime(),
+  usedFraction: z.number().check(z.gte(0)),
+});
+
+/**
+ * One limit of one account over time, oldest first.
+ */
+export const zUsageTrend = z.object({
+  accountId: z.string(),
+  limitId: z.string(),
+  points: z.array(zTrendPoint),
+});
+
+export const zUsageTrendList = z.object({
+  trends: z.array(zUsageTrend),
+});
+
 /**
  * RFC 9457 problem details.
  */
@@ -135,6 +153,15 @@ export const zGetAccountHistoryQuery = z.object({
  * The samples.
  */
 export const zGetAccountHistoryResponse = zUsageHistory;
+
+export const zListUsageTrendsQuery = z.object({
+  since: z.optional(z.iso.datetime()),
+});
+
+/**
+ * One trend per limit that has samples.
+ */
+export const zListUsageTrendsResponse = zUsageTrendList;
 
 /**
  * Server-sent `accounts` events.

@@ -8,7 +8,17 @@ describe('StatusBadge', () => {
 
     const badge = screen.getByText('online');
     expect(badge).toHaveAttribute('data-tone', 'ok');
-    expect(badge).toHaveClass('text-ok');
+    // All is well: the dot carries the tone and the word stays quiet.
+    expect(badge).toHaveClass('text-muted');
+    expect(badge.querySelector('svg')).toHaveClass('text-ok');
+  });
+
+  it('colours the word too when something needs attention', () => {
+    render(<StatusBadge tone="danger">failed</StatusBadge>);
+
+    const badge = screen.getByText('failed');
+    expect(badge).toHaveClass('text-danger');
+    expect(badge.querySelector('svg')).toHaveClass('text-danger');
   });
 
   it('defaults to neutral', () => {

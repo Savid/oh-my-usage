@@ -17,9 +17,9 @@ export function AppShell({ name, connection, children }: AppShellProps): JSX.Ele
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex items-center gap-6 border-b border-border bg-surface px-6 py-3">
-        <span className="font-mono text-body font-semibold text-accent">{name ?? '\u00a0'}</span>
-        <nav className="flex flex-1 gap-4 text-body">
+      <header className="flex h-10 items-center gap-4 border-b border-border bg-surface px-3">
+        <span className="text-body font-semibold text-accent">{name ?? '\u00a0'}</span>
+        <nav className="flex flex-1 gap-4 text-caption">
           <Link
             to="/"
             activeProps={{ className: 'text-foreground underline underline-offset-4' }}
@@ -30,7 +30,7 @@ export function AppShell({ name, connection, children }: AppShellProps): JSX.Ele
         </nav>
         <StatusBadge tone={tone}>{label}</StatusBadge>
       </header>
-      <main className="flex-1 px-6 py-8">{children}</main>
+      <main className="flex-1 p-2 sm:p-3">{children}</main>
     </div>
   );
 }

@@ -1,23 +1,37 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent } from 'storybook/test';
-import { keyFixture, pausedSeatFixture, pauseHandlers, seatFixture, strayFixture } from '@/test-utils/handlers';
+import {
+  keyFixture,
+  pausedSeatFixture,
+  pauseHandlers,
+  seatFixture,
+  strayFixture,
+  trendsFixture,
+} from '@/test-utils/handlers';
 import { NOW_MS } from '@/test-utils/time';
-import { AccountCard } from './AccountCard';
+import { AccountRow } from './AccountRow';
 
 const meta = {
-  title: 'Pages/Accounts/Components/AccountCard',
-  component: AccountCard,
+  title: 'Pages/Accounts/Components/AccountRow',
+  component: AccountRow,
   parameters: { layout: 'padded', msw: { handlers: [pauseHandlers.ok] } },
-  args: { account: seatFixture, now: NOW_MS, controls: true, headingLevel: 3 },
+  args: {
+    account: seatFixture,
+    trends: trendsFixture.trends,
+    start: NOW_MS - 7 * 24 * 3_600_000,
+    now: NOW_MS,
+    controls: true,
+    headingLevel: 3,
+  },
   argTypes: { headingLevel: { control: 'inline-radio', options: [2, 3] } },
   decorators: [
     Story => (
-      <div className="max-w-page">
+      <div className="overflow-hidden rounded-md border border-border bg-surface">
         <Story />
       </div>
     ),
   ],
-} satisfies Meta<typeof AccountCard>;
+} satisfies Meta<typeof AccountRow>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -41,7 +55,7 @@ export const Paused: Story = {
 export const Blocked: Story = {
   args: { account: { ...pausedSeatFixture, paused: false } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('blocked for 2 h')).toHaveAttribute('data-tone', 'danger');
+    await expect(canvas.getByText('blocked 2h')).toHaveAttribute('data-tone', 'danger');
   },
 };
 
@@ -55,7 +69,7 @@ export const WithoutControls: Story = {
 export const NoBrokerCredential: Story = {
   args: { account: strayFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('pro plan')).toBeInTheDocument();
+    await expect(canvas.getByText('pro · 1 reset')).toBeInTheDocument();
     await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
   },
 };
@@ -63,7 +77,29 @@ export const NoBrokerCredential: Story = {
 export const NoUsage: Story = {
   args: { account: keyFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('No usage is reported for this account.')).toBeInTheDocument();
+    await expect(canvas.getByRole('article')).toHaveTextContent('no usage reported');
+  },
+};
+
+export const Low: Story = {
+  args: { account: { ...strayFixture, limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 0.9 }] } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('article')).toHaveAttribute('data-severity', 'warn');
+    await expect(canvas.getByText('▲')).toBeVisible();
+  },
+};
+
+export const Spent: Story = {
+  args: { account: { ...strayFixture, limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 1 }] } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('article')).toHaveAttribute('data-severity', 'danger');
+  },
+};
+
+export const NothingRecorded: Story = {
+  args: { trends: [] },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('article')).toHaveAttribute('data-chart', 'level');
   },
 };
 
@@ -72,7 +108,7 @@ export const LongIdentifiers: Story = {
     account: {
       ...seatFixture,
       email: 'a.very.long.mailbox.name.that.keeps.going@a-long-subdomain.an-even-longer-domain.example.com',
-      orgName: 'An Organisation With A Name Long Enough To Wrap Onto A Second Line Of The Card',
+      orgName: 'An Organisation With A Name Long Enough To Run Out Of Room On The Row',
     },
   },
   play: async ({ canvas }) => {

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn8AllowedHeaders = map[string]string{
+	rn9AllowedHeaders = map[string]string{
 		"PUT": "Content-Type",
 	}
 )
@@ -169,7 +169,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "PUT",
-										allowedHeaders: rn8AllowedHeaders,
+										allowedHeaders: rn9AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -197,6 +197,31 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					switch r.Method {
 					case "GET":
 						s.handleGetConfigRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, notAllowedParams{
+							allowedMethods: "GET",
+							allowedHeaders: nil,
+							acceptPost:     "",
+							acceptPatch:    "",
+						})
+					}
+
+					return
+				}
+
+			case 't': // Prefix: "trends"
+
+				if l := len("trends"); len(elem) >= l && elem[0:l] == "trends" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleListUsageTrendsRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, notAllowedParams{
 							allowedMethods: "GET",
@@ -439,6 +464,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.operationID = "getConfig"
 						r.operationGroup = ""
 						r.pathPattern = "/api/v1/config"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+
+			case 't': // Prefix: "trends"
+
+				if l := len("trends"); len(elem) >= l && elem[0:l] == "trends" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = ListUsageTrendsOperation
+						r.summary = "Read every account's usage, thinned for small charts"
+						r.operationID = "listUsageTrends"
+						r.operationGroup = ""
+						r.pathPattern = "/api/v1/trends"
 						r.args = args
 						r.count = 0
 						return r, true

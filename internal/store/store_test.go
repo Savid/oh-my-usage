@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -84,6 +85,70 @@ func TestRecordAndHistory(t *testing.T) {
 	none, err := s.History(ctx, "nobody", t0)
 	if err != nil || none == nil || len(none) != 0 {
 		t.Errorf("unknown account: %v, err %v; want an empty, non-nil list", none, err)
+	}
+}
+
+func TestTrends(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := open(t, filepath.Join(t.TempDir(), "usage.db"))
+
+	// The first sample in the period is at t0; from there to the end is four
+	// hours, in two steps. Each step keeps its first sample.
+	if err := s.Record(ctx, []store.Sample{
+		sample("a", "7d", t0, 0.1),
+		sample("a", "7d", t0.Add(time.Hour), 0.2),
+		sample("a", "7d", t0.Add(3*time.Hour), 0.4),
+		sample("a", "5h", t0.Add(30*time.Minute), 0.9),
+		sample("b", "7d", t0.Add(2*time.Hour+time.Minute), 0.5),
+		sample("b", "7d", t0.Add(-30*24*time.Hour), 0.7),
+		sample("b", "7d", t0.Add(5*time.Hour), 0.8),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The period reaches back a week, but nothing was recorded in it before t0.
+	got, err := s.Trends(ctx, t0.Add(-7*24*time.Hour), t0.Add(4*time.Hour), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type point struct {
+		hours float64
+		used  float64
+	}
+
+	want := map[string][]point{
+		"a/5h": {{0.5, 0.9}},
+		"a/7d": {{0, 0.1}, {3, 0.4}},
+		"b/7d": {{2 + 1.0/60, 0.5}},
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("got %d trends, want %d: %+v", len(got), len(want), got)
+	}
+
+	for _, trend := range got {
+		key := trend.AccountID + "/" + trend.LimitID
+
+		var points []point
+		for _, p := range trend.Points {
+			points = append(points, point{p.At.Sub(t0).Hours(), p.UsedFraction})
+
+			if p.At.Location() != time.UTC {
+				t.Errorf("%s: point time is not UTC", key)
+			}
+		}
+
+		if !slices.Equal(points, want[key]) {
+			t.Errorf("%s = %v, want %v", key, points, want[key])
+		}
+	}
+
+	none, err := s.Trends(ctx, t0.Add(100*time.Hour), t0.Add(200*time.Hour), 60)
+	if err != nil || none == nil || len(none) != 0 {
+		t.Errorf("empty period: %v, err %v; want an empty, non-nil list", none, err)
 	}
 }
 

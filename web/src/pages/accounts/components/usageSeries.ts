@@ -9,7 +9,8 @@ const MAX_ROWS = 60;
 interface SeriesPoint {
   /** Milliseconds since the epoch. */
   time: number;
-  usedFraction: number;
+  /** The share of the limit still unused, from 0 to 1. */
+  left: number;
 }
 
 /** One limit's samples over time. */
@@ -30,7 +31,7 @@ export function toSeries(samples: readonly UsageSample[]): Series[] {
     }
     // The newest sample names the series, should a provider rename a limit.
     entry.label = sample.label;
-    entry.points.push({ time: Date.parse(sample.at), usedFraction: sample.usedFraction });
+    entry.points.push({ time: Date.parse(sample.at), left: Math.min(1, Math.max(0, 1 - sample.usedFraction)) });
   }
   return series;
 }
@@ -42,12 +43,12 @@ export function sampleTimes(series: readonly Series[]): number[] {
   return [...times].sort((a, b) => a - b);
 }
 
-/** A series' value at a moment: its last sample at or before it, as usage holds between reports. */
+/** What a series had left at a moment: its last sample at or before it, as usage holds between reports. */
 export function valueAt(series: Series, time: number): number | undefined {
   let value: number | undefined;
   for (const point of series.points) {
     if (point.time > time) break;
-    value = point.usedFraction;
+    value = point.left;
   }
   return value;
 }

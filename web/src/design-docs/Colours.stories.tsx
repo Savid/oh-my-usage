@@ -25,7 +25,11 @@ export const Surfaces: Story = {
   render: () => (
     <ColorSwatches
       tokens={SURFACE_COLORS}
-      notes={{ background: 'bg-background: the page', surface: 'bg-surface: cards, panels, the header' }}
+      notes={{
+        background: 'bg-background: the page',
+        surface: 'bg-surface: panels, the header',
+        raised: 'bg-raised: a cell in a panel, a hovered control',
+      }}
     />
   ),
 };
@@ -79,10 +83,13 @@ export const Data: Story = {
     <ColorSwatches
       tokens={DATA_COLORS}
       notes={{
-        meter: 'fill-meter: a meter below its warning level',
-        'meter-track': 'fill-meter-track: the unfilled part of that meter',
-        'warn-track': 'fill-warn-track: behind a fill-warn meter',
-        'danger-track': 'fill-danger-track: behind a fill-danger meter',
+        meter: 'fill-meter: what is left in a gauge',
+        'meter-track': "fill-meter-track: the wash of a row's chart, and a gauge's empty part",
+        'meter-edge': 'stroke-meter-edge: the line along the top of that wash',
+        'warn-track': 'fill-warn-track: the wash when little is left',
+        'warn-edge': 'stroke-warn-edge: its line',
+        'danger-track': 'fill-danger-track: the wash when nothing is left',
+        'danger-edge': 'stroke-danger-edge: its line',
         'series-1': 'text-series-1: the first chart series',
         'series-2': 'text-series-2: the second chart series',
         'series-3': 'text-series-3: the third and last chart series',

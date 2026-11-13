@@ -99,9 +99,24 @@ func (m *fakeMonitor) SetPaused(_ context.Context, accountID string, paused bool
 type fakeHistory struct {
 	mu      sync.Mutex
 	samples []store.Sample
+	trends  []store.Trend
 	err     error
-	// since is the cutoff of the last read.
-	since time.Time
+	// since and until are the bounds of the last read; steps its thinning.
+	since, until time.Time
+	steps        int
+}
+
+func (h *fakeHistory) Trends(_ context.Context, since, until time.Time, steps int) ([]store.Trend, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.since, h.until, h.steps = since, until, steps
+
+	if h.err != nil {
+		return nil, h.err
+	}
+
+	return h.trends, nil
 }
 
 func (h *fakeHistory) History(_ context.Context, accountID string, since time.Time) ([]store.Sample, error) {

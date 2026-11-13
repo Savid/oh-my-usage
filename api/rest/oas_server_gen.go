@@ -31,6 +31,14 @@ type Handler interface {
 	//
 	// GET /api/v1/accounts
 	ListAccounts(ctx context.Context) (*AccountList, error)
+	// ListUsageTrends implements listUsageTrends operation.
+	//
+	// The recorded usage of every limit of every account since `since`, thinned to about 60 points per
+	// limit: the time from the first sample in the period to now is cut into equal steps and each keeps
+	// its first sample. A limit with nothing recorded in the period is left out.
+	//
+	// GET /api/v1/trends
+	ListUsageTrends(ctx context.Context, params ListUsageTrendsParams) (*UsageTrendList, error)
 	// SetAccountPaused implements setAccountPaused operation.
 	//
 	// A pause blocks the account in omp's `account-policy` scope on the broker. omp moves traffic off it

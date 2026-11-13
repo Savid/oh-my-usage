@@ -110,6 +110,32 @@ paths:
                 $ref: '#/components/schemas/UsageHistory'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v1/trends:
+    get:
+      operationId: listUsageTrends
+      tags: [accounts]
+      summary: Read every account's usage, thinned for small charts
+      description: >-
+        The recorded usage of every limit of every account since `since`,
+        thinned to about 60 points per limit: the time from the first sample
+        in the period to now is cut into equal steps and each keeps its first
+        sample. A limit with nothing recorded in the period is left out.
+      parameters:
+        - name: since
+          in: query
+          description: Only samples at or after this time. Defaults to 7 days ago.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: One trend per limit that has samples.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageTrendList'
+        default:
+          $ref: '#/components/responses/Problem'
   /api/v1/stream:
     get:
       operationId: streamEvents
@@ -321,6 +347,37 @@ components:
         resetsAt:
           type: string
           format: date-time
+    UsageTrendList:
+      type: object
+      required: [trends]
+      properties:
+        trends:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageTrend'
+    UsageTrend:
+      type: object
+      description: One limit of one account over time, oldest first.
+      required: [accountId, limitId, points]
+      properties:
+        accountId:
+          type: string
+        limitId:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendPoint'
+    TrendPoint:
+      type: object
+      required: [at, usedFraction]
+      properties:
+        at:
+          type: string
+          format: date-time
+        usedFraction:
+          type: number
+          minimum: 0
     Problem:
       type: object
       description: RFC 9457 problem details.

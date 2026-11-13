@@ -64,7 +64,11 @@ type Monitor interface {
 
 // History reads recorded usage.
 type History interface {
+	// History returns one account's samples at or after since, oldest first.
 	History(ctx context.Context, accountID string, since time.Time) ([]store.Sample, error)
+	// Trends returns every limit's samples from since to until, thinned to
+	// at most steps points each.
+	Trends(ctx context.Context, since, until time.Time, steps int) ([]store.Trend, error)
 }
 
 // Deps are the parts of the daemon the server serves.
