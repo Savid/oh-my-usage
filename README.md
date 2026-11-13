@@ -10,6 +10,11 @@ through and can pause an account.
 
 ## What you see
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a total for each provider, the gateway's traffic over the last hour, and a band for each account drawn over its last seven days" width="800" />
+</picture>
+
 Every figure is quota **used**.
 
 - **Totals**, one per provider: how much of its main usage window is used
@@ -100,6 +105,11 @@ do not show in the process list.
 
 ## Traffic
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/traffic-dark.png" />
+  <img src="docs/screenshots/traffic-light.png" alt="The Traffic page: cost, requests and tokens for the last hour, day and week by provider, the last hour by minute, the last week by hour, and the clients" width="800" />
+</picture>
+
 The broker counts every request the gateway serves: requests, the four kinds
 of token, and what they would cost at the provider's API prices. On a
 subscription nothing is billed per token, so read the cost as a measure of
@@ -153,6 +163,10 @@ UI work: run the daemon, then `pnpm --dir web dev` (:5173, proxies `/api/`;
 tests need `pnpm --dir web exec playwright install chromium`. `make help`
 lists targets. Rules and layout: [AGENTS.md](AGENTS.md),
 [web/AGENTS.md](web/AGENTS.md).
+
+The screenshots in `docs/screenshots/` are the two `Showcase` stories
+(Pages/Accounts and Pages/Traffic) in each theme, taken 1440 pixels wide at
+twice the density and saved 1600 pixels wide in 256 colours.
 
 Where things live:
 
