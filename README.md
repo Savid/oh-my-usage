@@ -1,3 +1,5 @@
+<img src="web/public/logo.svg" alt="" width="72" height="72" align="right" />
+
 # oh-my-usage
 
 A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway.

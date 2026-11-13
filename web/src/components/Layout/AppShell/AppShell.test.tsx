@@ -20,12 +20,14 @@ describe('AppShell', () => {
     renderShell(true);
 
     expect(await screen.findByText('page body')).toBeInTheDocument();
-    expect(screen.getByText('oh-my-usage')).toBeInTheDocument();
+    // The mark and the name lead home.
+    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
     const home = screen.getByRole('link', { name: 'Accounts' });
     expect(home).toHaveAttribute('href', '/');
-    // The current page is marked by more than colour.
+    // The current page is marked by more than colour: a bar under its name.
     expect(home).toHaveAttribute('aria-current', 'page');
-    expect(home).toHaveClass('underline');
+    expect(home).toHaveClass('border-accent');
+    expect(screen.getByRole('link', { name: 'Traffic' })).toHaveClass('border-transparent');
     expect(screen.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic');
     expect(screen.getByText('reconnecting')).toHaveAttribute('data-tone', 'warn');
   });

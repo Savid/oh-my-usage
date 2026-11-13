@@ -20,6 +20,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
+    await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
     await expect(canvas.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
     await expect(canvas.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic');
     // A stream that is up is not remarked on.

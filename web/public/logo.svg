@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="oh-my-usage">
+  <!-- A small round face ringed by a usage gauge. The gauge fills, the mouth rounds into an "oh", the eyes blink. -->
+  <rect width="32" height="32" rx="7" fill="#111214"/>
+  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#282a2e" stroke-width="3.2"/>
+  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#7285fe" stroke-width="3.2" stroke-linecap="round" pathLength="100" stroke-dasharray="72 100" transform="rotate(-90 16 16)">
+    <animate attributeName="stroke-dasharray" values="0 100;72 100" dur="1.4s" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1" fill="freeze"/>
+  </circle>
+  <ellipse cx="12.8" cy="14.8" rx="1.4" ry="1.8" fill="#eff0f3">
+    <animate attributeName="ry" values="1.8;1.8;0.3;1.8;1.8" keyTimes="0;0.9;0.94;0.98;1" dur="5s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="19.2" cy="14.8" rx="1.4" ry="1.8" fill="#eff0f3">
+    <animate attributeName="ry" values="1.8;1.8;0.3;1.8;1.8" keyTimes="0;0.9;0.94;0.98;1" dur="5s" repeatCount="indefinite"/>
+  </ellipse>
+  <circle cx="16" cy="20.2" r="1.7" fill="none" stroke="#eff0f3" stroke-width="1.3">
+    <animate attributeName="r" values="0.7;1.7" dur="1.4s" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1" fill="freeze"/>
+  </circle>
+</svg>
