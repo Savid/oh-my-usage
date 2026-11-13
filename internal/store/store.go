@@ -1,4 +1,5 @@
-// Package store keeps the usage history in a SQLite file.
+// Package store keeps the usage history and the traffic record in a SQLite
+// file.
 package store
 
 import (
@@ -7,17 +8,18 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	_ "modernc.org/sqlite" // registers the pure-Go "sqlite" driver
 )
 
-// schemaVersion is the PRAGMA user_version this build reads and writes.
-const schemaVersion = 1
-
-// schema creates version 1. A sample's key is its account, limit and the
-// provider's own report time, so recording a report twice stores it once.
-const schema = `
+// migrations holds the schema, one step per version: migrations[n] takes a
+// database from PRAGMA user_version n to n+1.
+var migrations = []string{
+	// 1: usage samples. A sample's key is its account, limit and the
+	// provider's own report time, so recording a report twice stores it once.
+	`
 CREATE TABLE usage_samples (
 	account_id    TEXT    NOT NULL,
 	limit_id      TEXT    NOT NULL,
@@ -30,8 +32,44 @@ CREATE TABLE usage_samples (
 	PRIMARY KEY (account_id, limit_id, recorded_at)
 ) WITHOUT ROWID;
 CREATE INDEX usage_samples_recorded_at ON usage_samples (recorded_at);
-PRAGMA user_version = 1;
-`
+`,
+	// 2: traffic by minute (or by hour, when estimated) and stream; the
+	// broker's running totals at the last reading; and when that was.
+	`
+CREATE TABLE traffic (
+	bucket_start       INTEGER NOT NULL, -- Unix milliseconds, on the minute
+	estimated          INTEGER NOT NULL, -- 1 when its place in time is a guess
+	install_id         TEXT    NOT NULL,
+	app                TEXT    NOT NULL,
+	provider           TEXT    NOT NULL,
+	hostname           TEXT    NOT NULL,
+	requests           INTEGER NOT NULL,
+	input_tokens       INTEGER NOT NULL,
+	output_tokens      INTEGER NOT NULL,
+	cache_read_tokens  INTEGER NOT NULL,
+	cache_write_tokens INTEGER NOT NULL,
+	cost_usd           REAL    NOT NULL,
+	PRIMARY KEY (bucket_start, estimated, install_id, app, provider)
+) WITHOUT ROWID;
+CREATE TABLE traffic_totals (
+	install_id         TEXT    NOT NULL,
+	app                TEXT    NOT NULL,
+	provider           TEXT    NOT NULL,
+	requests           INTEGER NOT NULL,
+	input_tokens       INTEGER NOT NULL,
+	output_tokens      INTEGER NOT NULL,
+	cache_read_tokens  INTEGER NOT NULL,
+	cache_write_tokens INTEGER NOT NULL,
+	cost_usd           REAL    NOT NULL,
+	PRIMARY KEY (install_id, app, provider)
+) WITHOUT ROWID;
+CREATE TABLE traffic_reading (
+	id    INTEGER PRIMARY KEY CHECK (id = 1),
+	at    INTEGER NOT NULL, -- Unix milliseconds: the last reading
+	since INTEGER NOT NULL  -- Unix milliseconds: the first reading
+);
+`,
+}
 
 // Sample is one limit of one account at the time its provider reported it.
 type Sample struct {
@@ -83,26 +121,39 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("read schema version: %w", err)
 	}
 
-	switch {
-	case version == schemaVersion:
-		return nil
-	case version > schemaVersion:
-		return fmt.Errorf("schema version %d is newer than this build's %d", version, schemaVersion)
+	if version > len(migrations) {
+		return fmt.Errorf("schema version %d is newer than this build's %d", version, len(migrations))
 	}
 
+	for ; version < len(migrations); version++ {
+		if err := step(ctx, db, version); err != nil {
+			return fmt.Errorf("migrate to schema version %d: %w", version+1, err)
+		}
+	}
+
+	return nil
+}
+
+// step applies migrations[from] and records the new version, together.
+func step(ctx context.Context, db *sql.DB, from int) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin migration: %w", err)
+		return fmt.Errorf("begin: %w", err)
 	}
 
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err = tx.ExecContext(ctx, schema); err != nil {
-		return fmt.Errorf("create schema: %w", err)
+	if _, err = tx.ExecContext(ctx, migrations[from]); err != nil {
+		return fmt.Errorf("apply: %w", err)
+	}
+
+	// PRAGMA takes no parameters; the version is this build's own integer.
+	if _, err = tx.ExecContext(ctx, "PRAGMA user_version = "+strconv.Itoa(from+1)); err != nil {
+		return fmt.Errorf("set version: %w", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit migration: %w", err)
+		return fmt.Errorf("commit: %w", err)
 	}
 
 	return nil

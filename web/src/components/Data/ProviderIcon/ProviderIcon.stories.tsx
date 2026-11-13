@@ -15,7 +15,7 @@ const PROVIDERS = [
 ];
 
 const meta = {
-  title: 'Pages/Accounts/Components/ProviderIcon',
+  title: 'Components/Data/ProviderIcon',
   component: ProviderIcon,
   args: { provider: 'anthropic', decorative: false, size: 'md' },
   argTypes: {

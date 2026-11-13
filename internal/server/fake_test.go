@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/savid/oh-my-usage/internal/collector"
 	"github.com/savid/oh-my-usage/internal/monitor"
 	"github.com/savid/oh-my-usage/internal/store"
 	"github.com/savid/oh-my-usage/pkg/accounts"
@@ -137,3 +139,62 @@ func (h *fakeHistory) History(_ context.Context, accountID string, since time.Ti
 }
 
 var errBoom = errors.New("boom")
+
+type fakeCollector struct {
+	mu      sync.Mutex
+	status  collector.Status
+	changed chan struct{}
+}
+
+func (c *fakeCollector) Status() collector.Status {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.status
+}
+
+func (c *fakeCollector) Subscribe() (changed <-chan struct{}, cancel func()) {
+	return c.changed, func() {}
+}
+
+// fakeTraffic answers every read with the same streams and steps, and
+// remembers what was asked.
+type fakeTraffic struct {
+	mu     sync.Mutex
+	totals []store.TrafficTotal
+	steps  []store.TrafficStep
+	since  time.Time
+	err    error
+	// asked lists each read: what, from when, and whether estimates were left out.
+	asked []string
+}
+
+func (f *fakeTraffic) TrafficSeries(
+	_ context.Context, start time.Time, step time.Duration, steps int, measuredOnly bool,
+) ([]store.TrafficStep, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.asked = append(f.asked, fmt.Sprintf("series %s %s x%d measured=%t", start.UTC().Format(time.RFC3339), step, steps, measuredOnly))
+
+	return f.steps, f.err
+}
+
+func (f *fakeTraffic) TrafficTotals(_ context.Context, since time.Time, measuredOnly bool) ([]store.TrafficTotal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.asked = append(f.asked, fmt.Sprintf("totals %s measured=%t", since.UTC().Format(time.RFC3339), measuredOnly))
+
+	return f.totals, f.err
+}
+
+func (f *fakeTraffic) TrafficMeasuredSince(context.Context) (time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.since, f.err
+}
+
+// collectorStatusZero is a collector that has not collected yet.
+var collectorStatusZero = collector.Status{}

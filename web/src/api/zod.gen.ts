@@ -105,6 +105,75 @@ export const zUsageTrendList = z.object({
 });
 
 /**
+ * What passed in some stretch of time.
+ */
+export const zTrafficCounts = z.object({
+  requests: z.int().check(z.gte(0)),
+  inputTokens: z.int().check(z.gte(0)),
+  outputTokens: z.int().check(z.gte(0)),
+  cacheReadTokens: z.int().check(z.gte(0)),
+  cacheWriteTokens: z.int().check(z.gte(0)),
+  costUsd: z.number().check(z.gte(0)),
+});
+
+export const zTrafficProviderCounts = z.object({
+  provider: z.string(),
+  counts: zTrafficCounts,
+});
+
+/**
+ * The traffic of a recent period, in total and by provider.
+ */
+export const zTrafficWindow = z.object({
+  id: z.enum(['hour', 'day', 'week']),
+  since: z.iso.datetime(),
+  total: zTrafficCounts,
+  providers: z.array(zTrafficProviderCounts),
+});
+
+export const zTrafficProviderSeries = z.object({
+  provider: z.string(),
+  requests: z.array(z.int().check(z.gte(0))),
+  tokens: z.array(z.int().check(z.gte(0))),
+  costUsd: z.array(z.number().check(z.gte(0))),
+});
+
+/**
+ * Traffic over time in equal steps, the last of them still filling. Every array of a provider has one value per step, oldest first.
+ */
+export const zTrafficSeries = z.object({
+  start: z.iso.datetime(),
+  stepSeconds: z.int().check(z.gte(1)),
+  steps: z.int().check(z.gte(1)),
+  providers: z.array(zTrafficProviderSeries),
+});
+
+/**
+ * One client's traffic to one provider over the last week.
+ */
+export const zTrafficClient = z.object({
+  installId: z.string(),
+  hostname: z.string(),
+  app: z.string(),
+  provider: z.string(),
+  counts: zTrafficCounts,
+});
+
+/**
+ * What is passing through the gateway, as the broker counts it.
+ */
+export const zTraffic = z.object({
+  available: z.boolean(),
+  updatedAt: z.optional(z.iso.datetime()),
+  error: z.optional(z.string()),
+  measuredSince: z.optional(z.iso.datetime()),
+  windows: z.array(zTrafficWindow),
+  minutes: zTrafficSeries,
+  hours: zTrafficSeries,
+  clients: z.array(zTrafficClient),
+});
+
+/**
  * RFC 9457 problem details.
  */
 export const zProblem = z.object({
@@ -164,6 +233,11 @@ export const zListUsageTrendsQuery = z.object({
 export const zListUsageTrendsResponse = zUsageTrendList;
 
 /**
- * Server-sent `accounts` events.
+ * The traffic.
+ */
+export const zGetTrafficResponse = zTraffic;
+
+/**
+ * Server-sent `accounts` and `traffic` events.
  */
 export const zStreamEventsResponse = zAccountList;

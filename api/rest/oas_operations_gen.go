@@ -8,6 +8,7 @@ type OperationName = string
 const (
 	GetAccountHistoryOperation OperationName = "GetAccountHistory"
 	GetConfigOperation         OperationName = "GetConfig"
+	GetTrafficOperation        OperationName = "GetTraffic"
 	ListAccountsOperation      OperationName = "ListAccounts"
 	ListUsageTrendsOperation   OperationName = "ListUsageTrends"
 	SetAccountPausedOperation  OperationName = "SetAccountPaused"

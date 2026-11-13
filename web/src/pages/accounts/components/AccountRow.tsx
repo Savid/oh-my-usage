@@ -6,13 +6,13 @@ import type { Account, AccountList, Limit, TrendPoint } from '@/api';
 import { listAccountsQueryKey, setAccountPausedMutation } from '@/api/@tanstack/react-query.gen';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
+import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitSeverity } from '@/lib/accounts';
 import { formatPercent, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
 import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
 import type { AccountRowProps } from './AccountRow.types';
-import { ProviderIcon } from './ProviderIcon';
 
 /** Usage older than this is called out: the provider has not answered for a while. */
 const STALE_MS = 15 * 60_000;

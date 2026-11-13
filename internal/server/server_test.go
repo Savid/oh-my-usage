@@ -10,7 +10,16 @@ import (
 	"time"
 
 	"github.com/savid/oh-my-usage/api/rest"
+	"github.com/savid/oh-my-usage/internal/collector"
 	"github.com/savid/oh-my-usage/internal/store"
+	"github.com/savid/oh-my-usage/pkg/traffic"
+)
+
+// The streams the traffic fakes know.
+var (
+	gatewayClaude = traffic.Key{InstallID: "install-1", App: "gateway", Provider: "anthropic"}
+	gatewayCodex  = traffic.Key{InstallID: "install-1", App: "gateway", Provider: "openai-codex"}
+	laptopClaude  = traffic.Key{InstallID: "install-2", App: "omp", Provider: "anthropic"}
 )
 
 var testAssets = fstest.MapFS{"index.html": {Data: []byte("<!doctype html><html><head><title>app</title><!--config--></head></html>")}}
@@ -24,9 +33,26 @@ type testServer struct {
 
 	monitor *fakeMonitor
 	history *fakeHistory
+	// collector and traffic are nil in a server without a broker.
+	collector *fakeCollector
+	traffic   *fakeTraffic
 }
 
+// newTestServer is a server with no broker: it has no traffic to serve.
 func newTestServer(t *testing.T) *testServer {
+	t.Helper()
+
+	return newServer(t, false)
+}
+
+// newTrafficServer is a server with a broker whose traffic is being collected.
+func newTrafficServer(t *testing.T) *testServer {
+	t.Helper()
+
+	return newServer(t, true)
+}
+
+func newServer(t *testing.T, broker bool) *testServer {
 	t.Helper()
 
 	cfg := Config{
@@ -49,7 +75,35 @@ func newTestServer(t *testing.T) *testServer {
 		}},
 	}
 
-	s, err := New(slog.New(slog.DiscardHandler), cfg, testAssets, Deps{Monitor: ts.monitor, History: ts.history})
+	deps := Deps{Monitor: ts.monitor, History: ts.history}
+
+	if broker {
+		ts.collector = &fakeCollector{
+			status:  collector.Status{UpdatedAt: testNow.Add(-8 * time.Second)},
+			changed: make(chan struct{}, 1),
+		}
+		ts.traffic = &fakeTraffic{
+			since: testNow.Add(-72 * time.Hour),
+			totals: []store.TrafficTotal{
+				{Key: gatewayCodex, Hostname: "gateway-host", Requests: 3, InputTokens: 30, CostUSD: 0.5},
+				{
+					Key: gatewayClaude, Hostname: "gateway-host",
+					Requests: 10, InputTokens: 1, OutputTokens: 20, CacheReadTokens: 300, CacheWriteTokens: 4000, CostUSD: 4,
+				},
+				{Key: laptopClaude, Hostname: "laptop", Requests: 2, OutputTokens: 5, CostUSD: 1},
+			},
+			steps: []store.TrafficStep{
+				{Index: 0, Provider: "anthropic", Requests: 4, OutputTokens: 100, CostUSD: 2},
+				{Index: 59, Provider: "anthropic", Requests: 1, InputTokens: 7, CostUSD: 0.25},
+				{Index: 3, Provider: "openai-codex", Requests: 9, CacheReadTokens: 50, CostUSD: 5},
+				// Outside the series: dropped, not a panic.
+				{Index: 900, Provider: "anthropic", Requests: 1},
+			},
+		}
+		deps.Collector, deps.Traffic = ts.collector, ts.traffic
+	}
+
+	s, err := New(slog.New(slog.DiscardHandler), cfg, testAssets, deps)
 	if err != nil {
 		t.Fatal(err)
 	}

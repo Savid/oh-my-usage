@@ -1,8 +1,8 @@
 # oh-my-usage
 
 `oh-my-usaged` watches an omp auth gateway (and broker, when configured) and
-serves its accounts, their usage and a pause control as a spec-first HTTP API
-and an embedded React UI, from one binary. [README.md](README.md) says what it
+serves its accounts, their usage, the traffic passing through and a pause
+control as a spec-first HTTP API and an embedded React UI, from one binary. [README.md](README.md) says what it
 reads and changes and maps each part to its files. Before frontend work, read
 [web/AGENTS.md](web/AGENTS.md).
 
@@ -37,9 +37,11 @@ make build WEB=1    # build the binary with the real UI embedded
   free of `internal/`, `api/`, `net/http`, `database/sql`, the process clock
   and `rand`: pass time and randomness in.
 - The daemon's own types flow inward: `internal/omp` returns `pkg/accounts`
-  types, `internal/monitor` merges and holds them, and `internal/server` turns
-  them into `api/rest` types in `convert.go`.
-- Only `cmd/oh-my-usaged` imports `internal/omp`; the monitor takes interfaces.
+  and `pkg/traffic` types, `internal/monitor` merges and holds the accounts,
+  `internal/collector` records the traffic, and `internal/server` turns both
+  into `api/rest` types.
+- Only `cmd/oh-my-usaged` imports `internal/omp`; the monitor and the
+  collector take interfaces.
 - To restrict who may import a package, add an entry to `boundaries` in
   `internal/testutil/importguard/boundary_test.go`, and a `depguard` rule in
   `.golangci.yml` when lint-time feedback helps.
@@ -96,3 +98,8 @@ make build WEB=1    # build the binary with the real UI embedded
   pnpm links the skills that dependencies ship beside them (approved under
   `permissions` in `pnpm-workspace.yaml`); those are gitignored links into
   `node_modules`, so never edit them.
+- The broker's `/v1/usage/clients` gives running totals. Its `sinceMs` does
+  not cut traffic at a moment: it returns whole rows last touched since then,
+  and a row is a whole burst of traffic. Measure by the growth of the totals
+  between two readings (`pkg/traffic`); use `sinceMs` only for the estimate
+  of the days before the first reading.

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { listAccountsQueryKey } from '@/api/@tanstack/react-query.gen';
+import { getTrafficQueryKey, listAccountsQueryKey, listUsageTrendsQueryKey } from '@/api/@tanstack/react-query.gen';
 import { act, FakeEventSource, renderHook } from '@/test-utils';
-import { accountsFixture } from '@/test-utils/handlers';
+import { accountsFixture, trafficFixture, trendsFixture } from '@/test-utils/handlers';
 import { EVENT_STREAM_URL, useEventStream } from './useEventStream';
 
 describe('useEventStream', () => {
@@ -20,6 +20,26 @@ describe('useEventStream', () => {
 
     expect(result.current).toBe('live');
     expect(client.getQueryData(listAccountsQueryKey())).toEqual(accountsFixture);
+  });
+
+  it('has the charts read the usage again after each accounts event', () => {
+    const { client } = renderHook(() => useEventStream());
+    const key = listUsageTrendsQueryKey({ query: { since: '2026-09-19T12:00:00.000Z' } });
+    client.setQueryData(key, trendsFixture);
+
+    act(() => FakeEventSource.latest().emit('accounts', accountsFixture));
+
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
+  it('writes each traffic event into the traffic query', () => {
+    const { result, client } = renderHook(() => useEventStream());
+
+    act(() => FakeEventSource.latest().emit('traffic', trafficFixture));
+
+    expect(client.getQueryData(getTrafficQueryKey())).toEqual(trafficFixture);
+    // Only accounts say the stream is live: they are sent with or without a broker.
+    expect(result.current).toBe('connecting');
   });
 
   it('ignores an event that does not match the spec', () => {

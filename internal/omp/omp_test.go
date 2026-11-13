@@ -15,6 +15,7 @@ import (
 
 	"github.com/savid/oh-my-usage/internal/omp"
 	"github.com/savid/oh-my-usage/pkg/accounts"
+	"github.com/savid/oh-my-usage/pkg/traffic"
 )
 
 const token = "test-token"
@@ -317,5 +318,77 @@ func TestBrokerBlocks(t *testing.T) {
 	var status *omp.StatusError
 	if !errors.As(err, &status) || status.Status != http.StatusNotFound {
 		t.Errorf("unknown credential: err = %v, want a 404 StatusError", err)
+	}
+}
+
+func TestBrokerClientUsage(t *testing.T) {
+	t.Parallel()
+
+	var queries []string
+
+	srv := serve(t, map[string]http.HandlerFunc{"GET /v1/usage/clients": func(w http.ResponseWriter, r *http.Request) {
+		queries = append(queries, r.URL.RawQuery)
+
+		fixture(t, "clients.json")(w, r)
+	}})
+
+	broker, err := omp.NewBroker(srv.URL, token, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+
+	got, err := broker.ClientUsage(ctx, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = broker.ClientUsage(ctx, time.UnixMilli(1794527527000)); err != nil {
+		t.Fatal(err)
+	}
+
+	// No moment asks for everything; a moment is sent in milliseconds.
+	if len(queries) != 2 || queries[0] != "" || queries[1] != "sinceMs=1794527527000" {
+		t.Errorf("queries = %q", queries)
+	}
+
+	if !got.GeneratedAt.Equal(time.UnixMilli(1794531127939)) || got.Hostnames["install-1"] != "gateway-host" ||
+		got.Hostnames["install-2"] != "laptop" {
+		t.Errorf("summary = %+v", got)
+	}
+
+	claude := got.Counts[traffic.Key{InstallID: "install-1", App: "gateway", Provider: "anthropic"}]
+	want := traffic.Counts{
+		Requests: 15744, InputTokens: 33572, OutputTokens: 13962540,
+		CacheReadTokens: 3938510231, CacheWriteTokens: 68159614, CostUSD: 1772.41885576,
+	}
+
+	if claude != want {
+		t.Errorf("gateway to Anthropic = %+v, want %+v", claude, want)
+	}
+
+	// One client's two rows for the same application and provider add up.
+	laptop := got.Counts[traffic.Key{InstallID: "install-2", App: "omp", Provider: "anthropic"}]
+	if len(got.Counts) != 3 || laptop.Requests != 12 || laptop.OutputTokens != 700 || laptop.CostUSD != 1.5 {
+		t.Errorf("counts = %+v", got.Counts)
+	}
+}
+
+func TestBrokerClientUsageFails(t *testing.T) {
+	t.Parallel()
+
+	srv := serve(t, map[string]http.HandlerFunc{"GET /v1/usage/clients": func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+	}})
+
+	broker, err := omp.NewBroker(srv.URL, token, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = broker.ClientUsage(context.Background(), time.Time{})
+	if err == nil || !strings.Contains(err.Error(), "HTTP 401: Unauthorized") {
+		t.Errorf("error = %v", err)
 	}
 }

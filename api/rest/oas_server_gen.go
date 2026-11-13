@@ -23,6 +23,17 @@ type Handler interface {
 	//
 	// GET /api/v1/config
 	GetConfig(ctx context.Context) (*Config, error)
+	// GetTraffic implements getTraffic operation.
+	//
+	// Requests, tokens and their cost at API prices, as the broker counts them: totals for the last hour,
+	// day and week, the last hour by minute, the last week by hour, and the week by client. Traffic is
+	// measured from the daemon's first reading of the broker on. What came before, and what passed while
+	// the daemon was stopped for over an hour, is an estimate known to the hour: it counts in the day, the
+	// week and the series by hour, and not in the last hour or the series by minute. Without a broker
+	// `available` is false and the rest is empty.
+	//
+	// GET /api/v1/traffic
+	GetTraffic(ctx context.Context) (*Traffic, error)
 	// ListAccounts implements listAccounts operation.
 	//
 	// The accounts found by the last poll of the gateway, joined with the broker's credentials when a

@@ -29,6 +29,9 @@ type operations struct {
 	now          func() time.Time
 	monitor      Monitor
 	history      History
+	// collector is nil when no broker is configured.
+	collector     Collector
+	trafficRecord TrafficRecord
 }
 
 var _ rest.Handler = (*operations)(nil)

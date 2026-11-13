@@ -45,3 +45,51 @@ const dateTime = new Intl.DateTimeFormat('en-GB', {
 export function formatDateTime(ms: number): string {
   return dateTime.format(ms);
 }
+
+const grouped = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 });
+
+/** A count, in full up to four digits and shortened beyond: "1,834", "15.9K", "337M", "1.96B". */
+export function formatCount(value: number): string {
+  return Math.abs(value) < 10_000 ? grouped.format(value) : compact.format(value);
+}
+
+const cents = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const dollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const compactDollars = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  maximumSignificantDigits: 3,
+});
+
+/** US dollars, as precise as the size calls for: "$0", "<$0.01", "$2.10", "$1,068", "$12.4K". */
+export function formatUsd(value: number): string {
+  if (value === 0) return '$0';
+  if (value < 0.01) return '<$0.01';
+  if (value < 100) return cents.format(value);
+  if (value < 10_000) return dollars.format(value);
+  return compactDollars.format(value);
+}
+
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+/** A time of day in the viewer's time zone: "09:45". */
+export function formatClock(ms: number): string {
+  return clock.format(ms);
+}
+
+const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric' });
+
+/** A day by its weekday and date, in the viewer's time zone: "Fri 13". */
+export function formatDay(ms: number): string {
+  return weekday.format(ms);
+}
+
+/** A part of a whole as a percent, never rounding a real part away: "<1%", "37%". */
+export function formatShare(part: number, whole: number): string {
+  if (whole <= 0 || part <= 0) return '0%';
+
+  const share = part / whole;
+  return share < 0.005 ? '<1%' : formatPercent(share);
+}

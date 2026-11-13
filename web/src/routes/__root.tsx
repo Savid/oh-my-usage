@@ -12,7 +12,7 @@ function Root(): JSX.Element {
   return (
     <>
       <HeadContent />
-      <AppShell name={config.data?.name} connection={connection}>
+      <AppShell name={config.data?.name} traffic={config.data?.controls ?? false} connection={connection}>
         <Outlet />
       </AppShell>
     </>

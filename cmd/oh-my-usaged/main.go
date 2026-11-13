@@ -19,9 +19,11 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/savid/oh-my-usage/internal/collector"
 	"github.com/savid/oh-my-usage/internal/monitor"
 	"github.com/savid/oh-my-usage/internal/omp"
 	"github.com/savid/oh-my-usage/internal/server"
@@ -43,6 +45,8 @@ const (
 const (
 	// minPollInterval keeps polls no faster than the gateway's own cache.
 	minPollInterval = 30 * time.Second
+	// minTrafficInterval keeps the broker from being asked without pause.
+	minTrafficInterval = 5 * time.Second
 	// requestTimeout bounds one request to the gateway or the broker.
 	requestTimeout = 20 * time.Second
 )
@@ -68,6 +72,7 @@ type options struct {
 	brokerTokenFile  string
 	db               string
 	pollInterval     time.Duration
+	trafficInterval  time.Duration
 	retention        time.Duration
 }
 
@@ -89,6 +94,8 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.brokerTokenFile, "broker-token-file", "", "file holding the broker admin token (or set "+envBrokerToken+")")
 	fs.StringVar(&o.db, "db", "oh-my-usage.db", "SQLite file for the usage history")
 	fs.DurationVar(&o.pollInterval, "poll-interval", time.Minute, "time between polls of the gateway, at least 30s")
+	fs.DurationVar(&o.trafficInterval, "traffic-interval", 15*time.Second,
+		"time between readings of the broker's traffic, at least 5s")
 	fs.DurationVar(&o.retention, "retention", 90*24*time.Hour, "how long usage history is kept; 0 keeps it forever")
 
 	if err := fs.Parse(args); err != nil {
@@ -105,6 +112,10 @@ func parse(args []string, stderr io.Writer) (options, error) {
 
 	if o.pollInterval < minPollInterval {
 		return o, fmt.Errorf("-poll-interval %s: at least %s", o.pollInterval, minPollInterval)
+	}
+
+	if o.trafficInterval < minTrafficInterval {
+		return o, fmt.Errorf("-traffic-interval %s: at least %s", o.trafficInterval, minTrafficInterval)
 	}
 
 	if o.retention < 0 {
@@ -215,19 +226,6 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 		return fmt.Errorf("gateway: %w", err)
 	}
 
-	cfg := monitor.Config{Gateway: gateway, Interval: o.pollInterval, Retention: o.retention}
-
-	// Assign the broker only when there is one: a nil *omp.Broker in the
-	// interface would read as configured.
-	if brokerAt.url != "" {
-		broker, brokerErr := omp.NewBroker(brokerAt.url, brokerAt.token, httpClient)
-		if brokerErr != nil {
-			return fmt.Errorf("broker: %w", brokerErr)
-		}
-
-		cfg.Broker = broker
-	}
-
 	history, err := store.Open(ctx, o.db)
 	if err != nil {
 		return err
@@ -235,31 +233,51 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 
 	defer func() { _ = history.Close() }()
 
-	cfg.Recorder = history
+	cfg := monitor.Config{Gateway: gateway, Recorder: history, Interval: o.pollInterval, Retention: o.retention}
+	deps := server.Deps{History: history, Traffic: history}
+
+	// Assign the broker and what depends on it only when there is one: a nil
+	// pointer in an interface would read as configured.
+	var traffic *collector.Collector
+
+	if brokerAt.url != "" {
+		broker, brokerErr := omp.NewBroker(brokerAt.url, brokerAt.token, httpClient)
+		if brokerErr != nil {
+			return fmt.Errorf("broker: %w", brokerErr)
+		}
+
+		cfg.Broker = broker
+		traffic = collector.New(log, collector.Config{
+			Broker: broker, Record: history, Interval: o.trafficInterval, Retention: o.retention,
+		})
+		deps.Collector = traffic
+	}
+
 	watch := monitor.New(log, cfg)
+	deps.Monitor = watch
 
 	srv, err := server.New(log,
-		server.Config{Listen: o.listen, Name: name, Version: version, PollInterval: o.pollInterval},
-		assets, server.Deps{Monitor: watch, History: history})
+		server.Config{Listen: o.listen, Name: name, Version: version, PollInterval: o.pollInterval}, assets, deps)
 	if err != nil {
 		return err
 	}
 
-	log.InfoContext(ctx, "starting", "controls", watch.Controls(), "pollInterval", o.pollInterval.String(), "db", o.db)
+	log.InfoContext(ctx, "starting", "controls", watch.Controls(), "pollInterval", o.pollInterval.String(),
+		"trafficInterval", o.trafficInterval.String(), "db", o.db)
 
-	// The monitor stops with ctx; wait for its last poll before the deferred
-	// close of the history it writes to.
-	polled := make(chan struct{})
+	// The loops stop with ctx; wait for their last round before the deferred
+	// close of the database they write to.
+	var loops sync.WaitGroup
 
-	go func() {
-		defer close(polled)
+	loops.Go(func() { watch.Run(ctx) })
 
-		watch.Run(ctx)
-	}()
+	if traffic != nil {
+		loops.Go(func() { traffic.Run(ctx) })
+	}
 
 	defer func() {
 		stop()
-		<-polled
+		loops.Wait()
 	}()
 
 	return srv.Run(ctx)

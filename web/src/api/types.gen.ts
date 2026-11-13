@@ -170,6 +170,114 @@ export type TrendPoint = {
 };
 
 /**
+ * What is passing through the gateway, as the broker counts it.
+ */
+export type Traffic = {
+  /**
+   * Whether a broker is configured. Without one the rest is empty.
+   */
+  available: boolean;
+  /**
+   * When traffic was last collected. Absent before the first collection.
+   */
+  updatedAt?: string;
+  /**
+   * Why the last collection failed. Absent when it succeeded.
+   */
+  error?: string;
+  /**
+   * When traffic began to be measured: the daemon's first reading of the broker. What is reported before it is an estimate. Absent before the first reading.
+   */
+  measuredSince?: string;
+  /**
+   * Totals for the last hour, day and week, in that order.
+   */
+  windows: Array<TrafficWindow>;
+  minutes: TrafficSeries;
+  hours: TrafficSeries;
+  /**
+   * The last week by client, application and provider, the costliest first.
+   */
+  clients: Array<TrafficClient>;
+};
+
+/**
+ * What passed in some stretch of time.
+ */
+export type TrafficCounts = {
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /**
+   * What the tokens would cost at the provider's API prices. On a subscription nothing is billed per token; it measures work done.
+   */
+  costUsd: number;
+};
+
+/**
+ * The traffic of a recent period, in total and by provider.
+ */
+export type TrafficWindow = {
+  id: 'hour' | 'day' | 'week';
+  since: string;
+  total: TrafficCounts;
+  /**
+   * The providers with traffic in the period, the costliest first.
+   */
+  providers: Array<TrafficProviderCounts>;
+};
+
+export type TrafficProviderCounts = {
+  provider: string;
+  counts: TrafficCounts;
+};
+
+/**
+ * Traffic over time in equal steps, the last of them still filling. Every array of a provider has one value per step, oldest first.
+ */
+export type TrafficSeries = {
+  /**
+   * When the first step begins.
+   */
+  start: string;
+  stepSeconds: number;
+  steps: number;
+  /**
+   * The providers with traffic in the series, the costliest first.
+   */
+  providers: Array<TrafficProviderSeries>;
+};
+
+export type TrafficProviderSeries = {
+  provider: string;
+  requests: Array<number>;
+  /**
+   * Tokens of every kind.
+   */
+  tokens: Array<number>;
+  costUsd: Array<number>;
+};
+
+/**
+ * One client's traffic to one provider over the last week.
+ */
+export type TrafficClient = {
+  /**
+   * The client installation that sent it.
+   */
+  installId: string;
+  hostname: string;
+  /**
+   * The application that sent it; `gateway` for requests that named none.
+   */
+  app: string;
+  provider: string;
+  counts: TrafficCounts;
+};
+
+/**
  * RFC 9457 problem details.
  */
 export type Problem = {
@@ -330,6 +438,31 @@ export type ListUsageTrendsResponses = {
 
 export type ListUsageTrendsResponse = ListUsageTrendsResponses[keyof ListUsageTrendsResponses];
 
+export type GetTrafficData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/v1/traffic';
+};
+
+export type GetTrafficErrors = {
+  /**
+   * An error, as an RFC 9457 problem.
+   */
+  default: Problem;
+};
+
+export type GetTrafficError = GetTrafficErrors[keyof GetTrafficErrors];
+
+export type GetTrafficResponses = {
+  /**
+   * The traffic.
+   */
+  200: Traffic;
+};
+
+export type GetTrafficResponse = GetTrafficResponses[keyof GetTrafficResponses];
+
 export type StreamEventsData = {
   body?: never;
   path?: never;
@@ -348,7 +481,7 @@ export type StreamEventsError = StreamEventsErrors[keyof StreamEventsErrors];
 
 export type StreamEventsResponses = {
   /**
-   * Server-sent `accounts` events.
+   * Server-sent `accounts` and `traffic` events.
    */
   200: AccountList;
 };

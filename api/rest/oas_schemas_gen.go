@@ -1028,6 +1028,466 @@ func (s *SourceStatus) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
+// What is passing through the gateway, as the broker counts it.
+// Ref: #/components/schemas/Traffic
+type Traffic struct {
+	// Whether a broker is configured. Without one the rest is empty.
+	Available bool `json:"available"`
+	// When traffic was last collected. Absent before the first collection.
+	UpdatedAt OptDateTime `json:"updatedAt"`
+	// Why the last collection failed. Absent when it succeeded.
+	Error OptString `json:"error"`
+	// When traffic began to be measured: the daemon's first reading of the broker. What is reported before
+	// it is an estimate. Absent before the first reading.
+	MeasuredSince OptDateTime `json:"measuredSince"`
+	// Totals for the last hour, day and week, in that order.
+	Windows []TrafficWindow `json:"windows"`
+	Minutes TrafficSeries   `json:"minutes"`
+	Hours   TrafficSeries   `json:"hours"`
+	// The last week by client, application and provider, the costliest first.
+	Clients []TrafficClient `json:"clients"`
+}
+
+// GetAvailable returns the value of Available.
+func (s *Traffic) GetAvailable() bool {
+	return s.Available
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *Traffic) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// GetError returns the value of Error.
+func (s *Traffic) GetError() OptString {
+	return s.Error
+}
+
+// GetMeasuredSince returns the value of MeasuredSince.
+func (s *Traffic) GetMeasuredSince() OptDateTime {
+	return s.MeasuredSince
+}
+
+// GetWindows returns the value of Windows.
+func (s *Traffic) GetWindows() []TrafficWindow {
+	return s.Windows
+}
+
+// GetMinutes returns the value of Minutes.
+func (s *Traffic) GetMinutes() TrafficSeries {
+	return s.Minutes
+}
+
+// GetHours returns the value of Hours.
+func (s *Traffic) GetHours() TrafficSeries {
+	return s.Hours
+}
+
+// GetClients returns the value of Clients.
+func (s *Traffic) GetClients() []TrafficClient {
+	return s.Clients
+}
+
+// SetAvailable sets the value of Available.
+func (s *Traffic) SetAvailable(val bool) {
+	s.Available = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *Traffic) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
+// SetError sets the value of Error.
+func (s *Traffic) SetError(val OptString) {
+	s.Error = val
+}
+
+// SetMeasuredSince sets the value of MeasuredSince.
+func (s *Traffic) SetMeasuredSince(val OptDateTime) {
+	s.MeasuredSince = val
+}
+
+// SetWindows sets the value of Windows.
+func (s *Traffic) SetWindows(val []TrafficWindow) {
+	s.Windows = val
+}
+
+// SetMinutes sets the value of Minutes.
+func (s *Traffic) SetMinutes(val TrafficSeries) {
+	s.Minutes = val
+}
+
+// SetHours sets the value of Hours.
+func (s *Traffic) SetHours(val TrafficSeries) {
+	s.Hours = val
+}
+
+// SetClients sets the value of Clients.
+func (s *Traffic) SetClients(val []TrafficClient) {
+	s.Clients = val
+}
+
+// One client's traffic to one provider over the last week.
+// Ref: #/components/schemas/TrafficClient
+type TrafficClient struct {
+	// The client installation that sent it.
+	InstallId string `json:"installId"`
+	Hostname  string `json:"hostname"`
+	// The application that sent it; `gateway` for requests that named none.
+	App      string        `json:"app"`
+	Provider string        `json:"provider"`
+	Counts   TrafficCounts `json:"counts"`
+}
+
+// GetInstallId returns the value of InstallId.
+func (s *TrafficClient) GetInstallId() string {
+	return s.InstallId
+}
+
+// GetHostname returns the value of Hostname.
+func (s *TrafficClient) GetHostname() string {
+	return s.Hostname
+}
+
+// GetApp returns the value of App.
+func (s *TrafficClient) GetApp() string {
+	return s.App
+}
+
+// GetProvider returns the value of Provider.
+func (s *TrafficClient) GetProvider() string {
+	return s.Provider
+}
+
+// GetCounts returns the value of Counts.
+func (s *TrafficClient) GetCounts() TrafficCounts {
+	return s.Counts
+}
+
+// SetInstallId sets the value of InstallId.
+func (s *TrafficClient) SetInstallId(val string) {
+	s.InstallId = val
+}
+
+// SetHostname sets the value of Hostname.
+func (s *TrafficClient) SetHostname(val string) {
+	s.Hostname = val
+}
+
+// SetApp sets the value of App.
+func (s *TrafficClient) SetApp(val string) {
+	s.App = val
+}
+
+// SetProvider sets the value of Provider.
+func (s *TrafficClient) SetProvider(val string) {
+	s.Provider = val
+}
+
+// SetCounts sets the value of Counts.
+func (s *TrafficClient) SetCounts(val TrafficCounts) {
+	s.Counts = val
+}
+
+// What passed in some stretch of time.
+// Ref: #/components/schemas/TrafficCounts
+type TrafficCounts struct {
+	Requests         int `json:"requests"`
+	InputTokens      int `json:"inputTokens"`
+	OutputTokens     int `json:"outputTokens"`
+	CacheReadTokens  int `json:"cacheReadTokens"`
+	CacheWriteTokens int `json:"cacheWriteTokens"`
+	// What the tokens would cost at the provider's API prices. On a subscription nothing is billed per
+	// token; it measures work done.
+	CostUsd float64 `json:"costUsd"`
+}
+
+// GetRequests returns the value of Requests.
+func (s *TrafficCounts) GetRequests() int {
+	return s.Requests
+}
+
+// GetInputTokens returns the value of InputTokens.
+func (s *TrafficCounts) GetInputTokens() int {
+	return s.InputTokens
+}
+
+// GetOutputTokens returns the value of OutputTokens.
+func (s *TrafficCounts) GetOutputTokens() int {
+	return s.OutputTokens
+}
+
+// GetCacheReadTokens returns the value of CacheReadTokens.
+func (s *TrafficCounts) GetCacheReadTokens() int {
+	return s.CacheReadTokens
+}
+
+// GetCacheWriteTokens returns the value of CacheWriteTokens.
+func (s *TrafficCounts) GetCacheWriteTokens() int {
+	return s.CacheWriteTokens
+}
+
+// GetCostUsd returns the value of CostUsd.
+func (s *TrafficCounts) GetCostUsd() float64 {
+	return s.CostUsd
+}
+
+// SetRequests sets the value of Requests.
+func (s *TrafficCounts) SetRequests(val int) {
+	s.Requests = val
+}
+
+// SetInputTokens sets the value of InputTokens.
+func (s *TrafficCounts) SetInputTokens(val int) {
+	s.InputTokens = val
+}
+
+// SetOutputTokens sets the value of OutputTokens.
+func (s *TrafficCounts) SetOutputTokens(val int) {
+	s.OutputTokens = val
+}
+
+// SetCacheReadTokens sets the value of CacheReadTokens.
+func (s *TrafficCounts) SetCacheReadTokens(val int) {
+	s.CacheReadTokens = val
+}
+
+// SetCacheWriteTokens sets the value of CacheWriteTokens.
+func (s *TrafficCounts) SetCacheWriteTokens(val int) {
+	s.CacheWriteTokens = val
+}
+
+// SetCostUsd sets the value of CostUsd.
+func (s *TrafficCounts) SetCostUsd(val float64) {
+	s.CostUsd = val
+}
+
+// Ref: #/components/schemas/TrafficProviderCounts
+type TrafficProviderCounts struct {
+	Provider string        `json:"provider"`
+	Counts   TrafficCounts `json:"counts"`
+}
+
+// GetProvider returns the value of Provider.
+func (s *TrafficProviderCounts) GetProvider() string {
+	return s.Provider
+}
+
+// GetCounts returns the value of Counts.
+func (s *TrafficProviderCounts) GetCounts() TrafficCounts {
+	return s.Counts
+}
+
+// SetProvider sets the value of Provider.
+func (s *TrafficProviderCounts) SetProvider(val string) {
+	s.Provider = val
+}
+
+// SetCounts sets the value of Counts.
+func (s *TrafficProviderCounts) SetCounts(val TrafficCounts) {
+	s.Counts = val
+}
+
+// Ref: #/components/schemas/TrafficProviderSeries
+type TrafficProviderSeries struct {
+	Provider string `json:"provider"`
+	Requests []int  `json:"requests"`
+	// Tokens of every kind.
+	Tokens  []int     `json:"tokens"`
+	CostUsd []float64 `json:"costUsd"`
+}
+
+// GetProvider returns the value of Provider.
+func (s *TrafficProviderSeries) GetProvider() string {
+	return s.Provider
+}
+
+// GetRequests returns the value of Requests.
+func (s *TrafficProviderSeries) GetRequests() []int {
+	return s.Requests
+}
+
+// GetTokens returns the value of Tokens.
+func (s *TrafficProviderSeries) GetTokens() []int {
+	return s.Tokens
+}
+
+// GetCostUsd returns the value of CostUsd.
+func (s *TrafficProviderSeries) GetCostUsd() []float64 {
+	return s.CostUsd
+}
+
+// SetProvider sets the value of Provider.
+func (s *TrafficProviderSeries) SetProvider(val string) {
+	s.Provider = val
+}
+
+// SetRequests sets the value of Requests.
+func (s *TrafficProviderSeries) SetRequests(val []int) {
+	s.Requests = val
+}
+
+// SetTokens sets the value of Tokens.
+func (s *TrafficProviderSeries) SetTokens(val []int) {
+	s.Tokens = val
+}
+
+// SetCostUsd sets the value of CostUsd.
+func (s *TrafficProviderSeries) SetCostUsd(val []float64) {
+	s.CostUsd = val
+}
+
+// Traffic over time in equal steps, the last of them still filling. Every array of a provider has one
+// value per step, oldest first.
+// Ref: #/components/schemas/TrafficSeries
+type TrafficSeries struct {
+	// When the first step begins.
+	Start       time.Time `json:"start"`
+	StepSeconds int       `json:"stepSeconds"`
+	Steps       int       `json:"steps"`
+	// The providers with traffic in the series, the costliest first.
+	Providers []TrafficProviderSeries `json:"providers"`
+}
+
+// GetStart returns the value of Start.
+func (s *TrafficSeries) GetStart() time.Time {
+	return s.Start
+}
+
+// GetStepSeconds returns the value of StepSeconds.
+func (s *TrafficSeries) GetStepSeconds() int {
+	return s.StepSeconds
+}
+
+// GetSteps returns the value of Steps.
+func (s *TrafficSeries) GetSteps() int {
+	return s.Steps
+}
+
+// GetProviders returns the value of Providers.
+func (s *TrafficSeries) GetProviders() []TrafficProviderSeries {
+	return s.Providers
+}
+
+// SetStart sets the value of Start.
+func (s *TrafficSeries) SetStart(val time.Time) {
+	s.Start = val
+}
+
+// SetStepSeconds sets the value of StepSeconds.
+func (s *TrafficSeries) SetStepSeconds(val int) {
+	s.StepSeconds = val
+}
+
+// SetSteps sets the value of Steps.
+func (s *TrafficSeries) SetSteps(val int) {
+	s.Steps = val
+}
+
+// SetProviders sets the value of Providers.
+func (s *TrafficSeries) SetProviders(val []TrafficProviderSeries) {
+	s.Providers = val
+}
+
+// The traffic of a recent period, in total and by provider.
+// Ref: #/components/schemas/TrafficWindow
+type TrafficWindow struct {
+	ID    TrafficWindowID `json:"id"`
+	Since time.Time       `json:"since"`
+	Total TrafficCounts   `json:"total"`
+	// The providers with traffic in the period, the costliest first.
+	Providers []TrafficProviderCounts `json:"providers"`
+}
+
+// GetID returns the value of ID.
+func (s *TrafficWindow) GetID() TrafficWindowID {
+	return s.ID
+}
+
+// GetSince returns the value of Since.
+func (s *TrafficWindow) GetSince() time.Time {
+	return s.Since
+}
+
+// GetTotal returns the value of Total.
+func (s *TrafficWindow) GetTotal() TrafficCounts {
+	return s.Total
+}
+
+// GetProviders returns the value of Providers.
+func (s *TrafficWindow) GetProviders() []TrafficProviderCounts {
+	return s.Providers
+}
+
+// SetID sets the value of ID.
+func (s *TrafficWindow) SetID(val TrafficWindowID) {
+	s.ID = val
+}
+
+// SetSince sets the value of Since.
+func (s *TrafficWindow) SetSince(val time.Time) {
+	s.Since = val
+}
+
+// SetTotal sets the value of Total.
+func (s *TrafficWindow) SetTotal(val TrafficCounts) {
+	s.Total = val
+}
+
+// SetProviders sets the value of Providers.
+func (s *TrafficWindow) SetProviders(val []TrafficProviderCounts) {
+	s.Providers = val
+}
+
+type TrafficWindowID string
+
+const (
+	TrafficWindowIDHour TrafficWindowID = "hour"
+	TrafficWindowIDDay  TrafficWindowID = "day"
+	TrafficWindowIDWeek TrafficWindowID = "week"
+)
+
+// AllValues returns all TrafficWindowID values.
+func (TrafficWindowID) AllValues() []TrafficWindowID {
+	return []TrafficWindowID{
+		TrafficWindowIDHour,
+		TrafficWindowIDDay,
+		TrafficWindowIDWeek,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TrafficWindowID) MarshalText() ([]byte, error) {
+	switch s {
+	case TrafficWindowIDHour:
+		return []byte(s), nil
+	case TrafficWindowIDDay:
+		return []byte(s), nil
+	case TrafficWindowIDWeek:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TrafficWindowID) UnmarshalText(data []byte) error {
+	switch TrafficWindowID(data) {
+	case TrafficWindowIDHour:
+		*s = TrafficWindowIDHour
+		return nil
+	case TrafficWindowIDDay:
+		*s = TrafficWindowIDDay
+		return nil
+	case TrafficWindowIDWeek:
+		*s = TrafficWindowIDWeek
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/components/schemas/TrendPoint
 type TrendPoint struct {
 	At           time.Time `json:"at"`

@@ -16,6 +16,9 @@ import type {
   GetConfigData,
   GetConfigErrors,
   GetConfigResponses,
+  GetTrafficData,
+  GetTrafficErrors,
+  GetTrafficResponses,
   ListAccountsData,
   ListAccountsErrors,
   ListAccountsResponses,
@@ -33,6 +36,7 @@ import type {
 import {
   zGetAccountHistoryResponse,
   zGetConfigResponse,
+  zGetTrafficResponse,
   zListAccountsResponse,
   zListUsageTrendsResponse,
   zSetAccountPausedResponse,
@@ -132,9 +136,23 @@ export const listUsageTrends = <ThrowOnError extends boolean = false>(
   });
 
 /**
- * Stream the accounts
+ * Read what is passing through the gateway
  *
- * Server-sent events, each carrying a whole object. `accounts`: an `AccountList`, sent on connect and after every poll. A `: ping` comment keeps idle connections open. Every event is complete, so a client that reconnects needs no resume cursor.
+ * Requests, tokens and their cost at API prices, as the broker counts them: totals for the last hour, day and week, the last hour by minute, the last week by hour, and the week by client. Traffic is measured from the daemon's first reading of the broker on. What came before, and what passed while the daemon was stopped for over an hour, is an estimate known to the hour: it counts in the day, the week and the series by hour, and not in the last hour or the series by minute. Without a broker `available` is false and the rest is empty.
+ */
+export const getTraffic = <ThrowOnError extends boolean = false>(
+  options?: Options<GetTrafficData, ThrowOnError>
+): RequestResult<GetTrafficResponses, GetTrafficErrors, ThrowOnError> =>
+  (options?.client ?? client).get<GetTrafficResponses, GetTrafficErrors, ThrowOnError>({
+    responseValidator: async data => await zGetTrafficResponse.parseAsync(data),
+    url: '/api/v1/traffic',
+    ...options,
+  });
+
+/**
+ * Stream the accounts and the traffic
+ *
+ * Server-sent events, each carrying a whole object. `accounts`: an `AccountList`, sent on connect and after every poll. `traffic`: a `Traffic`, sent on connect and after every collection, when a broker is configured. A `: ping` comment keeps idle connections open. Every event is complete, so a client that reconnects needs no resume cursor.
  */
 export const streamEvents = <ThrowOnError extends boolean = false>(
   options?: Options<StreamEventsData, ThrowOnError, StreamEventsResponse>

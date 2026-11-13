@@ -75,6 +75,10 @@ type History interface {
 type Deps struct {
 	Monitor Monitor
 	History History
+	// Collector is nil when no broker is configured: there is then no
+	// traffic to serve.
+	Collector Collector
+	Traffic   TrafficRecord
 }
 
 // Server serves /api/v1, the OpenAPI spec and the web UI on one listener.
@@ -96,7 +100,7 @@ func New(log *slog.Logger, cfg Config, assets fs.FS, deps Deps) (*Server, error)
 	s := &Server{log: log, cfg: cfg, shutdown: make(chan struct{})}
 	s.ops = &operations{
 		log: log, name: cfg.Name, version: cfg.Version, pollInterval: cfg.PollInterval, now: cfg.Now,
-		monitor: deps.Monitor, history: deps.History,
+		monitor: deps.Monitor, history: deps.History, collector: deps.Collector, trafficRecord: deps.Traffic,
 	}
 
 	generated, err := rest.NewServer(

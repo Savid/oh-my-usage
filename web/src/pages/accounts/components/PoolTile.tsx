@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import clsx from 'clsx';
+import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { providerName, type LimitSeverity } from '@/lib/accounts';
 import { formatPercent, formatShort } from '@/lib/format';
 import { providerTone } from '@/lib/providerTones';
 import type { PoolTileProps } from './PoolTile.types';
-import { ProviderIcon } from './ProviderIcon';
 
 const figureClasses: Record<LimitSeverity, string> = {
   normal: 'text-foreground',

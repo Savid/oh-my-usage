@@ -16,7 +16,8 @@ func TestParse(t *testing.T) {
 
 	defaults := options{
 		listen: "127.0.0.1:8080", logFormat: "text", logLevel: slog.LevelInfo,
-		db: "oh-my-usage.db", pollInterval: time.Minute, retention: 90 * 24 * time.Hour,
+		db: "oh-my-usage.db", pollInterval: time.Minute, trafficInterval: 15 * time.Second,
+		retention: 90 * 24 * time.Hour,
 	}
 
 	for name, tc := range map[string]struct {
@@ -30,18 +31,19 @@ func TestParse(t *testing.T) {
 				"-listen", ":9000", "-log-format", "json", "-log-level", "debug", "-version",
 				"-gateway-url", "https://omp.example.com", "-gateway-token-file", "/run/gw",
 				"-broker-url", "http://auth-broker:8765", "-broker-token-file", "/run/br",
-				"-db", "/data/usage.db", "-poll-interval", "2m", "-retention", "0",
+				"-db", "/data/usage.db", "-poll-interval", "2m", "-traffic-interval", "5s", "-retention", "0",
 			},
 			want: options{
 				listen: ":9000", logFormat: "json", logLevel: slog.LevelDebug, version: true,
 				gatewayURL: "https://omp.example.com", gatewayTokenFile: "/run/gw",
 				brokerURL: "http://auth-broker:8765", brokerTokenFile: "/run/br",
-				db: "/data/usage.db", pollInterval: 2 * time.Minute,
+				db: "/data/usage.db", pollInterval: 2 * time.Minute, trafficInterval: 5 * time.Second,
 			},
 		},
 		"bad format":         {args: []string{"-log-format", "yaml"}, wantErr: `-log-format "yaml": text or json`},
 		"bad level":          {args: []string{"-log-level", "loud"}, wantErr: "flags: "},
 		"poll too fast":      {args: []string{"-poll-interval", "5s"}, wantErr: "-poll-interval 5s: at least 30s"},
+		"traffic too fast":   {args: []string{"-traffic-interval", "1s"}, wantErr: "-traffic-interval 1s: at least 5s"},
 		"negative retention": {args: []string{"-retention", "-1h"}, wantErr: "-retention"},
 		"unknown":            {args: []string{"-nope"}, wantErr: "flags: "},
 		"help wanted":        {args: []string{"-h"}, wantErr: errHelp.Error()},

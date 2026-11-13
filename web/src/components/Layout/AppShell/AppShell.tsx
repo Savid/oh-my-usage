@@ -12,7 +12,7 @@ const connections: Record<StreamConnection, { label: string; tone: StatusTone }>
 };
 
 /** Page frame: top bar with the product name, navigation and stream state, then the page. */
-export function AppShell({ name, connection, children }: AppShellProps): JSX.Element {
+export function AppShell({ name, traffic, connection, children }: AppShellProps): JSX.Element {
   const { label, tone } = connections[connection];
 
   return (
@@ -27,6 +27,15 @@ export function AppShell({ name, connection, children }: AppShellProps): JSX.Ele
           >
             Accounts
           </Link>
+          {traffic && (
+            <Link
+              to="/traffic"
+              activeProps={{ className: 'text-foreground underline underline-offset-4' }}
+              inactiveProps={{ className: 'text-muted hover:text-foreground' }}
+            >
+              Traffic
+            </Link>
+          )}
         </nav>
         <StatusBadge tone={tone}>{label}</StatusBadge>
       </header>

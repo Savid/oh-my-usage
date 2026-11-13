@@ -8,6 +8,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   args: {
     name: 'oh-my-usage',
+    traffic: true,
     connection: 'live',
     children: <p className="text-body text-muted">Page content</p>,
   },
@@ -20,7 +21,16 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
+    await expect(canvas.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic');
     await expect(canvas.getByText('live')).toHaveAttribute('data-tone', 'ok');
+  },
+};
+
+export const WithoutBroker: Story = {
+  args: { traffic: false },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('link', { name: 'Accounts' })).toBeInTheDocument();
+    await expect(canvas.queryByRole('link', { name: 'Traffic' })).not.toBeInTheDocument();
   },
 };
 

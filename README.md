@@ -3,7 +3,8 @@
 A dashboard for an [omp](https://github.com/can1357/oh-my-pi) auth gateway.
 `oh-my-usaged` is one static binary: it polls the gateway, serves a web UI
 that shows how much quota is used and when it resets, keeps a usage history in
-SQLite, and can pause an account when it is also given the broker.
+SQLite, and, when it is also given the broker, shows the traffic passing
+through and can pause an account.
 
 ## What you see
 
@@ -22,6 +23,10 @@ Every figure is quota **used**.
   says whose usage it is and the figure says how bad it is.
 - **An account's page**: the same band, and a chart of every window over the
   last seven days, with a table of the same values.
+- **Traffic**, with a broker: what is passing through the gateway. A band on
+  the first page gives the last hour's requests, tokens and cost at API
+  prices, with the hour drawn minute by minute; the Traffic page adds the day
+  and the week by provider, the week by hour, and who sent it.
 
 The layout is one column on a phone and fills the width of a desktop.
 
@@ -39,7 +44,7 @@ build/bin/oh-my-usaged -gateway-url https://omp.example.com
 # http://127.0.0.1:8080; -h lists flags
 ```
 
-To pause accounts, add the broker:
+To see traffic and pause accounts, add the broker:
 
 ```bash
 export OH_MY_USAGE_BROKER_TOKEN=...    # the broker's admin token
@@ -52,12 +57,13 @@ build/bin/oh-my-usaged -gateway-url http://auth-gateway:4019 -broker-url http://
 | --------------------------- | --------------------------- | ----------------- | ----------------------------------------------------------- |
 | `-gateway-url`              | `OH_MY_USAGE_GATEWAY_URL`   | required          | The omp auth gateway.                                       |
 | `-gateway-token-file`       | `OH_MY_USAGE_GATEWAY_TOKEN` | required          | The gateway token: a file holding it, or the variable.      |
-| `-broker-url`               | `OH_MY_USAGE_BROKER_URL`    | none              | The omp auth broker. Setting it turns the pause control on. |
+| `-broker-url`               | `OH_MY_USAGE_BROKER_URL`    | none              | The omp auth broker. Setting it turns traffic and pause on. |
 | `-broker-token-file`        | `OH_MY_USAGE_BROKER_TOKEN`  | none              | The broker admin token.                                     |
 | `-listen`                   |                             | `127.0.0.1:8080`  | HTTP listen address.                                        |
-| `-db`                       |                             | `oh-my-usage.db`  | SQLite file for the usage history.                          |
+| `-db`                       |                             | `oh-my-usage.db`  | SQLite file for the usage history and the traffic record.   |
 | `-poll-interval`            |                             | `1m`              | Time between polls, at least `30s`.                         |
-| `-retention`                |                             | `2160h` (90 days) | How long history is kept; `0` keeps it forever.             |
+| `-traffic-interval`         |                             | `15s`             | Time between readings of the broker's traffic, at least 5s. |
+| `-retention`                |                             | `2160h` (90 days) | How long both are kept; `0` keeps them forever.             |
 | `-log-format`, `-log-level` |                             | `text`, `INFO`    |                                                             |
 
 A flag wins over its variable. Tokens are never taken as flag values, so they
@@ -68,11 +74,33 @@ do not show in the process list.
 - **Gateway** (`GET /v1/usage`, `GET /healthz`): read-only. The gateway caches
   for 15 s and the broker behind it for about 5 min per account, so a poll each
   minute costs the providers nothing extra.
-- **Broker** (`GET /v1/snapshot`, `POST`/`DELETE /v1/credential/:id/block`):
-  only when configured. The snapshot carries live access tokens and API keys;
-  oh-my-usage decodes only each credential's ID, provider, identity and
-  blocks, so those secrets are never held or logged. The broker admin token
-  itself can read every stored token: treat it like the credentials.
+- **Broker** (`GET /v1/snapshot`, `GET /v1/usage/clients`,
+  `POST`/`DELETE /v1/credential/:id/block`): only when configured. The
+  snapshot carries live access tokens and API keys; oh-my-usage decodes only
+  each credential's ID, provider, identity and blocks, so those secrets are
+  never held or logged. The broker admin token itself can read every stored
+  token: treat it like the credentials.
+
+## Traffic
+
+The broker counts every request the gateway serves: requests, the four kinds
+of token, and what they would cost at the provider's API prices. On a
+subscription nothing is billed per token, so read the cost as a measure of
+work done, not as a bill.
+
+- **Measured from the first reading on.** The broker keeps running totals;
+  oh-my-usage reads them every 15 s and records how much they grew. That is
+  exact to the reading. The broker reports by client, application and
+  provider, not by account or model, so neither does the page.
+- **Estimated before it.** The broker keeps each burst of traffic as one
+  entry stamped with its last request, so the days before the first reading
+  can only be drawn with each burst in the hour it ended: a long burst shows
+  as one tall hour. The estimate counts in the day, the week and the chart by
+  hour, never in the last hour or the chart by minute, and the chart marks
+  where measuring began.
+- **While the daemon is stopped** nothing is lost: the next reading measures
+  everything that passed, spread evenly over the gap (by the hour, as an
+  estimate, when the gap is over an hour).
 
 ## Pausing an account
 

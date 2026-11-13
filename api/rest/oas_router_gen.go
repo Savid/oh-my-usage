@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	rn9AllowedHeaders = map[string]string{
+	rn11AllowedHeaders = map[string]string{
 		"PUT": "Content-Type",
 	}
 )
@@ -169,7 +169,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								default:
 									s.notAllowed(w, r, notAllowedParams{
 										allowedMethods: "PUT",
-										allowedHeaders: rn9AllowedHeaders,
+										allowedHeaders: rn11AllowedHeaders,
 										acceptPost:     "",
 										acceptPatch:    "",
 									})
@@ -209,29 +209,68 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-			case 't': // Prefix: "trends"
+			case 't': // Prefix: "tr"
 
-				if l := len("trends"); len(elem) >= l && elem[0:l] == "trends" {
+				if l := len("tr"); len(elem) >= l && elem[0:l] == "tr" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					// Leaf node.
-					switch r.Method {
-					case "GET":
-						s.handleListUsageTrendsRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, notAllowedParams{
-							allowedMethods: "GET",
-							allowedHeaders: nil,
-							acceptPost:     "",
-							acceptPatch:    "",
-						})
+					break
+				}
+				switch elem[0] {
+				case 'a': // Prefix: "affic"
+
+					if l := len("affic"); len(elem) >= l && elem[0:l] == "affic" {
+						elem = elem[l:]
+					} else {
+						break
 					}
 
-					return
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleGetTrafficRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
+				case 'e': // Prefix: "ends"
+
+					if l := len("ends"); len(elem) >= l && elem[0:l] == "ends" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleListUsageTrendsRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, notAllowedParams{
+								allowedMethods: "GET",
+								allowedHeaders: nil,
+								acceptPost:     "",
+								acceptPatch:    "",
+							})
+						}
+
+						return
+					}
+
 				}
 
 			}
@@ -472,29 +511,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 				}
 
-			case 't': // Prefix: "trends"
+			case 't': // Prefix: "tr"
 
-				if l := len("trends"); len(elem) >= l && elem[0:l] == "trends" {
+				if l := len("tr"); len(elem) >= l && elem[0:l] == "tr" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					// Leaf node.
-					switch method {
-					case "GET":
-						r.name = ListUsageTrendsOperation
-						r.summary = "Read every account's usage, thinned for small charts"
-						r.operationID = "listUsageTrends"
-						r.operationGroup = ""
-						r.pathPattern = "/api/v1/trends"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
+					break
+				}
+				switch elem[0] {
+				case 'a': // Prefix: "affic"
+
+					if l := len("affic"); len(elem) >= l && elem[0:l] == "affic" {
+						elem = elem[l:]
+					} else {
+						break
 					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = GetTrafficOperation
+							r.summary = "Read what is passing through the gateway"
+							r.operationID = "getTraffic"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/traffic"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				case 'e': // Prefix: "ends"
+
+					if l := len("ends"); len(elem) >= l && elem[0:l] == "ends" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = ListUsageTrendsOperation
+							r.summary = "Read every account's usage, thinned for small charts"
+							r.operationID = "listUsageTrends"
+							r.operationGroup = ""
+							r.pathPattern = "/api/v1/trends"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
 				}
 
 			}

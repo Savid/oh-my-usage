@@ -5,6 +5,9 @@ export interface AppShellProps {
   /** The daemon's display name from its configuration; undefined until known. */
   name: string | undefined;
 
+  /** Whether the daemon reads traffic from a broker; the Traffic page is linked only then. */
+  traffic: boolean;
+
   /** The event stream's state, shown in the top bar. */
   connection: StreamConnection;
 

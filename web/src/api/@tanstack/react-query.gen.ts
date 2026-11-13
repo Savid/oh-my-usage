@@ -6,6 +6,7 @@ import { client } from '../client.gen';
 import {
   getAccountHistory,
   getConfig,
+  getTraffic,
   listAccounts,
   listUsageTrends,
   type Options,
@@ -18,6 +19,9 @@ import type {
   GetConfigData,
   GetConfigError,
   GetConfigResponse,
+  GetTrafficData,
+  GetTrafficError,
+  GetTrafficResponse,
   ListAccountsData,
   ListAccountsError,
   ListAccountsResponse,
@@ -187,4 +191,25 @@ export const listUsageTrendsOptions = (options?: Options<ListUsageTrendsData>) =
       return data;
     },
     queryKey: listUsageTrendsQueryKey(options),
+  });
+
+export const getTrafficQueryKey = (options?: Options<GetTrafficData>) => createQueryKey('getTraffic', options);
+
+/**
+ * Read what is passing through the gateway
+ *
+ * Requests, tokens and their cost at API prices, as the broker counts them: totals for the last hour, day and week, the last hour by minute, the last week by hour, and the week by client. Traffic is measured from the daemon's first reading of the broker on. What came before, and what passed while the daemon was stopped for over an hour, is an estimate known to the hour: it counts in the day, the week and the series by hour, and not in the last hour or the series by minute. Without a broker `available` is false and the rest is empty.
+ */
+export const getTrafficOptions = (options?: Options<GetTrafficData>) =>
+  queryOptions<GetTrafficResponse, GetTrafficError, GetTrafficResponse, ReturnType<typeof getTrafficQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getTraffic({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getTrafficQueryKey(options),
   });

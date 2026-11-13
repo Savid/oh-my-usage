@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/savid/oh-my-usage/pkg/accounts"
+	"github.com/savid/oh-my-usage/pkg/traffic"
 )
 
 // Broker is an omp auth broker, reached with its admin token. That token can
@@ -109,4 +110,66 @@ func (b *Broker) DeleteBlock(ctx context.Context, credentialID int64, providerKe
 
 func blockPath(credentialID int64) string {
 	return "/v1/credential/" + strconv.FormatInt(credentialID, 10) + "/block"
+}
+
+// ClientUsage sums the traffic the broker's clients reported since a moment,
+// by client, application and provider. A zero since asks for all of it.
+func (b *Broker) ClientUsage(ctx context.Context, since time.Time) (traffic.Summary, error) {
+	path := "/v1/usage/clients"
+	if !since.IsZero() {
+		path += "?sinceMs=" + strconv.FormatInt(since.UnixMilli(), 10)
+	}
+
+	var out clientUsage
+	if err := b.c.do(ctx, http.MethodGet, path, nil, nil, &out); err != nil {
+		return traffic.Summary{}, err
+	}
+
+	return out.summary(), nil
+}
+
+// clientUsage is the broker's /v1/usage/clients.
+type clientUsage struct {
+	GeneratedAt int64 `json:"generatedAt"`
+	Clients     []struct {
+		InstallID string `json:"installId"`
+		Hostname  string `json:"hostname"`
+		Providers []struct {
+			App              string  `json:"app"`
+			Provider         string  `json:"provider"`
+			Requests         int64   `json:"requests"`
+			InputTokens      int64   `json:"inputTokens"`
+			OutputTokens     int64   `json:"outputTokens"`
+			CacheReadTokens  int64   `json:"cacheReadTokens"`
+			CacheWriteTokens int64   `json:"cacheWriteTokens"`
+			CostUSD          float64 `json:"costUsd"`
+		} `json:"providers"`
+	} `json:"clients"`
+}
+
+func (u clientUsage) summary() traffic.Summary {
+	out := traffic.Summary{
+		GeneratedAt: fromMillis(u.GeneratedAt),
+		Hostnames:   make(map[string]string, len(u.Clients)),
+		Counts:      map[traffic.Key]traffic.Counts{},
+	}
+
+	for _, client := range u.Clients {
+		out.Hostnames[client.InstallID] = client.Hostname
+
+		for _, p := range client.Providers {
+			key := traffic.Key{InstallID: client.InstallID, App: p.App, Provider: p.Provider}
+			// A client can report one provider under several rows; they add up.
+			out.Counts[key] = out.Counts[key].Add(traffic.Counts{
+				Requests:         p.Requests,
+				InputTokens:      p.InputTokens,
+				OutputTokens:     p.OutputTokens,
+				CacheReadTokens:  p.CacheReadTokens,
+				CacheWriteTokens: p.CacheWriteTokens,
+				CostUSD:          p.CostUSD,
+			})
+		}
+	}
+
+	return out
 }

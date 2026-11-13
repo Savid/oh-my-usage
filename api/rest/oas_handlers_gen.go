@@ -206,6 +206,87 @@ func (s *Server) handleGetConfigRequest(args [0]string, argsEscaped bool, w http
 	}
 }
 
+// handleGetTrafficRequest handles getTraffic operation.
+//
+// Requests, tokens and their cost at API prices, as the broker counts them: totals for the last hour,
+// day and week, the last hour by minute, the last week by hour, and the week by client. Traffic is
+// measured from the daemon's first reading of the broker on. What came before, and what passed while
+// the daemon was stopped for over an hour, is an estimate known to the hour: it counts in the day, the
+// week and the series by hour, and not in the last hour or the series by minute. Without a broker
+// `available` is false and the rest is empty.
+//
+// GET /api/v1/traffic
+func (s *Server) handleGetTrafficRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err error
+	)
+
+	var rawBody []byte
+
+	var response *Traffic
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GetTrafficOperation,
+			OperationSummary: "Read what is passing through the gateway",
+			OperationID:      "getTraffic",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *Traffic
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GetTraffic(ctx)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GetTraffic(ctx)
+	}
+	if err != nil {
+		if errRes, ok := errors.Into[*ProblemStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w); err != nil {
+			defer recordError("Internal", err)
+		}
+		return
+	}
+
+	if err := encodeGetTrafficResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleListAccountsRequest handles listAccounts operation.
 //
 // The accounts found by the last poll of the gateway, joined with the broker's credentials when a

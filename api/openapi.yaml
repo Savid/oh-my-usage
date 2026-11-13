@@ -18,6 +18,8 @@ tags:
     description: Daemon metadata and the event stream.
   - name: accounts
     description: The logins and API keys an omp auth gateway serves, with their usage.
+  - name: traffic
+    description: Requests, tokens and cost passing through the gateway, read from the broker.
 paths:
   /api/v1/config:
     get:
@@ -136,19 +138,43 @@ paths:
                 $ref: '#/components/schemas/UsageTrendList'
         default:
           $ref: '#/components/responses/Problem'
+  /api/v1/traffic:
+    get:
+      operationId: getTraffic
+      tags: [traffic]
+      summary: Read what is passing through the gateway
+      description: >-
+        Requests, tokens and their cost at API prices, as the broker counts
+        them: totals for the last hour, day and week, the last hour by minute,
+        the last week by hour, and the week by client. Traffic is measured
+        from the daemon's first reading of the broker on. What came before,
+        and what passed while the daemon was stopped for over an hour, is an
+        estimate known to the hour: it counts in the day, the week and the
+        series by hour, and not in the last hour or the series by minute.
+        Without a broker `available` is false and the rest is empty.
+      responses:
+        '200':
+          description: The traffic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Traffic'
+        default:
+          $ref: '#/components/responses/Problem'
   /api/v1/stream:
     get:
       operationId: streamEvents
       tags: [system]
-      summary: Stream the accounts
+      summary: Stream the accounts and the traffic
       description: >-
         Server-sent events, each carrying a whole object. `accounts`: an
-        `AccountList`, sent on connect and after every poll. A `: ping` comment
-        keeps idle connections open. Every event is complete, so a client that
-        reconnects needs no resume cursor.
+        `AccountList`, sent on connect and after every poll. `traffic`: a
+        `Traffic`, sent on connect and after every collection, when a broker
+        is configured. A `: ping` comment keeps idle connections open. Every
+        event is complete, so a client that reconnects needs no resume cursor.
       responses:
         '200':
-          description: Server-sent `accounts` events.
+          description: Server-sent `accounts` and `traffic` events.
           content:
             text/event-stream:
               schema:
@@ -378,6 +404,157 @@ components:
         usedFraction:
           type: number
           minimum: 0
+    Traffic:
+      type: object
+      description: What is passing through the gateway, as the broker counts it.
+      required: [available, windows, minutes, hours, clients]
+      properties:
+        available:
+          type: boolean
+          description: Whether a broker is configured. Without one the rest is empty.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When traffic was last collected. Absent before the first collection.
+        error:
+          type: string
+          description: Why the last collection failed. Absent when it succeeded.
+        measuredSince:
+          type: string
+          format: date-time
+          description: >-
+            When traffic began to be measured: the daemon's first reading of
+            the broker. What is reported before it is an estimate. Absent
+            before the first reading.
+        windows:
+          type: array
+          description: Totals for the last hour, day and week, in that order.
+          items:
+            $ref: '#/components/schemas/TrafficWindow'
+        minutes:
+          $ref: '#/components/schemas/TrafficSeries'
+        hours:
+          $ref: '#/components/schemas/TrafficSeries'
+        clients:
+          type: array
+          description: The last week by client, application and provider, the costliest first.
+          items:
+            $ref: '#/components/schemas/TrafficClient'
+    TrafficCounts:
+      type: object
+      description: What passed in some stretch of time.
+      required: [requests, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd]
+      properties:
+        requests:
+          type: integer
+          minimum: 0
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        cacheReadTokens:
+          type: integer
+          minimum: 0
+        cacheWriteTokens:
+          type: integer
+          minimum: 0
+        costUsd:
+          type: number
+          format: double
+          minimum: 0
+          description: >-
+            What the tokens would cost at the provider's API prices. On a
+            subscription nothing is billed per token; it measures work done.
+    TrafficWindow:
+      type: object
+      description: The traffic of a recent period, in total and by provider.
+      required: [id, since, total, providers]
+      properties:
+        id:
+          type: string
+          enum: [hour, day, week]
+        since:
+          type: string
+          format: date-time
+        total:
+          $ref: '#/components/schemas/TrafficCounts'
+        providers:
+          type: array
+          description: The providers with traffic in the period, the costliest first.
+          items:
+            $ref: '#/components/schemas/TrafficProviderCounts'
+    TrafficProviderCounts:
+      type: object
+      required: [provider, counts]
+      properties:
+        provider:
+          type: string
+        counts:
+          $ref: '#/components/schemas/TrafficCounts'
+    TrafficSeries:
+      type: object
+      description: >-
+        Traffic over time in equal steps, the last of them still filling.
+        Every array of a provider has one value per step, oldest first.
+      required: [start, stepSeconds, steps, providers]
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: When the first step begins.
+        stepSeconds:
+          type: integer
+          minimum: 1
+        steps:
+          type: integer
+          minimum: 1
+        providers:
+          type: array
+          description: The providers with traffic in the series, the costliest first.
+          items:
+            $ref: '#/components/schemas/TrafficProviderSeries'
+    TrafficProviderSeries:
+      type: object
+      required: [provider, requests, tokens, costUsd]
+      properties:
+        provider:
+          type: string
+        requests:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+        tokens:
+          type: array
+          description: Tokens of every kind.
+          items:
+            type: integer
+            minimum: 0
+        costUsd:
+          type: array
+          items:
+            type: number
+            format: double
+            minimum: 0
+    TrafficClient:
+      type: object
+      description: One client's traffic to one provider over the last week.
+      required: [installId, hostname, app, provider, counts]
+      properties:
+        installId:
+          type: string
+          description: The client installation that sent it.
+        hostname:
+          type: string
+        app:
+          type: string
+          description: The application that sent it; `gateway` for requests that named none.
+        provider:
+          type: string
+        counts:
+          $ref: '#/components/schemas/TrafficCounts'
     Problem:
       type: object
       description: RFC 9457 problem details.
