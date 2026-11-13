@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@/test-utils';
+import { render, screen } from '@/test-utils';
 import { Logo } from './Logo';
 
 describe('Logo', () => {
@@ -7,24 +7,40 @@ describe('Logo', () => {
     vi.unstubAllGlobals();
   });
 
-  it('draws the face and its gauge, hidden from assistive technology', () => {
+  it('draws the pi with a meter for each leg, hidden from assistive technology', () => {
     const { container } = render(<Logo />);
 
-    const logo = container.querySelector('svg');
-    expect(logo).toHaveAttribute('aria-hidden', 'true');
-    // The ring and its filled part, two eyes, a mouth.
-    expect(container.querySelectorAll('circle')).toHaveLength(3);
-    expect(container.querySelectorAll('ellipse')).toHaveLength(2);
-    expect(container.querySelector('.stroke-meter')).toHaveAttribute('stroke-dasharray', '72 100');
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByTestId('track')).toHaveAttribute('opacity', '0.3');
+    // The short leg, then the long one, each part filled.
+    expect(screen.getAllByTestId('meter').map(meter => meter.getAttribute('height'))).toEqual(['13', '23']);
   });
 
-  it('fills its gauge and blinks', () => {
+  it('wears one gradient, from magenta through iris to cyan', () => {
+    const { container } = render(<Logo />);
+
+    const gradient = container.querySelector('linearGradient');
+    expect([...container.querySelectorAll('stop')].map(stop => stop.getAttribute('class'))).toEqual([
+      'text-mark-magenta',
+      'text-mark-iris',
+      'text-mark-cyan',
+    ]);
+    for (const part of [screen.getByTestId('track'), ...screen.getAllByTestId('meter')]) {
+      expect(part).toHaveAttribute('fill', `url(#${gradient?.id})`);
+    }
+  });
+
+  it('fills each meter, holds it full, empties it and fills it back to where it stood', () => {
     const { container } = render(<Logo />);
 
     expect(container.querySelector('svg')).toHaveAttribute('data-moving', 'true');
-    // The gauge, each eye and the mouth.
-    expect(container.querySelectorAll('animate')).toHaveLength(4);
-    expect(container.querySelectorAll('animate[repeatCount="indefinite"]')).toHaveLength(2);
+    const [short, long] = [...container.querySelectorAll('animate[repeatCount="indefinite"]')];
+    expect(short).toHaveAttribute('values', '13;22;22;0;13');
+    expect(short).toHaveAttribute('keyTimes', '0;0.3565;0.4279;0.4851;1');
+    expect(short).toHaveAttribute('dur', '7s');
+    // The long leg's window is longer, so the two drift apart.
+    expect(long).toHaveAttribute('values', '23;32;32;0;23');
+    expect(long).toHaveAttribute('dur', '16s');
   });
 
   it('holds still when told to', () => {

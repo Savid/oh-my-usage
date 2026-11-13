@@ -70,6 +70,11 @@
   --color-series-1: var(--color-meter);
   --color-series-2: light-dark(#0f9b89, #0daba5);
   --color-series-3: light-dark(#93126b, #c32e85);
+  /* The logo's gradient, corner to corner: oh-my-pi's own, a step deeper in
+   * the light theme so the mark holds on a pale bar. Nothing else wears it. */
+  --color-mark-magenta: light-dark(#c9259a, #ed4abf);
+  --color-mark-iris: light-dark(#7a3ae0, #9b4dff);
+  --color-mark-cyan: light-dark(#0e8ea3, #5ad8e6);
 
   /* One family: a monospace, so figures line up and the page reads as an instrument. */
   --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;

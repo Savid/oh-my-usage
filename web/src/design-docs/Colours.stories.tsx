@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
   ACCENT_COLORS,
   BORDER_COLORS,
+  BRAND_COLORS,
   CONTRAST_EXEMPT,
   CONTRAST_RULES,
   DATA_COLORS,
@@ -107,6 +108,19 @@ export const Providers: Story = {
         'opencode-track': "fill-opencode-track: its gauge's empty part, and the glow under its chart",
         openrouter: "text-openrouter: OpenRouter's mark, gauge and chart line",
         'openrouter-track': "fill-openrouter-track: its gauge's empty part, and the glow under its chart",
+      }}
+    />
+  ),
+};
+
+export const Brand: Story = {
+  render: () => (
+    <ColorSwatches
+      tokens={BRAND_COLORS}
+      notes={{
+        'mark-magenta': "text-mark-magenta: where the logo's gradient starts",
+        'mark-iris': 'text-mark-iris: its middle',
+        'mark-cyan': 'text-mark-cyan: where it ends',
       }}
     />
   ),

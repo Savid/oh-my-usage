@@ -1,17 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="oh-my-usage">
-  <!-- A small round face ringed by a usage gauge. The gauge fills, the mouth rounds into an "oh", the eyes blink. -->
-  <rect width="32" height="32" rx="7" fill="#111214"/>
-  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#282a2e" stroke-width="3.2"/>
-  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#7285fe" stroke-width="3.2" stroke-linecap="round" pathLength="100" stroke-dasharray="72 100" transform="rotate(-90 16 16)">
-    <animate attributeName="stroke-dasharray" values="0 100;72 100" dur="1.4s" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1" fill="freeze"/>
-  </circle>
-  <ellipse cx="12.8" cy="14.8" rx="1.4" ry="1.8" fill="#eff0f3">
-    <animate attributeName="ry" values="1.8;1.8;0.3;1.8;1.8" keyTimes="0;0.9;0.94;0.98;1" dur="5s" repeatCount="indefinite"/>
-  </ellipse>
-  <ellipse cx="19.2" cy="14.8" rx="1.4" ry="1.8" fill="#eff0f3">
-    <animate attributeName="ry" values="1.8;1.8;0.3;1.8;1.8" keyTimes="0;0.9;0.94;0.98;1" dur="5s" repeatCount="indefinite"/>
-  </ellipse>
-  <circle cx="16" cy="20.2" r="1.7" fill="none" stroke="#eff0f3" stroke-width="1.3">
-    <animate attributeName="r" values="0.7;1.7" dur="1.4s" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1" fill="freeze"/>
-  </circle>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="oh-my-usage">
+  <!-- oh-my-pi's pi, with its legs turned into usage meters: each fills, and empties when its window resets. -->
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="14" y1="16" x2="50" y2="56">
+      <stop offset="0" stop-color="#ed4abf"/>
+      <stop offset=".5" stop-color="#9b4dff"/>
+      <stop offset="1" stop-color="#5ad8e6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#111214"/>
+  <path fill="url(#g)" opacity=".3" d="M14 16h36v8H40v32h-8V24h-6v22h-8V24h-4z"/>
+  <path fill="url(#g)" d="M14 16h36v8H14z"/>
+  <rect fill="url(#g)" x="18" y="24" width="8" height="13">
+    <animate attributeName="height" values="13;22;22;0;13" keyTimes="0;0.3565;0.4279;0.4851;1" dur="7s" repeatCount="indefinite"/>
+  </rect>
+  <rect fill="url(#g)" x="32" y="24" width="8" height="23">
+    <animate attributeName="height" values="23;32;32;0;23" keyTimes="0;0.2654;0.2967;0.3217;1" dur="16s" repeatCount="indefinite"/>
+  </rect>
 </svg>

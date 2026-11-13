@@ -16,8 +16,8 @@ export const Default: Story = {
     // It moves unless the viewer asked for less motion, as the browser the stories are tested in does.
     const moving = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     await expect(canvasElement.querySelector('svg')).toHaveAttribute('data-moving', String(moving));
-    await expect(canvasElement.querySelectorAll('animate')).toHaveLength(moving ? 4 : 0);
-    await expect(canvasElement.querySelectorAll('ellipse')).toHaveLength(2);
+    await expect(canvasElement.querySelectorAll('animate')).toHaveLength(moving ? 2 : 0);
+    await expect(canvasElement.querySelectorAll('[data-testid="meter"]')).toHaveLength(2);
   },
 };
 

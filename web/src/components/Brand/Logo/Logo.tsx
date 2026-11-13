@@ -1,56 +1,74 @@
-import type { JSX } from 'react';
+import { type JSX, useId } from 'react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import type { LogoProps } from './Logo.types';
 
-/** How much of the gauge the face wears, out of 100. */
-const USED = 72;
+// oh-my-pi's mark, in the units it is drawn in: a bar over a short leg and a long one.
+const PI = 'M14 16h36v8H40v32h-8V24h-6v22h-8V24h-4z';
+const BAR = 'M14 16h36v8H14z';
 
-// One blink every few seconds: open, shut and open again in a fraction of the cycle.
-const BLINK = { values: '1.9;1.9;0.3;1.9;1.9', keyTimes: '0;0.9;0.94;0.98;1', dur: '5s' };
+interface Leg {
+  name: string;
+  x: number;
+  /** How far the leg hangs below the bar. */
+  length: number;
+  /** How much of that is filled when the mark is still. */
+  used: number;
+  /** Seconds from one reset to the next. */
+  period: number;
+}
 
-// The gauge fills quickly and settles: fast out, slow in.
-// `fill: 'freeze'` is the animation's own attribute: it holds the last value, and is no colour.
-const FILL = { dur: '1.4s', calcMode: 'spline', keyTimes: '0;1', keySplines: '0.2 0.8 0.2 1', fill: 'freeze' };
+// Each leg is a meter with a window of its own, as an account's limits are: a short one and a long one.
+const LEGS: readonly Leg[] = [
+  { name: 'short', x: 18, length: 22, used: 13, period: 7 },
+  { name: 'long', x: 32, length: 32, used: 23, period: 16 },
+];
+
+/** Seconds a full meter waits before its window resets, and that the reset takes. */
+const HOLD = 0.5;
+const RESET = 0.4;
+
+/** A meter's window: it fills at a steady pace from where it stands, waits full, empties, and fills back. */
+function cycle({ length, used, period }: Leg): { values: string; keyTimes: string; dur: string } {
+  const filling = period - HOLD - RESET;
+  const full = ((length - used) / length) * filling;
+  const times = [0, full, full + HOLD, full + HOLD + RESET, period];
+
+  return {
+    values: [used, length, length, 0, used].join(';'),
+    keyTimes: times.map(time => Number((time / period).toFixed(4))).join(';'),
+    dur: `${period}s`,
+  };
+}
 
 /**
- * The product's mark: a small round face ringed by a usage gauge, saying "oh
- * my" at how much is used. The gauge fills as it appears and the eyes blink.
- * It is decorative: the product's name is written beside it.
+ * The product's mark: oh-my-pi's pi, with its two legs turned into usage
+ * meters. Each fills, and empties when its window resets. It is decorative:
+ * the product's name is written beside it.
  */
 export function Logo({ animated = true }: LogoProps): JSX.Element {
   const still = usePrefersReducedMotion();
   const moving = animated && !still;
+  const gradientId = useId();
+  const fill = `url(#${gradientId})`;
 
   return (
-    <svg aria-hidden="true" viewBox="0 0 32 32" className="size-7 shrink-0" data-moving={moving}>
-      <circle cx="16" cy="16" r="12" fill="none" strokeWidth="3.5" className="stroke-border" />
-      {/* Drawn from twelve o'clock; its length is counted out of 100. */}
-      <circle
-        cx="16"
-        cy="16"
-        r="12"
-        fill="none"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-        pathLength="100"
-        strokeDasharray={`${USED} 100`}
-        transform="rotate(-90 16 16)"
-        className="stroke-meter"
-      >
-        {moving && <animate attributeName="stroke-dasharray" values={`0 100;${USED} 100`} {...FILL} />}
-      </circle>
-
-      <ellipse cx="12.4" cy="14.6" rx="1.5" ry="1.9" className="fill-foreground">
-        {moving && <animate attributeName="ry" repeatCount="indefinite" {...BLINK} />}
-      </ellipse>
-      <ellipse cx="19.6" cy="14.6" rx="1.5" ry="1.9" className="fill-foreground">
-        {moving && <animate attributeName="ry" repeatCount="indefinite" {...BLINK} />}
-      </ellipse>
-
-      {/* The mouth rounds into an "oh" as the gauge fills. */}
-      <circle cx="16" cy="20.6" r="1.9" fill="none" strokeWidth="1.4" className="stroke-foreground">
-        {moving && <animate attributeName="r" values="0.7;1.9" {...FILL} />}
-      </circle>
+    <svg aria-hidden="true" viewBox="10 14 44 44" className="size-7 shrink-0" data-moving={moving}>
+      <defs>
+        {/* One gradient across the whole mark, so the bar and both legs are cut from the same sheet. */}
+        <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1="14" y1="16" x2="50" y2="56">
+          <stop offset="0" stopColor="currentColor" className="text-mark-magenta" />
+          <stop offset="0.5" stopColor="currentColor" className="text-mark-iris" />
+          <stop offset="1" stopColor="currentColor" className="text-mark-cyan" />
+        </linearGradient>
+      </defs>
+      {/* The whole pi, dim: the empty part of each meter. */}
+      <path d={PI} fill={fill} opacity="0.3" data-testid="track" />
+      <path d={BAR} fill={fill} />
+      {LEGS.map(leg => (
+        <rect key={leg.name} x={leg.x} y="24" width="8" height={leg.used} fill={fill} data-testid="meter">
+          {moving && <animate attributeName="height" repeatCount="indefinite" {...cycle(leg)} />}
+        </rect>
+      ))}
     </svg>
   );
 }

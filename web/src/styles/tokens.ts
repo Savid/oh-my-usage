@@ -27,6 +27,9 @@ export const PROVIDER_COLORS = [
   'openrouter-track',
 ] as const;
 
+/** The stops of the logo's gradient, first to last. */
+export const BRAND_COLORS = ['mark-magenta', 'mark-iris', 'mark-cyan'] as const;
+
 const TRACK_COLORS = ['meter-track', 'anthropic-track', 'openai-track', 'opencode-track', 'openrouter-track'] as const;
 
 export const COLOR_TOKENS = [
@@ -37,6 +40,7 @@ export const COLOR_TOKENS = [
   ...STATUS_COLORS,
   ...DATA_COLORS,
   ...PROVIDER_COLORS,
+  ...BRAND_COLORS,
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
@@ -79,6 +83,12 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     name: 'Gauge fills, chart lines and provider marks on a panel',
     foregrounds: ['meter', 'series-1', 'anthropic', 'openai', 'opencode', 'openrouter'],
     backgrounds: ['surface', 'raised'],
+    minimum: 3,
+  },
+  {
+    name: "The logo's gradient on the top bar and the page",
+    foregrounds: BRAND_COLORS,
+    backgrounds: ['surface', 'background'],
     minimum: 3,
   },
 ];

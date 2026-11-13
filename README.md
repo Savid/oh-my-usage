@@ -173,6 +173,8 @@ Built from [Savid/skeleton](https://github.com/Savid/skeleton).
 
 - The typeface is [Geist Mono](https://vercel.com/font) (SIL Open Font
   License), shipped in the binary.
+- The logo is [oh-my-pi](https://github.com/can1357/oh-my-pi)'s mark (MIT)
+  with its legs redrawn as usage meters.
 - Provider marks are from [Simple Icons](https://simpleicons.org) (CC0) and
   [Lobe Icons](https://github.com/lobehub/lobe-icons) (MIT). Each is its
   owner's trademark, used only to name the provider.
