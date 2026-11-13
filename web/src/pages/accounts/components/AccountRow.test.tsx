@@ -29,7 +29,8 @@ describe('AccountRow', () => {
     expect(within(row).getByRole('img', { name: 'Anthropic' })).toBeInTheDocument();
     expect(within(row).getByText('One Org · 2 resets, 1 usable')).toBeInTheDocument();
     // Both weekly windows reset together; the first listed leads.
-    expect(row).toHaveTextContent('24%left · 7 Day · resets in 21h');
+    expect(row).toHaveTextContent('24%left');
+    expect(row).toHaveTextContent('7 Day · resets in 21h');
     expect(row).toHaveAttribute('data-severity', 'normal');
     expect(row).toHaveAttribute('data-chart', 'history');
     expect(within(row).getByText('active')).toHaveAttribute('data-tone', 'ok');
@@ -42,6 +43,8 @@ describe('AccountRow', () => {
     expect(others.map(item => item.textContent)).toEqual(['5 Hour not reported', '7 Day Fable 8% · 21h']);
     // The Fable window is nearly spent, and says so in more than position.
     expect(within(others[1]!).getByText('8%')).toHaveClass('text-warn');
+    // Each sits on its own solid chip, so the chart never runs through it.
+    expect(others[1]).toHaveClass('bg-surface');
   });
 
   it('marks a main window that is low or spent, in more than colour', () => {
@@ -53,7 +56,7 @@ describe('AccountRow', () => {
     );
 
     expect(screen.getByRole('article')).toHaveAttribute('data-severity', 'warn');
-    expect(screen.getByRole('article')).toHaveTextContent('▲10%left, low · 7 days');
+    expect(screen.getByRole('article')).toHaveTextContent('▲10%left, low');
 
     rerender(
       <AccountRow

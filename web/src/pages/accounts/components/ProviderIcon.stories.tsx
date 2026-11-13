@@ -17,8 +17,11 @@ const PROVIDERS = [
 const meta = {
   title: 'Pages/Accounts/Components/ProviderIcon',
   component: ProviderIcon,
-  args: { provider: 'anthropic', decorative: false },
-  argTypes: { provider: { control: 'select', options: PROVIDERS } },
+  args: { provider: 'anthropic', decorative: false, size: 'md' },
+  argTypes: {
+    provider: { control: 'select', options: PROVIDERS },
+    size: { control: 'inline-radio', options: ['sm', 'md'] },
+  },
 } satisfies Meta<typeof ProviderIcon>;
 
 export default meta;

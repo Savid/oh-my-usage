@@ -42,35 +42,36 @@ export function PoolTile({ pool, now }: PoolTileProps): JSX.Element {
     <article
       aria-label={`${providerName(pool.provider)} ${pool.label}`}
       data-severity={severity}
-      className="flex min-w-72 flex-1 flex-col gap-1.5 rounded-md border border-border bg-surface px-3 pt-1.5 pb-2"
+      className="flex min-w-72 flex-1 flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3"
     >
-      <div className="flex items-baseline gap-2">
-        <span className="flex min-w-0 items-center gap-1.5 self-center text-micro text-muted">
-          <ProviderIcon provider={pool.provider} decorative />
-          <span className="truncate font-semibold tracking-caps text-foreground uppercase">
-            {providerName(pool.provider)}
-          </span>
-          <span className="hidden truncate sm:inline">
-            {pool.label}
-            {pool.seats > 1 && ` · ${pool.seats} seats`}
-          </span>
+      <div className="flex items-center gap-2 text-muted">
+        <ProviderIcon provider={pool.provider} decorative size="md" />
+        <span className="truncate text-body font-semibold tracking-caps text-foreground uppercase">
+          {providerName(pool.provider)}
         </span>
-        <span className={clsx('ml-auto text-heading font-semibold tabular-nums', figureClasses[severity])}>
+        <span className="ml-auto shrink-0 text-caption">
+          {pool.label}
+          {pool.seats > 1 && ` · ${pool.seats} seats`}
+        </span>
+      </div>
+
+      <div className="flex items-baseline gap-2">
+        <span className={clsx('text-display font-semibold tabular-nums', figureClasses[severity])}>
           {formatPercent(pool.leftFraction)}
         </span>
-        <span className={clsx('text-micro', severity === 'normal' ? 'text-muted' : figureClasses[severity])}>
+        <span className={clsx('text-caption', severity === 'normal' ? 'text-muted' : figureClasses[severity])}>
           {severityWords[severity]}
         </span>
         {reset && (
-          <span className="shrink-0 text-micro whitespace-nowrap text-muted tabular-nums">
+          <span className="ml-auto shrink-0 text-caption whitespace-nowrap text-muted tabular-nums">
             {pool.staggered ? 'next reset ' : 'resets in '}
-            <span className="text-body font-semibold text-foreground">{reset}</span>
+            <span className="text-heading font-semibold text-foreground">{reset}</span>
           </span>
         )}
       </div>
 
       {/* A fuel gauge: the filled part is what is left. */}
-      <div className="h-1 overflow-hidden rounded-sm">
+      <div className="h-1.5 overflow-hidden rounded-sm">
         <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
           <rect width="100" height="1" className={trackClasses[severity]} />
           <rect width={pool.leftFraction * 100} height="1" className={fillClasses[severity]} />

@@ -8,4 +8,10 @@ export interface ProviderIconProps {
    * @default false
    */
   decorative?: boolean;
+
+  /**
+   * How large to draw it: `sm` beside small text, `md` beside a name.
+   * @default 'sm'
+   */
+  size?: 'sm' | 'md';
 }

@@ -13,8 +13,9 @@ Every figure is quota **left**, not used.
   across all its accounts, and how long until the next reset. The main window
   is the one that resets last: a week rather than five hours.
 - **Accounts**, one band each, drawn over the last seven days of what the
-  account had left. The large figure is its main window; its other windows are
-  the small values beside it. A figure turns amber with a ▲ at a fifth left
+  account had left. A band leads with the large figure for its main window,
+  then the account's name and when that window resets; its other windows are
+  the small values on the right. A figure turns amber with a ▲ at a fifth left
   and red with a ■ at nothing.
 - **An account's page**: the same band, and a chart of every window over the
   last seven days, with a table of the same values.

@@ -126,10 +126,11 @@ function resetIn(limit: Limit, now: number): string | undefined {
 
 /**
  * One account as a band across the page, drawn over a chart of what it had
- * left. On top, who it is, whether it is taking traffic, and the pause
- * control when a broker is configured. Below, the big figure for its main
- * usage window (the one that resets last), and its other windows as small
- * values.
+ * left. It leads with the big figure for its main usage window (the one that
+ * resets last), then who it is and when that window resets. To the right, its
+ * other windows as small values, whether it is taking traffic, and the pause
+ * control when a broker is configured. Everything written sits on solid
+ * ground: the chart fades in beside the name and runs behind the chips.
  */
 export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
@@ -173,46 +174,124 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       className="relative overflow-hidden"
     >
       {drawn && (
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 size-full"
-        >
-          <path d={drawn.area} className={washClasses[severity]} />
-          {drawn.line && (
-            <path
-              d={drawn.line}
-              fill="none"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              className={edgeClasses[severity]}
-            />
-          )}
-        </svg>
+        <>
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 size-full"
+          >
+            <path d={drawn.area} className={washClasses[severity]} />
+            {drawn.line && (
+              <path
+                d={drawn.line}
+                fill="none"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                className={edgeClasses[severity]}
+              />
+            )}
+          </svg>
+          {/* Solid ground under the figure and the name; the chart shows through as it fades. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-65% to-transparent lg:w-176"
+          />
+        </>
       )}
 
       <div
-        className={clsx('relative flex flex-col justify-between gap-2 px-3 py-2.5', drawn ? 'min-h-30' : 'min-h-10')}
+        className={clsx(
+          'relative flex flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:items-center lg:gap-6',
+          drawn ? 'min-h-28' : 'min-h-14'
+        )}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2 text-muted">
-            <ProviderIcon provider={account.provider} />
-            <Heading id={headingId} className="min-w-0 shrink truncate text-body font-medium text-foreground">
-              <Link
-                to="/accounts/$accountId"
-                params={{ accountId: account.id }}
-                className="underline-offset-4 hover:underline"
+        <div className="flex min-w-0 items-center gap-4 lg:flex-1">
+          {primary && left !== undefined ? (
+            <p className="w-24 shrink-0 text-right">
+              <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
+                {marked && (
+                  <span aria-hidden="true" className="mr-1 text-body">
+                    {marked.mark}
+                  </span>
+                )}
+                {formatPercent(left)}
+              </span>
+              <span
+                className={clsx(
+                  'block text-micro tracking-caps uppercase',
+                  severity === 'normal' ? 'text-muted' : figureClasses[severity]
+                )}
               >
-                {accountTitle(account)}
-              </Link>
-            </Heading>
-            {meta && <p className="hidden min-w-0 flex-1 truncate text-micro sm:block">{meta}</p>}
-          </div>
+                left{marked && <span className="sr-only">{marked.word}</span>}
+              </span>
+            </p>
+          ) : (
+            <p className="w-24 shrink-0 text-right text-micro text-muted">no usage reported</p>
+          )}
 
-          <div className="flex shrink-0 items-center gap-2.5">
-            <StatusBadge tone={tone}>{label}</StatusBadge>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex items-center gap-2 text-muted">
+              <ProviderIcon provider={account.provider} size="md" />
+              <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
+                <Link
+                  to="/accounts/$accountId"
+                  params={{ accountId: account.id }}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {accountTitle(account)}
+                </Link>
+              </Heading>
+            </div>
+            {primary && (
+              <p className="truncate text-caption text-muted">
+                {shortLimitLabel(primary)}
+                {reset && (
+                  <>
+                    {' · resets in '}
+                    <span className="font-semibold text-foreground tabular-nums">{reset}</span>
+                  </>
+                )}
+              </p>
+            )}
+            {meta && <p className="truncate text-micro text-muted">{meta}</p>}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+          {/* Each small value sits on its own solid chip, so the chart never runs through it. */}
+          <ul className="flex flex-wrap gap-1.5 text-micro text-muted">
+            {others.map(limit => {
+              const share = leftFraction(limit);
+              const otherReset = resetIn(limit, now);
+              return (
+                <li
+                  key={limit.id}
+                  className="flex h-6 items-center gap-1.5 rounded-sm border border-border bg-surface px-2 whitespace-nowrap"
+                >
+                  <span className="tracking-caps uppercase">{shortLimitLabel(limit)}</span>{' '}
+                  {share === undefined ? (
+                    'not reported'
+                  ) : (
+                    <>
+                      <span
+                        className={clsx('text-caption font-semibold tabular-nums', figureClasses[limitSeverity(limit)])}
+                      >
+                        {formatPercent(share)}
+                      </span>
+                      {otherReset && <span className="tabular-nums"> · {otherReset}</span>}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 lg:ml-2">
+            <span className="flex h-6 items-center rounded-sm border border-border bg-surface px-2">
+              <StatusBadge tone={tone}>{label}</StatusBadge>
+            </span>
             {controls && account.pausable && (
               <button
                 type="button"
@@ -226,58 +305,8 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           </div>
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
-          {primary && left !== undefined ? (
-            <p className="flex items-baseline gap-2 whitespace-nowrap">
-              <span className={clsx('text-display font-semibold tabular-nums', figureClasses[severity])}>
-                {marked && (
-                  <span aria-hidden="true" className="mr-1.5 text-title">
-                    {marked.mark}
-                  </span>
-                )}
-                {formatPercent(left)}
-              </span>
-              <span className="text-caption text-muted">
-                left{marked && <span className="sr-only">{marked.word}</span>}
-                {' · '}
-                {shortLimitLabel(primary)}
-                {reset && (
-                  <>
-                    {' · resets in '}
-                    <span className="text-body font-semibold text-foreground tabular-nums">{reset}</span>
-                  </>
-                )}
-              </span>
-            </p>
-          ) : (
-            <p className="text-caption text-muted">no usage reported</p>
-          )}
-
-          <ul className="flex min-w-0 flex-wrap gap-x-5 pb-1 text-caption text-muted">
-            {others.map(limit => {
-              const share = leftFraction(limit);
-              const otherReset = resetIn(limit, now);
-              return (
-                <li key={limit.id} className="whitespace-nowrap">
-                  <span className="text-micro tracking-caps uppercase">{shortLimitLabel(limit)}</span>{' '}
-                  {share === undefined ? (
-                    'not reported'
-                  ) : (
-                    <>
-                      <span className={clsx('font-semibold tabular-nums', figureClasses[limitSeverity(limit)])}>
-                        {formatPercent(share)}
-                      </span>
-                      {otherReset && <span className="tabular-nums"> · {otherReset}</span>}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
         {pause.isError && (
-          <p role="alert" className="text-caption text-danger">
+          <p role="alert" className="text-caption text-danger lg:absolute lg:right-4 lg:bottom-1">
             {account.paused ? 'Could not resume the account' : 'Could not pause the account'}:{' '}
             {problemDetail(pause.error, 'the server did not answer')}
           </p>
