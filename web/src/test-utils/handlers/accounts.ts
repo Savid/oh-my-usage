@@ -3,6 +3,7 @@ import type { Account, AccountList, PauseRequest, UsageHistory, UsageSample, Usa
 import { at } from '@/test-utils/time';
 
 const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
 /** A Claude seat with a broker credential, most of its week used. */
 export const seatFixture: Account = {
@@ -13,6 +14,7 @@ export const seatFixture: Account = {
   orgName: 'One Org',
   paused: false,
   pausable: true,
+  blocks: [],
   limits: [
     { id: 'anthropic:5h', label: 'Claude 5 Hour', windowLabel: '5 Hour' },
     {
@@ -22,6 +24,7 @@ export const seatFixture: Account = {
       usedFraction: 0.76,
       status: 'ok',
       resetsAt: at(21 * HOUR),
+      windowSeconds: 7 * 24 * 3600,
     },
     {
       id: 'anthropic:7d:fable',
@@ -30,9 +33,28 @@ export const seatFixture: Account = {
       usedFraction: 0.92,
       status: 'warning',
       resetsAt: at(21 * HOUR),
+      windowSeconds: 7 * 24 * 3600,
     },
   ],
-  resets: { available: 2, usable: 1, soonestExpiresAt: at(28 * 24 * HOUR) },
+  resets: {
+    available: 2,
+    usable: 1,
+    soonestExpiresAt: at(28 * DAY),
+    saved: [
+      {
+        title: 'One full limit reset (November 2026)',
+        usable: true,
+        clears: ['anthropic:7d', 'anthropic:7d:fable'],
+        expiresAt: at(28 * DAY),
+      },
+      {
+        title: 'New model launch: one Fable reset',
+        usable: false,
+        clears: ['anthropic:7d:fable'],
+        expiresAt: at(117 * DAY),
+      },
+    ],
+  },
   fetchedAt: at(-12_000),
 };
 
@@ -46,6 +68,7 @@ export const pausedSeatFixture: Account = {
   paused: true,
   pausable: true,
   blockedUntil: at(2 * HOUR),
+  blocks: [{ scope: 'anthropic:5h', until: at(2 * HOUR) }],
   limits: [
     {
       id: 'anthropic:5h',
@@ -54,6 +77,7 @@ export const pausedSeatFixture: Account = {
       usedFraction: 1,
       status: 'exhausted',
       resetsAt: at(2 * HOUR),
+      windowSeconds: 5 * 3600,
     },
     { id: 'anthropic:7d', label: 'Claude 7 Day', usedFraction: 0.19, status: 'ok', resetsAt: at(33 * HOUR) },
   ],
@@ -69,9 +93,10 @@ export const strayFixture: Account = {
   plan: 'pro',
   paused: false,
   pausable: false,
+  blocks: [],
   limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 0.66, status: 'ok', resetsAt: at(110 * HOUR) }],
-  // Codex does not say how many of its resets can be spent now.
-  resets: { available: 1 },
+  // Codex does not say how many of its resets can be spent now, or what they are called.
+  resets: { available: 1, saved: [{ clears: [], expiresAt: at(30 * DAY) }] },
   fetchedAt: at(-90_000),
 };
 
@@ -82,6 +107,7 @@ export const keyFixture: Account = {
   kind: 'api_key',
   paused: false,
   pausable: true,
+  blocks: [],
   limits: [],
 };
 

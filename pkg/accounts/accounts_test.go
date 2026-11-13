@@ -1,6 +1,7 @@
 package accounts_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -229,5 +230,24 @@ func TestMergeKeepsSameEmailInDifferentOrgsApart(t *testing.T) {
 		if a.OrgName != want {
 			t.Errorf("credential %d joined org %q, want %q", a.CredentialID, a.OrgName, want)
 		}
+	}
+}
+
+func TestMergeListsOwnBlocksLongestFirst(t *testing.T) {
+	t.Parallel()
+
+	blocks := []accounts.Block{
+		{Scope: "", Until: now.Add(time.Hour)},
+		{Scope: accounts.PauseScope, Until: accounts.PausedUntil()},
+		{Scope: "tier:fable", Until: now.Add(3 * time.Hour)},
+		{Scope: "auth", Until: now.Add(-time.Minute)},
+	}
+
+	got := accounts.Merge(nil, []accounts.Credential{{ID: 1, Provider: "anthropic", Kind: accounts.KindOAuth, Blocks: blocks}}, now)
+
+	// The pause and the block that has ended are not omp's live blocks.
+	want := []accounts.Block{{Scope: "tier:fable", Until: now.Add(3 * time.Hour)}, {Scope: "", Until: now.Add(time.Hour)}}
+	if !slices.Equal(got[0].Blocks, want) || !got[0].Paused || !got[0].BlockedUntil.Equal(now.Add(3*time.Hour)) {
+		t.Errorf("blocks = %+v, paused %v, blocked until %v", got[0].Blocks, got[0].Paused, got[0].BlockedUntil)
 	}
 }

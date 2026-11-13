@@ -76,8 +76,9 @@ type usageLimit struct {
 	Label  string `json:"label"`
 	Status string `json:"status"`
 	Window *struct {
-		Label    string `json:"label"`
-		ResetsAt int64  `json:"resetsAt"`
+		Label      string `json:"label"`
+		DurationMs int64  `json:"durationMs"`
+		ResetsAt   int64  `json:"resetsAt"`
 	} `json:"window"`
 	Amount struct {
 		Used              *float64 `json:"used"`
@@ -92,8 +93,10 @@ type resetCredits struct {
 	AvailableCount  int  `json:"availableCount"`
 	RedeemableCount *int `json:"redeemableCount"`
 	Credits         []struct {
-		Usable    *bool  `json:"usable"`
-		ExpiresAt string `json:"expiresAt"`
+		Title     string   `json:"title"`
+		Usable    *bool    `json:"usable"`
+		Clears    []string `json:"clears"`
+		ExpiresAt string   `json:"expiresAt"`
 	} `json:"credits"`
 }
 
@@ -126,6 +129,7 @@ func (r usageReport) report() accounts.Report {
 		if l.Window != nil {
 			limit.WindowLabel = l.Window.Label
 			limit.ResetsAt = fromMillis(l.Window.ResetsAt)
+			limit.Window = time.Duration(max(0, l.Window.DurationMs)) * time.Millisecond
 		}
 
 		out.Limits = append(out.Limits, limit)
@@ -166,14 +170,19 @@ func (c resetCredits) resets() *accounts.Resets {
 			}
 		}
 
-		expires, err := time.Parse(time.RFC3339, credit.ExpiresAt)
-		if err != nil {
-			continue
+		saved := accounts.SavedReset{Title: credit.Title, Usable: credit.Usable, Clears: credit.Clears}
+
+		// A reset with no readable expiry is still listed; it just never
+		// counts as the soonest to expire.
+		if expires, err := time.Parse(time.RFC3339, credit.ExpiresAt); err == nil {
+			saved.ExpiresAt = expires.UTC()
+
+			if out.SoonestExpiresAt.IsZero() || saved.ExpiresAt.Before(out.SoonestExpiresAt) {
+				out.SoonestExpiresAt = saved.ExpiresAt
+			}
 		}
 
-		if out.SoonestExpiresAt.IsZero() || expires.Before(out.SoonestExpiresAt) {
-			out.SoonestExpiresAt = expires.UTC()
-		}
+		out.Saved = append(out.Saved, saved)
 	}
 
 	// The provider's own count wins over the per-credit flags when it has one.

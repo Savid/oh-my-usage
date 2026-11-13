@@ -8,7 +8,7 @@ export interface AppShellProps {
   /** Whether the daemon reads traffic from a broker; the Traffic page is linked only then. */
   traffic: boolean;
 
-  /** The event stream's state, shown in the top bar. */
+  /** The event stream's state; the top bar says so when it is down. */
   connection: StreamConnection;
 
   /** The current page. */

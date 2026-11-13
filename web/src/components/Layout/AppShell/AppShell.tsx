@@ -5,15 +5,17 @@ import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.t
 import type { StreamConnection } from '@/hooks/useEventStream';
 import type { AppShellProps } from './AppShell.types';
 
-const connections: Record<StreamConnection, { label: string; tone: StatusTone }> = {
-  connecting: { label: 'connecting', tone: 'neutral' },
-  live: { label: 'live', tone: 'ok' },
+// The stream is only spoken of when it is down: a page that is updating
+// needs no badge to say so, and one that is not must not look current.
+const connections: Record<StreamConnection, { label: string; tone: StatusTone } | undefined> = {
+  connecting: undefined,
+  live: undefined,
   reconnecting: { label: 'reconnecting', tone: 'warn' },
 };
 
-/** Page frame: top bar with the product name, navigation and stream state, then the page. */
+/** Page frame: top bar with the product name, navigation and a warning when the stream is down, then the page. */
 export function AppShell({ name, traffic, connection, children }: AppShellProps): JSX.Element {
-  const { label, tone } = connections[connection];
+  const lost = connections[connection];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -37,7 +39,7 @@ export function AppShell({ name, traffic, connection, children }: AppShellProps)
             </Link>
           )}
         </nav>
-        <StatusBadge tone={tone}>{label}</StatusBadge>
+        {lost && <StatusBadge tone={lost.tone}>{lost.label}</StatusBadge>}
       </header>
       <main className="flex-1 p-2 sm:p-3">{children}</main>
     </div>

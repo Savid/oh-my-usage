@@ -49,6 +49,20 @@ describe('TrafficBars', () => {
     expect(screen.queryByTestId('highlight')).not.toBeInTheDocument();
   });
 
+  it('breaks the step down by kind of token when it has the room', () => {
+    const { rerender } = render(<TrafficBars series={trafficFixture.minutes} label="Traffic by minute" />);
+
+    const kinds = screen
+      .getAllByRole('term')
+      .map(term => `${term.textContent} ${term.nextElementSibling?.textContent}`);
+    // Step 58: Anthropic at $6.21 and Codex at $0.86, each token kind a fixed multiple of the cost.
+    expect(kinds).toEqual(['Input 85', 'Output 38.9K', 'Cache read 7.42M', 'Cache write 311K']);
+
+    rerender(<TrafficBars series={trafficFixture.minutes} label="Traffic by minute" size="band" />);
+
+    expect(screen.queryByRole('term')).not.toBeInTheDocument();
+  });
+
   it('marks where measuring began and calls the steps before it estimates', () => {
     render(<TrafficBars series={trafficFixture.hours} label="Traffic by hour" measuredSince={at(-72 * HOUR)} />);
 

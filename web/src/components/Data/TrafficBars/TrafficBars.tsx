@@ -5,7 +5,7 @@ import { useElementWidth } from '@/hooks/useElementWidth';
 import { providerName } from '@/lib/accounts';
 import { formatClock, formatCount, formatDateTime, formatDay, formatUsd } from '@/lib/format';
 import { providerTone } from '@/lib/providerTones';
-import { niceCeiling, stepMs, toSteps, type Step } from '@/lib/traffic';
+import { niceCeiling, stepMs, TOKEN_KINDS, toSteps, type Step } from '@/lib/traffic';
 import type { TrafficBarsProps } from './TrafficBars.types';
 
 // The drawing is laid out in CSS pixels to the width it is given, so a bar
@@ -34,7 +34,8 @@ function tick(step: Step, hourly: boolean): string | undefined {
  * Traffic over time as bars, one per minute or hour, each stacked by provider
  * in the provider's colour; its height is the cost at API prices. The line
  * above the plot is the readout and the legend: it gives the latest full
- * step, or the one under the pointer, in total and for each provider.
+ * step, or the one under the pointer, in total and for each provider; a
+ * chart of its own adds that step's tokens by kind.
  */
 export function TrafficBars({ series, label, size = 'panel', measuredSince }: TrafficBarsProps): JSX.Element {
   const [hovered, setHovered] = useState<number>();
@@ -97,6 +98,18 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
           </ul>
         )}
       </figcaption>
+
+      {/* A chart of its own has room to say what kinds of token those were. */}
+      {size === 'panel' && (
+        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-caption">
+          {TOKEN_KINDS.map(kind => (
+            <div key={kind.key} className="flex items-baseline gap-1.5">
+              <dt className="text-micro tracking-caps text-muted uppercase">{kind.name}</dt>
+              <dd className="font-semibold tabular-nums">{formatCount(shown[kind.key])}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       <div ref={frame} className="relative">
         <svg

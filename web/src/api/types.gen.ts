@@ -88,6 +88,10 @@ export type Account = {
    * When omp's own block on the account ends, such as after a usage limit. Absent when it has none.
    */
   blockedUntil?: string;
+  /**
+   * omp's own live blocks on the account, the one that ends last first. A pause is not among them.
+   */
+  blocks: Array<Block>;
   limits: Array<Limit>;
   resets?: Resets;
   /**
@@ -112,6 +116,10 @@ export type Limit = {
    * When the window resets. Absent when the provider gave no time.
    */
   resetsAt?: string;
+  /**
+   * How long the window lasts. Absent when the provider did not say.
+   */
+  windowSeconds?: number;
 };
 
 /**
@@ -130,6 +138,43 @@ export type Resets = {
    * When the first of them expires.
    */
   soonestExpiresAt?: string;
+  /**
+   * The resets the provider described. It may list fewer than `available`.
+   */
+  saved?: Array<SavedReset>;
+};
+
+/**
+ * One limit reset an account holds and has not spent.
+ */
+export type SavedReset = {
+  /**
+   * The provider's name for it. Absent when it gave none.
+   */
+  title?: string;
+  /**
+   * Whether it can be spent now. Absent when the provider does not say.
+   */
+  usable?: boolean;
+  /**
+   * The `id` of each limit that spending it would reset.
+   */
+  clears: Array<string>;
+  /**
+   * When it expires. Absent when it does not.
+   */
+  expiresAt?: string;
+};
+
+/**
+ * A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+ */
+export type Block = {
+  /**
+   * What the block covers, as omp names it.
+   */
+  scope: string;
+  until: string;
 };
 
 export type PauseRequest = {
@@ -254,9 +299,21 @@ export type TrafficProviderSeries = {
   provider: string;
   requests: Array<number>;
   /**
-   * Tokens of every kind.
+   * Input tokens that were not read from a cache.
    */
-  tokens: Array<number>;
+  inputTokens: Array<number>;
+  /**
+   * Output tokens.
+   */
+  outputTokens: Array<number>;
+  /**
+   * Input tokens read from a cache.
+   */
+  cacheReadTokens: Array<number>;
+  /**
+   * Input tokens written to a cache.
+   */
+  cacheWriteTokens: Array<number>;
   costUsd: Array<number>;
 };
 

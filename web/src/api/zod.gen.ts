@@ -31,6 +31,17 @@ export const zLimit = z.object({
   usedFraction: z.optional(z.number().check(z.gte(0))),
   status: z.optional(z.enum(['ok', 'warning', 'exhausted', 'unknown'])),
   resetsAt: z.optional(z.iso.datetime()),
+  windowSeconds: z.optional(z.int().check(z.gte(1))),
+});
+
+/**
+ * One limit reset an account holds and has not spent.
+ */
+export const zSavedReset = z.object({
+  title: z.optional(z.string()),
+  usable: z.optional(z.boolean()),
+  clears: z.array(z.string()),
+  expiresAt: z.optional(z.iso.datetime()),
 });
 
 /**
@@ -40,6 +51,15 @@ export const zResets = z.object({
   available: z.int().check(z.gte(0)),
   usable: z.optional(z.int().check(z.gte(0))),
   soonestExpiresAt: z.optional(z.iso.datetime()),
+  saved: z.optional(z.array(zSavedReset)),
+});
+
+/**
+ * A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+ */
+export const zBlock = z.object({
+  scope: z.string(),
+  until: z.iso.datetime(),
 });
 
 /**
@@ -55,6 +75,7 @@ export const zAccount = z.object({
   paused: z.boolean(),
   pausable: z.boolean(),
   blockedUntil: z.optional(z.iso.datetime()),
+  blocks: z.array(zBlock),
   limits: z.array(zLimit),
   resets: z.optional(zResets),
   fetchedAt: z.optional(z.iso.datetime()),
@@ -134,7 +155,10 @@ export const zTrafficWindow = z.object({
 export const zTrafficProviderSeries = z.object({
   provider: z.string(),
   requests: z.array(z.int().check(z.gte(0))),
-  tokens: z.array(z.int().check(z.gte(0))),
+  inputTokens: z.array(z.int().check(z.gte(0))),
+  outputTokens: z.array(z.int().check(z.gte(0))),
+  cacheReadTokens: z.array(z.int().check(z.gte(0))),
+  cacheWriteTokens: z.array(z.int().check(z.gte(0))),
   costUsd: z.array(z.number().check(z.gte(0))),
 });
 

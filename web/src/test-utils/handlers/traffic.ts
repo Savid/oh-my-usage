@@ -35,7 +35,10 @@ function providerSeries(
     provider,
     costUsd,
     requests: costUsd.map(cost => Math.round(cost * 6)),
-    tokens: costUsd.map(cost => Math.round(cost * 1_100_000)),
+    inputTokens: costUsd.map(cost => Math.round(cost * 12)),
+    outputTokens: costUsd.map(cost => Math.round(cost * 5500)),
+    cacheReadTokens: costUsd.map(cost => Math.round(cost * 1_050_000)),
+    cacheWriteTokens: costUsd.map(cost => Math.round(cost * 44_000)),
   };
 }
 

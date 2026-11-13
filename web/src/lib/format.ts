@@ -93,3 +93,13 @@ export function formatShare(part: number, whole: number): string {
   const share = part / whole;
   return share < 0.005 ? '<1%' : formatPercent(share);
 }
+
+/**
+ * How fast a share is being used, per hour or, when that is under a point an
+ * hour, per day: 0.021 an hour is "2.1%/h", 0.004 is "9.6%/day".
+ */
+export function formatPace(perHour: number): string {
+  const points = perHour * 100;
+  if (points === 0) return '0%/h';
+  return points >= 1 ? `${points.toFixed(1)}%/h` : `${(points * 24).toFixed(1)}%/day`;
+}

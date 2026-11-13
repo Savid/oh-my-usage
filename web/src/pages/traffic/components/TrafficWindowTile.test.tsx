@@ -26,11 +26,22 @@ describe('TrafficWindowTile', () => {
     expect(parts[2]).toHaveClass('fill-openai');
   });
 
+  it('breaks the tokens down by kind and says how much a cache carried', () => {
+    render(<TrafficWindowTile window={day} />);
+
+    const kinds = screen
+      .getAllByRole('term')
+      .map(term => `${term.textContent} ${term.nextElementSibling?.textContent}`);
+    expect(kinds).toEqual(['Input 17.2K', 'Output 7.75M', 'Cache read 1.55B', 'Cache write 51.6M']);
+    expect(screen.getByText('97% of what was sent was read from a cache.')).toBeInTheDocument();
+  });
+
   it('says when nothing passed', () => {
     const { container } = render(<TrafficWindowTile window={quietTrafficFixture.windows[0]!} />);
 
     expect(screen.getByRole('article', { name: 'Last hour' })).toHaveTextContent('$00 req · 0 tok');
     expect(screen.getByText('Nothing passed.')).toBeInTheDocument();
+    expect(screen.queryByText(/read from a cache/)).not.toBeInTheDocument();
     expect(container.querySelectorAll('svg[viewBox="0 0 100 1"] rect')).toHaveLength(1);
   });
 

@@ -2,9 +2,9 @@ import type { JSX } from 'react';
 import type { TrafficWindow } from '@/api';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { providerName } from '@/lib/accounts';
-import { formatCount, formatShare, formatUsd } from '@/lib/format';
+import { formatCount, formatPercent, formatShare, formatUsd } from '@/lib/format';
 import { providerTone } from '@/lib/providerTones';
-import { tokensOf } from '@/lib/traffic';
+import { cacheShare, TOKEN_KINDS, tokensOf } from '@/lib/traffic';
 import type { TrafficWindowTileProps } from './TrafficWindowTile.types';
 
 const titles: Record<TrafficWindow['id'], string> = { hour: 'Last hour', day: '24 hours', week: '7 days' };
@@ -14,14 +14,15 @@ const LISTED = 4;
 
 /**
  * One period's traffic: its cost at API prices as the large figure, how many
- * requests and tokens that was, and how the cost divides between providers,
- * as a bar in their colours and a line each.
+ * requests and tokens that was, how the cost divides between providers, as a
+ * bar in their colours and a line each, and the tokens by kind.
  */
 export function TrafficWindowTile({ window }: TrafficWindowTileProps): JSX.Element {
   const { total, providers } = window;
   const listed = providers.slice(0, LISTED);
   const rest = providers.slice(LISTED);
   const restCost = rest.reduce((sum, entry) => sum + entry.counts.costUsd, 0);
+  const cached = cacheShare(total);
   let offset = 0;
 
   return (
@@ -89,6 +90,19 @@ export function TrafficWindowTile({ window }: TrafficWindowTileProps): JSX.Eleme
             </li>
           )}
         </ul>
+      )}
+
+      {/* The tokens by kind: what was sent afresh, what came back, and what a cache carried. */}
+      <dl className="mt-auto grid grid-cols-4 gap-x-3 border-t border-border pt-2 text-caption">
+        {TOKEN_KINDS.map(kind => (
+          <div key={kind.key} className="flex min-w-0 flex-col">
+            <dt className="truncate text-micro tracking-caps text-muted uppercase">{kind.name}</dt>
+            <dd className="font-semibold tabular-nums">{formatCount(total[kind.key])}</dd>
+          </div>
+        ))}
+      </dl>
+      {cached !== undefined && (
+        <p className="text-micro text-muted">{formatPercent(cached)} of what was sent was read from a cache.</p>
       )}
     </article>
   );

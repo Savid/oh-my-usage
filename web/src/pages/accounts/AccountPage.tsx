@@ -1,18 +1,28 @@
 import type { JSX } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import type { UsageSample } from '@/api';
 import { getAccountHistoryOptions } from '@/api/@tanstack/react-query.gen';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { providerName } from '@/lib/accounts';
 import type { AccountPageProps } from './AccountPage.types';
+import { AccountFacts } from './components/AccountFacts';
 import { AccountRow } from './components/AccountRow';
+import { LimitCard } from './components/LimitCard';
+import { SavedResets } from './components/SavedResets';
 import { SourceAlerts } from './components/SourceAlerts';
 import { UsageHistoryChart } from './components/UsageHistoryChart';
 import { useAccounts } from './hooks/useAccounts';
 import { useCharts } from './hooks/useCharts';
 
-/** One account: its line, and its recorded usage over a chosen period. */
+const NO_SAMPLES: readonly UsageSample[] = [];
+
+/**
+ * One account in full: its line, each usage window with where it is heading,
+ * its recorded usage over the last seven days, the resets it has saved, and
+ * whether it is taking traffic.
+ */
 export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
   const now = useNow();
   const config = useConfig();
@@ -51,16 +61,32 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
         <>
           <SourceAlerts list={accounts.data} stale={accounts.isError} now={now} />
           {account ? (
-            <div className="overflow-hidden rounded-md border border-border bg-surface">
-              <AccountRow
-                account={account}
-                trends={charts.trends}
-                start={charts.since}
-                now={now}
-                controls={config.data?.controls ?? false}
-                headingLevel={2}
-              />
-            </div>
+            <>
+              <div className="overflow-hidden rounded-md border border-border bg-surface">
+                <AccountRow
+                  account={account}
+                  trends={charts.trends}
+                  start={charts.since}
+                  now={now}
+                  controls={config.data?.controls ?? false}
+                  headingLevel={2}
+                />
+              </div>
+              {account.limits.length > 0 && (
+                <section aria-label="Usage windows" className="flex flex-wrap gap-2">
+                  {account.limits.map(limit => (
+                    // Without recorded usage a window's pace is its average since it opened.
+                    <LimitCard
+                      key={limit.id}
+                      limit={limit}
+                      provider={account.provider}
+                      samples={history.data?.samples ?? NO_SAMPLES}
+                      now={now}
+                    />
+                  ))}
+                </section>
+              )}
+            </>
           ) : (
             <p className="text-caption text-muted">The gateway no longer reports this account.</p>
           )}
@@ -94,6 +120,13 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
           </>
         )}
       </section>
+
+      {account && (
+        <div className="flex flex-col gap-2 lg:flex-row">
+          <SavedResets resets={account.resets} limits={account.limits} now={now} />
+          <AccountFacts account={account} now={now} />
+        </div>
+      )}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import {
   formatCount,
   formatDateTime,
   formatDay,
+  formatPace,
   formatPercent,
   formatShare,
   formatShort,
@@ -103,5 +104,14 @@ describe('formatClock and formatDay', () => {
     // The hour and the day depend on the viewer's zone; the shape does not.
     expect(formatClock(now)).toMatch(/^\d{2}:\d{2}$/);
     expect(formatDay(now)).toMatch(/^(Sat|Sun) 2[67]$/);
+  });
+});
+
+describe('formatPace', () => {
+  it('is per hour when that is a point or more, and per day when it is less', () => {
+    expect(formatPace(0.021)).toBe('2.1%/h');
+    expect(formatPace(0.3)).toBe('30.0%/h');
+    expect(formatPace(0.004)).toBe('9.6%/day');
+    expect(formatPace(0)).toBe('0%/h');
   });
 });

@@ -32,8 +32,10 @@ type Account struct {
 	Pausable bool `json:"pausable"`
 	// When omp's own block on the account ends, such as after a usage limit. Absent when it has none.
 	BlockedUntil OptDateTime `json:"blockedUntil"`
-	Limits       []Limit     `json:"limits"`
-	Resets       OptResets   `json:"resets"`
+	// Omp's own live blocks on the account, the one that ends last first. A pause is not among them.
+	Blocks []Block   `json:"blocks"`
+	Limits []Limit   `json:"limits"`
+	Resets OptResets `json:"resets"`
 	// When the provider reported the usage. Absent without a report.
 	FetchedAt OptDateTime `json:"fetchedAt"`
 }
@@ -81,6 +83,11 @@ func (s *Account) GetPausable() bool {
 // GetBlockedUntil returns the value of BlockedUntil.
 func (s *Account) GetBlockedUntil() OptDateTime {
 	return s.BlockedUntil
+}
+
+// GetBlocks returns the value of Blocks.
+func (s *Account) GetBlocks() []Block {
+	return s.Blocks
 }
 
 // GetLimits returns the value of Limits.
@@ -141,6 +148,11 @@ func (s *Account) SetPausable(val bool) {
 // SetBlockedUntil sets the value of BlockedUntil.
 func (s *Account) SetBlockedUntil(val OptDateTime) {
 	s.BlockedUntil = val
+}
+
+// SetBlocks sets the value of Blocks.
+func (s *Account) SetBlocks(val []Block) {
+	s.Blocks = val
 }
 
 // SetLimits sets the value of Limits.
@@ -250,6 +262,34 @@ func (s *AccountList) SetBroker(val OptSourceStatus) {
 	s.Broker = val
 }
 
+// A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+// Ref: #/components/schemas/Block
+type Block struct {
+	// What the block covers, as omp names it.
+	Scope string    `json:"scope"`
+	Until time.Time `json:"until"`
+}
+
+// GetScope returns the value of Scope.
+func (s *Block) GetScope() string {
+	return s.Scope
+}
+
+// GetUntil returns the value of Until.
+func (s *Block) GetUntil() time.Time {
+	return s.Until
+}
+
+// SetScope sets the value of Scope.
+func (s *Block) SetScope(val string) {
+	s.Scope = val
+}
+
+// SetUntil sets the value of Until.
+func (s *Block) SetUntil(val time.Time) {
+	s.Until = val
+}
+
 // Public, unauthenticated configuration. Never put a secret here.
 // Ref: #/components/schemas/Config
 type Config struct {
@@ -314,6 +354,8 @@ type Limit struct {
 	Status       OptLimitStatus `json:"status"`
 	// When the window resets. Absent when the provider gave no time.
 	ResetsAt OptDateTime `json:"resetsAt"`
+	// How long the window lasts. Absent when the provider did not say.
+	WindowSeconds OptInt `json:"windowSeconds"`
 }
 
 // GetID returns the value of ID.
@@ -346,6 +388,11 @@ func (s *Limit) GetResetsAt() OptDateTime {
 	return s.ResetsAt
 }
 
+// GetWindowSeconds returns the value of WindowSeconds.
+func (s *Limit) GetWindowSeconds() OptInt {
+	return s.WindowSeconds
+}
+
 // SetID sets the value of ID.
 func (s *Limit) SetID(val string) {
 	s.ID = val
@@ -374,6 +421,11 @@ func (s *Limit) SetStatus(val OptLimitStatus) {
 // SetResetsAt sets the value of ResetsAt.
 func (s *Limit) SetResetsAt(val OptDateTime) {
 	s.ResetsAt = val
+}
+
+// SetWindowSeconds sets the value of WindowSeconds.
+func (s *Limit) SetWindowSeconds(val OptInt) {
+	s.WindowSeconds = val
 }
 
 type LimitStatus string
@@ -471,6 +523,52 @@ func (o OptAccountKind) Get() (v AccountKind, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptAccountKind) Or(d AccountKind) AccountKind {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptBool returns new OptBool with value set to v.
+func NewOptBool(v bool) OptBool {
+	return OptBool{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBool is optional bool.
+type OptBool struct {
+	Value bool
+	Set   bool
+}
+
+// IsSet returns true if OptBool was set.
+func (o OptBool) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBool) Reset() {
+	var v bool
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBool) SetTo(v bool) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBool) Get() (v bool, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBool) Or(d bool) bool {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -955,6 +1053,8 @@ type Resets struct {
 	Usable OptInt `json:"usable"`
 	// When the first of them expires.
 	SoonestExpiresAt OptDateTime `json:"soonestExpiresAt"`
+	// The resets the provider described. It may list fewer than `available`.
+	Saved []SavedReset `json:"saved"`
 }
 
 // GetAvailable returns the value of Available.
@@ -972,6 +1072,11 @@ func (s *Resets) GetSoonestExpiresAt() OptDateTime {
 	return s.SoonestExpiresAt
 }
 
+// GetSaved returns the value of Saved.
+func (s *Resets) GetSaved() []SavedReset {
+	return s.Saved
+}
+
 // SetAvailable sets the value of Available.
 func (s *Resets) SetAvailable(val int) {
 	s.Available = val
@@ -985,6 +1090,64 @@ func (s *Resets) SetUsable(val OptInt) {
 // SetSoonestExpiresAt sets the value of SoonestExpiresAt.
 func (s *Resets) SetSoonestExpiresAt(val OptDateTime) {
 	s.SoonestExpiresAt = val
+}
+
+// SetSaved sets the value of Saved.
+func (s *Resets) SetSaved(val []SavedReset) {
+	s.Saved = val
+}
+
+// One limit reset an account holds and has not spent.
+// Ref: #/components/schemas/SavedReset
+type SavedReset struct {
+	// The provider's name for it. Absent when it gave none.
+	Title OptString `json:"title"`
+	// Whether it can be spent now. Absent when the provider does not say.
+	Usable OptBool `json:"usable"`
+	// The `id` of each limit that spending it would reset.
+	Clears []string `json:"clears"`
+	// When it expires. Absent when it does not.
+	ExpiresAt OptDateTime `json:"expiresAt"`
+}
+
+// GetTitle returns the value of Title.
+func (s *SavedReset) GetTitle() OptString {
+	return s.Title
+}
+
+// GetUsable returns the value of Usable.
+func (s *SavedReset) GetUsable() OptBool {
+	return s.Usable
+}
+
+// GetClears returns the value of Clears.
+func (s *SavedReset) GetClears() []string {
+	return s.Clears
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *SavedReset) GetExpiresAt() OptDateTime {
+	return s.ExpiresAt
+}
+
+// SetTitle sets the value of Title.
+func (s *SavedReset) SetTitle(val OptString) {
+	s.Title = val
+}
+
+// SetUsable sets the value of Usable.
+func (s *SavedReset) SetUsable(val OptBool) {
+	s.Usable = val
+}
+
+// SetClears sets the value of Clears.
+func (s *SavedReset) SetClears(val []string) {
+	s.Clears = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *SavedReset) SetExpiresAt(val OptDateTime) {
+	s.ExpiresAt = val
 }
 
 // The health of the gateway or the broker.
@@ -1293,9 +1456,15 @@ func (s *TrafficProviderCounts) SetCounts(val TrafficCounts) {
 type TrafficProviderSeries struct {
 	Provider string `json:"provider"`
 	Requests []int  `json:"requests"`
-	// Tokens of every kind.
-	Tokens  []int     `json:"tokens"`
-	CostUsd []float64 `json:"costUsd"`
+	// Input tokens that were not read from a cache.
+	InputTokens []int `json:"inputTokens"`
+	// Output tokens.
+	OutputTokens []int `json:"outputTokens"`
+	// Input tokens read from a cache.
+	CacheReadTokens []int `json:"cacheReadTokens"`
+	// Input tokens written to a cache.
+	CacheWriteTokens []int     `json:"cacheWriteTokens"`
+	CostUsd          []float64 `json:"costUsd"`
 }
 
 // GetProvider returns the value of Provider.
@@ -1308,9 +1477,24 @@ func (s *TrafficProviderSeries) GetRequests() []int {
 	return s.Requests
 }
 
-// GetTokens returns the value of Tokens.
-func (s *TrafficProviderSeries) GetTokens() []int {
-	return s.Tokens
+// GetInputTokens returns the value of InputTokens.
+func (s *TrafficProviderSeries) GetInputTokens() []int {
+	return s.InputTokens
+}
+
+// GetOutputTokens returns the value of OutputTokens.
+func (s *TrafficProviderSeries) GetOutputTokens() []int {
+	return s.OutputTokens
+}
+
+// GetCacheReadTokens returns the value of CacheReadTokens.
+func (s *TrafficProviderSeries) GetCacheReadTokens() []int {
+	return s.CacheReadTokens
+}
+
+// GetCacheWriteTokens returns the value of CacheWriteTokens.
+func (s *TrafficProviderSeries) GetCacheWriteTokens() []int {
+	return s.CacheWriteTokens
 }
 
 // GetCostUsd returns the value of CostUsd.
@@ -1328,9 +1512,24 @@ func (s *TrafficProviderSeries) SetRequests(val []int) {
 	s.Requests = val
 }
 
-// SetTokens sets the value of Tokens.
-func (s *TrafficProviderSeries) SetTokens(val []int) {
-	s.Tokens = val
+// SetInputTokens sets the value of InputTokens.
+func (s *TrafficProviderSeries) SetInputTokens(val []int) {
+	s.InputTokens = val
+}
+
+// SetOutputTokens sets the value of OutputTokens.
+func (s *TrafficProviderSeries) SetOutputTokens(val []int) {
+	s.OutputTokens = val
+}
+
+// SetCacheReadTokens sets the value of CacheReadTokens.
+func (s *TrafficProviderSeries) SetCacheReadTokens(val []int) {
+	s.CacheReadTokens = val
+}
+
+// SetCacheWriteTokens sets the value of CacheWriteTokens.
+func (s *TrafficProviderSeries) SetCacheWriteTokens(val []int) {
+	s.CacheWriteTokens = val
 }
 
 // SetCostUsd sets the value of CostUsd.

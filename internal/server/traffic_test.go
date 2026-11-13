@@ -111,7 +111,7 @@ func checkSeries(t *testing.T, got rest.Traffic) {
 
 	// Codex cost more over the series, so it comes first. Every array has a value per step.
 	codex, claude := minutes.Providers[0], minutes.Providers[1]
-	if codex.Provider != "openai-codex" || len(codex.CostUsd) != 60 || codex.CostUsd[3] != 5 || codex.Tokens[3] != 50 {
+	if codex.Provider != "openai-codex" || len(codex.CostUsd) != 60 || codex.CostUsd[3] != 5 || codex.CacheReadTokens[3] != 50 {
 		t.Errorf("codex by minute = %+v", codex)
 	}
 
@@ -119,15 +119,15 @@ func checkSeries(t *testing.T, got rest.Traffic) {
 		t.Errorf("codex requests by minute = %v", codex.Requests)
 	}
 
-	if claude.Provider != "anthropic" || claude.Requests[0] != 4 || claude.Tokens[0] != 100 || len(claude.Requests) != 60 {
+	if claude.Provider != "anthropic" || claude.Requests[0] != 4 || claude.OutputTokens[0] != 100 || len(claude.Requests) != 60 {
 		t.Errorf("claude by minute = %+v", claude)
 	}
 
-	if claude.CostUsd[59] != 0.25 || claude.Tokens[59] != 7 {
-		t.Errorf("claude's last minute = %v, %v", claude.CostUsd[59], claude.Tokens[59])
+	if claude.CostUsd[59] != 0.25 || claude.InputTokens[59] != 7 || claude.CacheWriteTokens[59] != 0 {
+		t.Errorf("claude's last minute = %v, %v", claude.CostUsd[59], claude.InputTokens[59])
 	}
 
-	if got.Hours.StepSeconds != 3600 || got.Hours.Steps != 168 || len(got.Hours.Providers[0].Tokens) != 168 {
+	if got.Hours.StepSeconds != 3600 || got.Hours.Steps != 168 || len(got.Hours.Providers[0].OutputTokens) != 168 {
 		t.Errorf("hours = %+v", got.Hours)
 	}
 }

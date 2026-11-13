@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -91,7 +92,7 @@ func TestGatewayUsage(t *testing.T) {
 		t.Errorf("limit: %+v", week)
 	}
 
-	if week.UsedFraction == nil || *week.UsedFraction != 0.76 || week.ResetsAt.IsZero() {
+	if week.UsedFraction == nil || *week.UsedFraction != 0.76 || week.ResetsAt.IsZero() || week.Window != 7*24*time.Hour {
 		t.Errorf("limit amount: %+v", week)
 	}
 
@@ -108,6 +109,42 @@ func TestGatewayUsage(t *testing.T) {
 	key := reports[3]
 	if key.Email != "" || key.Plan != "OpenCode Go" || key.Resets != nil || len(key.Limits) != 3 {
 		t.Errorf("API key report: %+v", key)
+	}
+}
+
+// Each saved reset is described as far as the provider describes it: what it
+// is, what it would clear, whether it can be spent and when it lapses.
+func TestGatewayUsageSavedResets(t *testing.T) {
+	t.Parallel()
+
+	srv := serve(t, map[string]http.HandlerFunc{"GET /v1/usage": fixture(t, "usage.json")})
+
+	gateway, err := omp.NewGateway(srv.URL, token, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reports, err := gateway.Usage(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	saved := reports[0].Resets.Saved
+	if len(saved) != 2 {
+		t.Fatalf("saved resets: %+v", saved)
+	}
+
+	full := saved[0]
+	if full.Title != "One full limit reset (November 2026)" || full.Usable == nil || !*full.Usable ||
+		!slices.Equal(full.Clears, []string{"anthropic:7d", "anthropic:7d:fable"}) ||
+		!full.ExpiresAt.Equal(time.Date(2026, time.December, 10, 22, 0, 0, 0, time.UTC)) {
+		t.Errorf("saved reset: %+v", full)
+	}
+
+	// Codex gives a reset only its dates.
+	bare := reports[2].Resets.Saved
+	if len(bare) != 1 || bare[0].Title != "" || bare[0].Usable != nil || len(bare[0].Clears) != 0 || bare[0].ExpiresAt.IsZero() {
+		t.Errorf("codex saved resets: %+v", bare)
 	}
 }
 

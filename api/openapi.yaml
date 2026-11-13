@@ -254,7 +254,7 @@ components:
     Account:
       type: object
       description: One login or API key with its usage.
-      required: [id, provider, paused, pausable, limits]
+      required: [id, provider, paused, pausable, blocks, limits]
       properties:
         id:
           type: string
@@ -287,6 +287,11 @@ components:
           description: >-
             When omp's own block on the account ends, such as after a usage
             limit. Absent when it has none.
+        blocks:
+          type: array
+          description: omp's own live blocks on the account, the one that ends last first. A pause is not among them.
+          items:
+            $ref: '#/components/schemas/Block'
         limits:
           type: array
           items:
@@ -324,6 +329,10 @@ components:
           type: string
           format: date-time
           description: When the window resets. Absent when the provider gave no time.
+        windowSeconds:
+          type: integer
+          minimum: 1
+          description: How long the window lasts. Absent when the provider did not say.
     Resets:
       type: object
       description: An account's saved limit resets.
@@ -341,6 +350,42 @@ components:
           type: string
           format: date-time
           description: When the first of them expires.
+        saved:
+          type: array
+          description: The resets the provider described. It may list fewer than `available`.
+          items:
+            $ref: '#/components/schemas/SavedReset'
+    SavedReset:
+      type: object
+      description: One limit reset an account holds and has not spent.
+      required: [clears]
+      properties:
+        title:
+          type: string
+          description: The provider's name for it. Absent when it gave none.
+        usable:
+          type: boolean
+          description: Whether it can be spent now. Absent when the provider does not say.
+        clears:
+          type: array
+          description: The `id` of each limit that spending it would reset.
+          items:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+          description: When it expires. Absent when it does not.
+    Block:
+      type: object
+      description: A block omp put on an account. Until it ends omp sends the account no traffic in its scope.
+      required: [scope, until]
+      properties:
+        scope:
+          type: string
+          description: What the block covers, as omp names it.
+        until:
+          type: string
+          format: date-time
     PauseRequest:
       type: object
       required: [paused]
@@ -517,7 +562,7 @@ components:
             $ref: '#/components/schemas/TrafficProviderSeries'
     TrafficProviderSeries:
       type: object
-      required: [provider, requests, tokens, costUsd]
+      required: [provider, requests, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd]
       properties:
         provider:
           type: string
@@ -526,9 +571,27 @@ components:
           items:
             type: integer
             minimum: 0
-        tokens:
+        inputTokens:
           type: array
-          description: Tokens of every kind.
+          description: Input tokens that were not read from a cache.
+          items:
+            type: integer
+            minimum: 0
+        outputTokens:
+          type: array
+          description: Output tokens.
+          items:
+            type: integer
+            minimum: 0
+        cacheReadTokens:
+          type: array
+          description: Input tokens read from a cache.
+          items:
+            type: integer
+            minimum: 0
+        cacheWriteTokens:
+          type: array
+          description: Input tokens written to a cache.
           items:
             type: integer
             minimum: 0

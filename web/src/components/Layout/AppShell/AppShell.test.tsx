@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@/test-utils';
 import { AppShell } from './AppShell';
 
-function renderShell(traffic: boolean): void {
+function renderShell(traffic: boolean, connection: 'live' | 'reconnecting' = 'reconnecting'): void {
   const root = createRootRoute({
     component: () => (
-      <AppShell name="oh-my-usage" traffic={traffic} connection="reconnecting">
+      <AppShell name="oh-my-usage" traffic={traffic} connection={connection}>
         <p>page body</p>
       </AppShell>
     ),
@@ -35,5 +35,13 @@ describe('AppShell', () => {
 
     expect(await screen.findByText('page body')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Traffic' })).not.toBeInTheDocument();
+  });
+
+  it('says nothing about a stream that is up', async () => {
+    renderShell(true, 'live');
+
+    expect(await screen.findByText('page body')).toBeInTheDocument();
+    expect(screen.queryByText('live')).not.toBeInTheDocument();
+    expect(screen.queryByText('reconnecting')).not.toBeInTheDocument();
   });
 });

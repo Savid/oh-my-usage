@@ -6,7 +6,7 @@ import { headlinePools, poolLimits } from './pools';
 const HOUR = 3_600_000;
 
 function account(id: string, provider: string, limits: Account['limits']): Account {
-  return { id, provider, paused: false, pausable: true, limits };
+  return { id, provider, paused: false, pausable: true, blocks: [], limits };
 }
 
 describe('poolLimits', () => {

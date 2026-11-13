@@ -195,16 +195,23 @@ func series(start time.Time, step time.Duration, steps int, points []store.Traff
 			at = len(out.Providers)
 			index[p.Provider] = at
 			out.Providers = append(out.Providers, rest.TrafficProviderSeries{
-				Provider: p.Provider,
-				Requests: make([]int, steps),
-				Tokens:   make([]int, steps),
-				CostUsd:  make([]float64, steps),
+				Provider:         p.Provider,
+				Requests:         make([]int, steps),
+				InputTokens:      make([]int, steps),
+				OutputTokens:     make([]int, steps),
+				CacheReadTokens:  make([]int, steps),
+				CacheWriteTokens: make([]int, steps),
+				CostUsd:          make([]float64, steps),
 			})
 		}
 
-		out.Providers[at].Requests[p.Index] += int(p.Requests)
-		out.Providers[at].Tokens[p.Index] += int(p.Tokens())
-		out.Providers[at].CostUsd[p.Index] += p.CostUSD
+		entry := &out.Providers[at]
+		entry.Requests[p.Index] += int(p.Requests)
+		entry.InputTokens[p.Index] += int(p.InputTokens)
+		entry.OutputTokens[p.Index] += int(p.OutputTokens)
+		entry.CacheReadTokens[p.Index] += int(p.CacheReadTokens)
+		entry.CacheWriteTokens[p.Index] += int(p.CacheWriteTokens)
+		entry.CostUsd[p.Index] += p.CostUSD
 		cost[p.Provider] += p.CostUSD
 	}
 

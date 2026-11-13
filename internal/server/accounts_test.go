@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -59,18 +60,43 @@ func checkSeat(t *testing.T, seat rest.Account) {
 		t.Errorf("seat = %+v", seat)
 	}
 
+	if len(seat.Blocks) != 1 || seat.Blocks[0].Scope != "anthropic:5h" || !seat.Blocks[0].Until.Equal(testNow.Add(time.Hour)) {
+		t.Errorf("blocks = %+v", seat.Blocks)
+	}
+
 	week := seat.Limits[0]
-	if week.UsedFraction.Value != 0.76 || week.Status.Value != rest.LimitStatusOk || week.WindowLabel.Value != "7 Day" {
+	if week.UsedFraction.Value != 0.76 || week.Status.Value != rest.LimitStatusOk || week.WindowLabel.Value != "7 Day" ||
+		week.WindowSeconds.Value != 604800 {
 		t.Errorf("limit = %+v", week)
 	}
 
-	// A limit without an amount, and with a status this build does not know.
-	if fiveHour := seat.Limits[1]; fiveHour.UsedFraction.Set || fiveHour.Status.Set || fiveHour.ResetsAt.Set {
+	// A limit without an amount or a length, and with a status this build does not know.
+	fiveHour := seat.Limits[1]
+	if fiveHour.UsedFraction.Set || fiveHour.Status.Set || fiveHour.ResetsAt.Set || fiveHour.WindowSeconds.Set {
 		t.Errorf("bare limit = %+v", fiveHour)
 	}
 
-	if resets := seat.Resets.Value; resets.Available != 2 || resets.Usable.Value != 1 || !resets.SoonestExpiresAt.Set {
-		t.Errorf("resets = %+v", seat.Resets)
+	checkResets(t, seat.Resets.Value)
+}
+
+func checkResets(t *testing.T, resets rest.Resets) {
+	t.Helper()
+
+	if resets.Available != 2 || resets.Usable.Value != 1 || !resets.SoonestExpiresAt.Set || len(resets.Saved) != 2 {
+		t.Fatalf("resets = %+v", resets)
+	}
+
+	full := resets.Saved[0]
+	if full.Title.Value != "One full limit reset" || !full.Usable.Value || !slices.Equal(full.Clears, []string{"anthropic:7d"}) ||
+		!full.ExpiresAt.Set {
+		t.Errorf("saved reset = %+v", full)
+	}
+
+	// A reset the provider said nothing about: no title, no word on whether it
+	// can be spent, nothing it clears, no expiry.
+	if bare := resets.Saved[1]; bare.Title.Set || bare.Usable.Set || bare.ExpiresAt.Set || bare.Clears == nil ||
+		len(bare.Clears) != 0 {
+		t.Errorf("bare saved reset = %+v", bare)
 	}
 }
 

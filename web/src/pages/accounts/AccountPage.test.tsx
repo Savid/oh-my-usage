@@ -1,8 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getConfigQueryKey } from '@/api/@tanstack/react-query.gen';
-import { render, screen, server, waitFor } from '@/test-utils';
+import { render, screen, server, waitFor, within } from '@/test-utils';
 import {
   accountsHandlers,
   configFixture,
@@ -11,6 +11,7 @@ import {
   seatFixture,
   trendsHandlers,
 } from '@/test-utils/handlers';
+import { NOW_MS } from '@/test-utils/time';
 import { AccountPage } from './AccountPage';
 
 /** Renders the page with the configuration the server would have injected. */
@@ -21,6 +22,10 @@ function renderPage(accountId = seatFixture.id): ReturnType<typeof render> {
 }
 
 describe('AccountPage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('shows the account and its usage history', async () => {
     server.use(accountsHandlers.ok, historyHandlers.ok, trendsHandlers.ok);
     renderPage();
@@ -30,6 +35,37 @@ describe('AccountPage', () => {
     expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
     expect(await screen.findByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
+  });
+
+  it('shows each usage window, the saved resets and whether the account takes traffic', async () => {
+    // The fixtures count from NOW_MS; the page reads the clock.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW_MS);
+    server.use(accountsHandlers.ok, historyHandlers.ok, trendsHandlers.ok);
+    renderPage();
+
+    const windows = within(await screen.findByRole('region', { name: 'Usage windows' }));
+    expect(windows.getAllByRole('article').map(card => card.getAttribute('aria-label'))).toEqual([
+      'Claude 5 Hour',
+      'Claude 7 Day',
+      'Claude 7 Day (Fable)',
+    ]);
+    // Once the history loads, the pace is read from it.
+    expect(await windows.findAllByText(/over the last 1d/)).toHaveLength(2);
+
+    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('2 held, 1 usable now');
+    expect(within(screen.getByRole('region', { name: 'Status' })).getByText('active')).toBeInTheDocument();
+  });
+
+  it('judges each window by its own average while the history cannot be read', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW_MS);
+    server.use(accountsHandlers.ok, historyHandlers.down, trendsHandlers.ok);
+    renderPage();
+
+    const windows = within(await screen.findByRole('region', { name: 'Usage windows' }));
+    expect(await screen.findByText('Could not load the usage history.')).toBeInTheDocument();
+    expect(windows.getAllByText(/the average since the window opened/)).toHaveLength(2);
   });
 
   it('asks for the last seven days', async () => {

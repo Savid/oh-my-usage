@@ -10,7 +10,14 @@ import {
   shortLimitLabel,
 } from './accounts';
 
-const base: Account = { id: '00000000000000a1', provider: 'anthropic', paused: false, pausable: false, limits: [] };
+const base: Account = {
+  id: '00000000000000a1',
+  provider: 'anthropic',
+  paused: false,
+  pausable: false,
+  blocks: [],
+  limits: [],
+};
 
 describe('providerName', () => {
   it('names the providers it knows and passes the rest through', () => {

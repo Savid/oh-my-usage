@@ -28,14 +28,24 @@ func testState() monitor.State {
 				ID: seatID, Provider: "anthropic", Kind: accounts.KindOAuth, Email: "one@example.com",
 				OrgName: "One Org", Plan: "max", CredentialID: 1,
 				BlockedUntil: testNow.Add(time.Hour),
+				Blocks:       []accounts.Block{{Scope: "anthropic:5h", Until: testNow.Add(time.Hour)}},
 				Limits: []accounts.Limit{
 					{
-						ID: "anthropic:7d", Label: "Claude 7 Day", WindowLabel: "7 Day",
+						ID: "anthropic:7d", Label: "Claude 7 Day", WindowLabel: "7 Day", Window: 7 * 24 * time.Hour,
 						UsedFraction: new(0.76), Status: "ok", ResetsAt: testNow.Add(21 * time.Hour),
 					},
 					{ID: "anthropic:5h", Label: "Claude 5 Hour", Status: "brand-new-status"},
 				},
-				Resets:    &accounts.Resets{Available: 2, Usable: new(1), SoonestExpiresAt: testNow.Add(720 * time.Hour)},
+				Resets: &accounts.Resets{
+					Available: 2, Usable: new(1), SoonestExpiresAt: testNow.Add(720 * time.Hour),
+					Saved: []accounts.SavedReset{
+						{
+							Title: "One full limit reset", Usable: new(true), Clears: []string{"anthropic:7d"},
+							ExpiresAt: testNow.Add(720 * time.Hour),
+						},
+						{},
+					},
+				},
 				FetchedAt: testNow.Add(-time.Minute),
 			},
 			{ID: strayID, Provider: "opencode-go", Limits: nil},

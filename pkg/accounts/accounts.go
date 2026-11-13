@@ -53,6 +53,8 @@ type Limit struct {
 	Status       string
 	// ResetsAt is zero when the provider gave no reset time.
 	ResetsAt time.Time
+	// Window is how long the window lasts; zero when the provider did not say.
+	Window time.Duration
 }
 
 // Resets counts an account's saved limit resets.
@@ -62,6 +64,21 @@ type Resets struct {
 	Usable *int
 	// SoonestExpiresAt is zero when no saved reset has an expiry.
 	SoonestExpiresAt time.Time
+	// Saved lists the resets the provider described; it may be shorter than
+	// Available.
+	Saved []SavedReset
+}
+
+// SavedReset is one limit reset an account holds and has not spent.
+type SavedReset struct {
+	// Title is the provider's name for it; empty when it gave none.
+	Title string
+	// Usable is whether it can be spent now; nil when the provider does not say.
+	Usable *bool
+	// Clears lists the IDs of the limits spending it would reset.
+	Clears []string
+	// ExpiresAt is zero when it does not expire.
+	ExpiresAt time.Time
 }
 
 // Credential is one stored login or API key in the broker, without secrets.
@@ -104,8 +121,11 @@ type Account struct {
 	Paused       bool
 	// BlockedUntil is when omp's own longest block ends; zero when none.
 	BlockedUntil time.Time
-	Limits       []Limit
-	Resets       *Resets
+	// Blocks are omp's own live blocks, the one that ends last first. A pause
+	// is not among them.
+	Blocks []Block
+	Limits []Limit
+	Resets *Resets
 	// FetchedAt is when the provider reported the usage; zero without a report.
 	FetchedAt time.Time
 }
@@ -165,7 +185,10 @@ func Merge(reports []Report, credentials []Credential, now time.Time) []Account 
 			OrgName:      c.OrgName,
 			CredentialID: c.ID,
 		}
-		a.Paused, a.BlockedUntil = blockState(c.Blocks, now)
+		a.Paused, a.Blocks = blockState(c.Blocks, now)
+		if len(a.Blocks) > 0 {
+			a.BlockedUntil = a.Blocks[0].Until
+		}
 
 		identity := identityOf(c.Email, c.OrgID, c.AccountID)
 
@@ -214,8 +237,9 @@ func (a *Account) applyReport(r Report) {
 	a.FetchedAt = r.FetchedAt
 }
 
-// blockState splits a credential's live blocks into the pause and omp's own.
-func blockState(blocks []Block, now time.Time) (paused bool, blockedUntil time.Time) {
+// blockState splits a credential's live blocks into the pause and omp's
+// own, the one that ends last first.
+func blockState(blocks []Block, now time.Time) (paused bool, own []Block) {
 	for _, b := range blocks {
 		if !b.Until.After(now) {
 			continue
@@ -227,12 +251,12 @@ func blockState(blocks []Block, now time.Time) (paused bool, blockedUntil time.T
 			continue
 		}
 
-		if b.Until.After(blockedUntil) {
-			blockedUntil = b.Until
-		}
+		own = append(own, b)
 	}
 
-	return paused, blockedUntil
+	slices.SortStableFunc(own, func(x, y Block) int { return y.Until.Compare(x.Until) })
+
+	return paused, own
 }
 
 // matchReport finds the unused report for a credential: same provider and

@@ -21,12 +21,23 @@ Every figure is quota **used**.
 - **Colour**: a provider's mark, gauge and chart wear its own colour
   (Anthropic orange, OpenAI green, OpenCode grey, OpenRouter lime), so colour
   says whose usage it is and the figure says how bad it is.
-- **An account's page**: the same band, and a chart of every window over the
-  last seven days, with a table of the same values.
+- **An account's page**: the same band, then a card for each usage window
+  with how much of the window's time has gone (the tick on its gauge), how
+  fast it is filling and whether at that pace it runs out before it resets;
+  a chart of every window over the last seven days, with a table of the same
+  values; the limit resets the account has saved, with what each would clear
+  and when it lapses; and whether omp is sending it traffic, with any blocks
+  omp has put on it.
 - **Traffic**, with a broker: what is passing through the gateway. A band on
   the first page gives the last hour's requests, tokens and cost at API
   prices, with the hour drawn minute by minute; the Traffic page adds the day
-  and the week by provider, the week by hour, and who sent it.
+  and the week by provider, tokens by kind (input, output, cache read, cache
+  write), the week by hour, and who sent it.
+
+A window's pace is read from the usage recorded over its recent past (the
+last day of a week-long window), or, until enough is recorded, from its
+average since it opened. It is a straight line from there, not a prediction
+of what you will do next.
 
 The layout is one column on a phone and fills the width of a desktop.
 

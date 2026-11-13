@@ -47,6 +47,7 @@ func account(a accounts.Account) rest.Account {
 		Paused:       a.Paused,
 		Pausable:     a.Pausable(),
 		BlockedUntil: optTime(a.BlockedUntil),
+		Blocks:       make([]rest.Block, 0, len(a.Blocks)),
 		Limits:       make([]rest.Limit, 0, len(a.Limits)),
 		FetchedAt:    optTime(a.FetchedAt),
 	}
@@ -58,20 +59,42 @@ func account(a accounts.Account) rest.Account {
 		out.Kind = rest.NewOptAccountKind(rest.AccountKindAPIKey)
 	}
 
+	for _, b := range a.Blocks {
+		out.Blocks = append(out.Blocks, rest.Block{Scope: b.Scope, Until: b.Until.UTC()})
+	}
+
 	for _, l := range a.Limits {
 		out.Limits = append(out.Limits, limit(l))
 	}
 
 	if a.Resets != nil {
-		resets := rest.Resets{
-			Available:        max(0, a.Resets.Available),
-			SoonestExpiresAt: optTime(a.Resets.SoonestExpiresAt),
+		out.Resets = rest.NewOptResets(resets(*a.Resets))
+	}
+
+	return out
+}
+
+func resets(r accounts.Resets) rest.Resets {
+	out := rest.Resets{
+		Available:        max(0, r.Available),
+		SoonestExpiresAt: optTime(r.SoonestExpiresAt),
+	}
+
+	if r.Usable != nil {
+		out.Usable = rest.NewOptInt(max(0, *r.Usable))
+	}
+
+	for _, saved := range r.Saved {
+		entry := rest.SavedReset{
+			Title:     optString(saved.Title),
+			Clears:    append([]string{}, saved.Clears...),
+			ExpiresAt: optTime(saved.ExpiresAt),
 		}
-		if a.Resets.Usable != nil {
-			resets.Usable = rest.NewOptInt(max(0, *a.Resets.Usable))
+		if saved.Usable != nil {
+			entry.Usable = rest.NewOptBool(*saved.Usable)
 		}
 
-		out.Resets = rest.NewOptResets(resets)
+		out.Saved = append(out.Saved, entry)
 	}
 
 	return out
@@ -87,6 +110,10 @@ func limit(l accounts.Limit) rest.Limit {
 
 	if l.UsedFraction != nil {
 		out.UsedFraction = rest.NewOptFloat64(max(0, *l.UsedFraction))
+	}
+
+	if seconds := int(l.Window / time.Second); seconds > 0 {
+		out.WindowSeconds = rest.NewOptInt(seconds)
 	}
 
 	// A status omp adds later is left out rather than failing the response.

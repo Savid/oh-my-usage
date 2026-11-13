@@ -22,7 +22,8 @@ export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
     await expect(canvas.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic');
-    await expect(canvas.getByText('live')).toHaveAttribute('data-tone', 'ok');
+    // A stream that is up is not remarked on.
+    await expect(canvas.queryByText('live')).not.toBeInTheDocument();
   },
 };
 
