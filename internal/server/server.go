@@ -19,6 +19,7 @@ import (
 	"github.com/savid/oh-my-usage/internal/store"
 	"github.com/savid/oh-my-usage/internal/ui"
 	"github.com/savid/oh-my-usage/pkg/accounts"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 )
 
 const shutdownTimeout = 5 * time.Second
@@ -33,6 +34,9 @@ type Config struct {
 	Version string
 	// PollInterval is how often the monitor polls, reported by getConfig.
 	PollInterval time.Duration
+	// Prices says what each account costs a month; the zero Table prices
+	// nothing.
+	Prices pricing.Table
 	// Now returns the current time; nil takes time.Now. Tests set it.
 	Now func() time.Time
 }
@@ -99,7 +103,7 @@ func New(log *slog.Logger, cfg Config, assets fs.FS, deps Deps) (*Server, error)
 	log = slog.New(requestIDHandler{log.Handler()})
 	s := &Server{log: log, cfg: cfg, shutdown: make(chan struct{})}
 	s.ops = &operations{
-		log: log, name: cfg.Name, version: cfg.Version, pollInterval: cfg.PollInterval, now: cfg.Now,
+		log: log, name: cfg.Name, version: cfg.Version, pollInterval: cfg.PollInterval, now: cfg.Now, prices: cfg.Prices,
 		monitor: deps.Monitor, history: deps.History, collector: deps.Collector, trafficRecord: deps.Traffic,
 	}
 

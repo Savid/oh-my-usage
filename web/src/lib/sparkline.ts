@@ -9,6 +9,8 @@ export interface SparkPaths {
   line: string;
   /** The line closed down to the baseline, for the fill under it. */
   area: string;
+  /** Where the line ends, in the box's units. */
+  end: { x: number; y: number };
 }
 
 /**
@@ -37,5 +39,10 @@ export function sparkPaths(
   const first = x(points[0]!.time).toFixed(2);
   const last = x(points.at(-1)!.time).toFixed(2);
 
-  return { line, area: `${line} L${last} ${height} L${first} ${height} Z` };
+  const newest = points.at(-1)!;
+  return {
+    line,
+    area: `${line} L${last} ${height} L${first} ${height} Z`,
+    end: { x: Number(last), y: Number(y(newest.value).toFixed(2)) },
+  };
 }

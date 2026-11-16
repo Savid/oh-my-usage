@@ -28,6 +28,7 @@ import (
 	"github.com/savid/oh-my-usage/internal/omp"
 	"github.com/savid/oh-my-usage/internal/server"
 	"github.com/savid/oh-my-usage/internal/store"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 	"github.com/savid/oh-my-usage/web"
 )
 
@@ -44,6 +45,8 @@ const (
 	// can set them and still take the rest as flags.
 	envListen = "OH_MY_USAGE_LISTEN"
 	envDB     = "OH_MY_USAGE_DB"
+	// envPrices names the price file. It holds no secret.
+	envPrices = "OH_MY_USAGE_PRICES"
 )
 
 const (
@@ -75,6 +78,7 @@ type options struct {
 	brokerURL        string
 	brokerTokenFile  string
 	db               string
+	prices           string
 	pollInterval     time.Duration
 	trafficInterval  time.Duration
 	retention        time.Duration
@@ -99,6 +103,8 @@ func parse(args []string, getenv func(string) string, stderr io.Writer) (options
 	fs.StringVar(&o.brokerTokenFile, "broker-token-file", "", "file holding the broker admin token (or set "+envBrokerToken+")")
 	fs.StringVar(&o.db, "db", firstNonEmpty(getenv(envDB), "oh-my-usage.db"),
 		"SQLite file for the usage history and the traffic record (or "+envDB+")")
+	fs.StringVar(&o.prices, "prices", getenv(envPrices),
+		"JSON file of what each account costs a month; none prices nothing (or "+envPrices+")")
 	fs.DurationVar(&o.pollInterval, "poll-interval", time.Minute, "time between polls of the gateway, at least 30s")
 	fs.DurationVar(&o.trafficInterval, "traffic-interval", 15*time.Second,
 		"time between readings of the broker's traffic, at least 5s")
@@ -185,6 +191,47 @@ func token(file, fromEnv string) (string, error) {
 	return value, nil
 }
 
+// inputs are what the daemon reads before it starts: where omp is and what
+// its accounts cost.
+type inputs struct {
+	gateway, broker endpoint
+	prices          pricing.Table
+}
+
+func (o options) inputs(getenv func(string) string) (inputs, error) {
+	var (
+		in  inputs
+		err error
+	)
+
+	if in.gateway, in.broker, err = o.endpoints(getenv); err != nil {
+		return in, err
+	}
+
+	in.prices, err = prices(o.prices)
+
+	return in, err
+}
+
+// prices reads the price file; no file prices nothing.
+func prices(file string) (pricing.Table, error) {
+	if file == "" {
+		return pricing.Table{}, nil
+	}
+
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		return pricing.Table{}, fmt.Errorf("price file: %w", err)
+	}
+
+	table, err := pricing.Parse(raw)
+	if err != nil {
+		return pricing.Table{}, fmt.Errorf("price file %s: %w", file, err)
+	}
+
+	return table, nil
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if v != "" {
@@ -211,7 +258,7 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 		return nil
 	}
 
-	gatewayAt, brokerAt, err := o.endpoints(getenv)
+	in, err := o.inputs(getenv)
 	if err != nil {
 		return err
 	}
@@ -227,7 +274,7 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 	log := newLogger(stderr, o).With("version", version)
 	httpClient := &http.Client{Timeout: requestTimeout}
 
-	gateway, err := omp.NewGateway(gatewayAt.url, gatewayAt.token, httpClient)
+	gateway, err := omp.NewGateway(in.gateway.url, in.gateway.token, httpClient)
 	if err != nil {
 		return fmt.Errorf("gateway: %w", err)
 	}
@@ -246,8 +293,8 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 	// pointer in an interface would read as configured.
 	var traffic *collector.Collector
 
-	if brokerAt.url != "" {
-		broker, brokerErr := omp.NewBroker(brokerAt.url, brokerAt.token, httpClient)
+	if in.broker.url != "" {
+		broker, brokerErr := omp.NewBroker(in.broker.url, in.broker.token, httpClient)
 		if brokerErr != nil {
 			return fmt.Errorf("broker: %w", brokerErr)
 		}
@@ -263,13 +310,15 @@ func run(args []string, getenv func(string) string, stdout, stderr io.Writer) er
 	deps.Monitor = watch
 
 	srv, err := server.New(log,
-		server.Config{Listen: o.listen, Name: name, Version: version, PollInterval: o.pollInterval}, assets, deps)
+		server.Config{
+			Listen: o.listen, Name: name, Version: version, PollInterval: o.pollInterval, Prices: in.prices,
+		}, assets, deps)
 	if err != nil {
 		return err
 	}
 
 	log.InfoContext(ctx, "starting", "controls", watch.Controls(), "pollInterval", o.pollInterval.String(),
-		"trafficInterval", o.trafficInterval.String(), "db", o.db)
+		"trafficInterval", o.trafficInterval.String(), "db", o.db, "prices", o.prices)
 
 	// The loops stop with ctx; wait for their last round before the deferred
 	// close of the database they write to.

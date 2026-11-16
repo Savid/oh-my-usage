@@ -6,20 +6,21 @@ import (
 	"github.com/savid/oh-my-usage/api/rest"
 	"github.com/savid/oh-my-usage/internal/monitor"
 	"github.com/savid/oh-my-usage/pkg/accounts"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 )
 
 // The functions here turn the daemon's types into the API's. Times in the API
 // are always UTC: the generated client validates date-time fields with Zod,
 // which accepts only the Z suffix, not a local offset.
 
-func accountList(state monitor.State) *rest.AccountList {
+func accountList(state monitor.State, prices pricing.Table) *rest.AccountList {
 	out := &rest.AccountList{
 		Accounts: make([]rest.Account, 0, len(state.Accounts)),
 		Gateway:  sourceStatus(state.Gateway),
 	}
 
 	for _, a := range state.Accounts {
-		out.Accounts = append(out.Accounts, account(a))
+		out.Accounts = append(out.Accounts, account(a, prices))
 	}
 
 	if state.GatewayVersion != "" {
@@ -37,7 +38,7 @@ func sourceStatus(s monitor.Source) rest.SourceStatus {
 	return rest.SourceStatus{Reachable: s.Reachable, Error: optString(s.Err), UpdatedAt: optTime(s.UpdatedAt)}
 }
 
-func account(a accounts.Account) rest.Account {
+func account(a accounts.Account, prices pricing.Table) rest.Account {
 	out := rest.Account{
 		ID:           a.ID,
 		Provider:     a.Provider,
@@ -50,6 +51,10 @@ func account(a accounts.Account) rest.Account {
 		Blocks:       make([]rest.Block, 0, len(a.Blocks)),
 		Limits:       make([]rest.Limit, 0, len(a.Limits)),
 		FetchedAt:    optTime(a.FetchedAt),
+	}
+
+	if monthly, ok := prices.Monthly(a); ok {
+		out.MonthlyUsd = rest.NewOptFloat64(monthly)
 	}
 
 	switch a.Kind {

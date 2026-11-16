@@ -1,0 +1,49 @@
+import { Meta, Story } from '@storybook/addon-docs/blocks';
+import * as Stories from './Principles.stories';
+
+<Meta of={Stories} />
+
+# Principles
+
+oh-my-usage is read at a glance, many times a day, by someone deciding where the next piece of work can go. Every
+screen is judged by how fast it answers, in this order:
+
+1. **How much is used?** Each account's main window, the one it lives on: one big figure, drawn over its week.
+2. **Can it take work right now?** Active, paused or blocked, and its short window (Claude's 5-hour session).
+3. **Is trouble coming?** Only when it is: `▲ runs dry in 13h`. No news is no news.
+
+Anything else (other windows, price, saved resets, burn rate) is there for a second look, not the first.
+
+<Story of={Stories.Glance} />
+
+## Rules for a glance
+
+**The biggest thing is the most important thing.** One display-size figure per account: the used share of its main
+window. Nothing else on the row competes with it.
+
+**The history is the row.** An account's week is drawn the full width of its row, behind everything, in its provider's
+colour. A chart in a small box is a chart nobody reads.
+
+**One account, one row.** At every width, each account is a single line of the page, and figures sit in the same place
+from row to row so a column can be scanned. On a narrow screen a row's parts stack; rows never become cards in a
+grid.
+
+**Dense, not cramped.** Every pixel shows data or the gap that separates it. No empty columns, no labels that repeat
+what the layout already says, no decoration that carries nothing. Fill the width with the chart, not with space.
+
+**Secondary stays small and quiet.** Other windows, price, resets and burn rate are caption size and muted, each on a
+chip of its own so the chart never runs through it.
+
+**Alarm only on trouble.** Colour and marks (`▲` near or running dry, `■` spent) appear only when something needs a
+person. A calm fleet looks calm.
+
+<Story of={Stories.Calm} />
+
+**Say how old it is.** Data that is old says so; a value is never shown as current when it is not.
+
+**Never colour alone.** Every state is a word or a mark as well as a colour; see [Introduction](?path=/docs/foundations-introduction--docs).
+
+## Before you change a page
+
+Ask what the change answers, and where it sits in the three questions. If it answers none of them, it belongs on the
+account's own page, not the list. If it competes with the big figure, it is too loud.

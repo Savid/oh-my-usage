@@ -79,6 +79,7 @@ export const zAccount = z.object({
   limits: z.array(zLimit),
   resets: z.optional(zResets),
   fetchedAt: z.optional(z.iso.datetime()),
+  monthlyUsd: z.optional(z.number().check(z.gte(0))),
 });
 
 export const zAccountList = z.object({

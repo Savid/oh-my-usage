@@ -12,6 +12,7 @@ import (
 	"github.com/savid/oh-my-usage/api/rest"
 	"github.com/savid/oh-my-usage/internal/collector"
 	"github.com/savid/oh-my-usage/internal/store"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 	"github.com/savid/oh-my-usage/pkg/traffic"
 )
 
@@ -38,6 +39,18 @@ type testServer struct {
 	traffic   *fakeTraffic
 }
 
+// testPrices prices the seat by its plan and leaves the stray unpriced.
+func testPrices(t *testing.T) pricing.Table {
+	t.Helper()
+
+	prices, err := pricing.Parse([]byte(`{"plans": {"anthropic": {"max": 100}}, "providers": {"anthropic": 200}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return prices
+}
+
 // newTestServer is a server with no broker: it has no traffic to serve.
 func newTestServer(t *testing.T) *testServer {
 	t.Helper()
@@ -57,7 +70,7 @@ func newServer(t *testing.T, broker bool) *testServer {
 
 	cfg := Config{
 		Listen: "127.0.0.1:0", Name: "app", Version: "test", PollInterval: time.Minute,
-		Now: func() time.Time { return testNow },
+		Now: func() time.Time { return testNow }, Prices: testPrices(t),
 	}
 	ts := &testServer{
 		monitor: newFakeMonitor(),

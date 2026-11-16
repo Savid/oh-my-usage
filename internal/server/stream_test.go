@@ -91,7 +91,8 @@ func TestStreamEvents(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(list.Accounts) != 2 || list.Accounts[0].ID != seatID || !list.Gateway.Reachable {
+		if len(list.Accounts) != 2 || list.Accounts[0].ID != seatID || !list.Gateway.Reachable ||
+			list.Accounts[0].MonthlyUsd.Value != 100 || list.Accounts[1].MonthlyUsd.Set {
 			t.Errorf("accounts = %+v", list)
 		}
 	}

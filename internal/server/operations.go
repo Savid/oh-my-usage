@@ -9,6 +9,7 @@ import (
 
 	"github.com/savid/oh-my-usage/api/rest"
 	"github.com/savid/oh-my-usage/internal/monitor"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 )
 
 // defaultHistory is how far back the history operations read without `since`.
@@ -27,6 +28,7 @@ type operations struct {
 	version      string
 	pollInterval time.Duration
 	now          func() time.Time
+	prices       pricing.Table
 	monitor      Monitor
 	history      History
 	// collector is nil when no broker is configured.
@@ -54,7 +56,7 @@ func (a *operations) GetConfig(context.Context) (*rest.Config, error) {
 // accounts is the latest account list: served by ListAccounts and sent on
 // the event stream.
 func (a *operations) accounts() *rest.AccountList {
-	return accountList(a.monitor.State())
+	return accountList(a.monitor.State(), a.prices)
 }
 
 func (a *operations) ListAccounts(context.Context) (*rest.AccountList, error) {
@@ -68,7 +70,7 @@ func (a *operations) SetAccountPaused(
 
 	switch {
 	case err == nil:
-		out := account(updated)
+		out := account(updated, a.prices)
 
 		return &out, nil
 	case errors.Is(err, monitor.ErrUnknownAccount):

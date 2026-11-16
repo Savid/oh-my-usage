@@ -96,9 +96,15 @@ func (s *Account) encodeFields(e *jx.Encoder) {
 			s.FetchedAt.Encode(e, json.EncodeDateTime)
 		}
 	}
+	{
+		if s.MonthlyUsd.Set {
+			e.FieldStart("monthlyUsd")
+			s.MonthlyUsd.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfAccount = [13]string{
+var jsonFieldsNameOfAccount = [14]string{
 	0:  "id",
 	1:  "provider",
 	2:  "kind",
@@ -112,6 +118,7 @@ var jsonFieldsNameOfAccount = [13]string{
 	10: "limits",
 	11: "resets",
 	12: "fetchedAt",
+	13: "monthlyUsd",
 }
 
 // Decode decodes Account from json.
@@ -276,6 +283,16 @@ func (s *Account) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"fetchedAt\"")
+			}
+		case "monthlyUsd":
+			if err := func() error {
+				s.MonthlyUsd.Reset()
+				if err := s.MonthlyUsd.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"monthlyUsd\"")
 			}
 		default:
 			return d.Skip()

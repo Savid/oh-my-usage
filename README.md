@@ -8,7 +8,7 @@ passing through. One static binary with the UI built in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
-  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a total for each provider, the last hour of traffic, and a band for each account drawn over its last seven days" width="800" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a total for each provider, the gateway's pulse, and a band for each account drawn over its last seven days" width="800" />
 </picture>
 
 - **Accounts**: every account the gateway reports, with each usage window,
@@ -42,8 +42,11 @@ services:
     environment:
       OH_MY_USAGE_GATEWAY_TOKEN: ${OMP_AUTH_GATEWAY_TOKEN}
       OH_MY_USAGE_BROKER_TOKEN: ${OMP_AUTH_BROKER_TOKEN} # optional
+      # OH_MY_USAGE_PRICES: /prices.json # optional: see Prices below
     ports: ["127.0.0.1:8080:8080"]
-    volumes: [oh-my-usage:/data]
+    volumes:
+      - oh-my-usage:/data
+      # - ./prices.json:/prices.json:ro
 volumes:
   oh-my-usage:
 ```
@@ -69,11 +72,38 @@ Then open http://127.0.0.1:8080.
 | `-broker-token-file`  | `OH_MY_USAGE_BROKER_TOKEN`  |                  | Its admin token.                                   |
 | `-listen`             | `OH_MY_USAGE_LISTEN`        | `127.0.0.1:8080` | The image sets `0.0.0.0:8080`.                     |
 | `-db`                 | `OH_MY_USAGE_DB`            | `oh-my-usage.db` | SQLite file; the image keeps it in `/data`.        |
+| `-prices`             | `OH_MY_USAGE_PRICES`        |                  | What each account costs a month: see below.        |
 | `-poll-interval`      |                             | `1m`             | Gateway polls, at least `30s`.                     |
 | `-traffic-interval`   |                             | `15s`            | Broker traffic readings, at least `5s`.            |
 | `-retention`          |                             | `2160h` (90d)    | How long history is kept; `0` is forever.          |
 
 Tokens are never taken as flag values, so they stay out of the process list.
+
+### Prices
+
+omp does not report what a subscription costs, so a JSON file can say, and
+each account then carries its `monthlyUsd`:
+
+```json
+{
+  "providers": { "anthropic": 200, "openai-codex": 200 },
+  "plans": {
+    "openai-codex": { "pro": 200, "plus": 20 },
+    "xai-oauth": { "SuperGrok Monthly Included": 30 }
+  },
+  "accounts": {
+    "ar25@example.com": 50,
+    "claude-*@example.com": 100,
+    "3f6c2a9d41b07e58": 100
+  }
+}
+```
+
+An account takes the first price that fits: its ID; its email; the longest
+pattern in `accounts` (`*`, `?`, `[a-z]`) that matches its email, then its
+ID; its plan under its provider; its provider. Emails and plans ignore case.
+An account nothing fits has no price. A malformed file stops the daemon at
+startup.
 
 ## Good to know
 

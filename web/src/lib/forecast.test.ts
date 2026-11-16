@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Limit, UsageSample } from '@/api';
 import { at, NOW_MS } from '@/test-utils/time';
-import { forecast } from './forecast';
+import { forecast, verdictOf } from './forecast';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -99,5 +99,27 @@ describe('forecast', () => {
 
     const bare = forecast({ ...week, usedFraction: undefined }, [sample(0, 0.5)], NOW_MS);
     expect(bare).toEqual({ elapsed: expect.closeTo(5 / 7) as number });
+  });
+});
+
+describe('verdictOf', () => {
+  it('judges a window against an even pace', () => {
+    expect(verdictOf(0.5, { elapsed: 0.5 })).toBe('even');
+    expect(verdictOf(0.54, { elapsed: 0.5 })).toBe('even');
+    expect(verdictOf(0.6, { elapsed: 0.5 })).toBe('ahead');
+    expect(verdictOf(0.3, { elapsed: 0.5 })).toBe('under');
+  });
+
+  it('puts spent, running dry and idle before the pace', () => {
+    expect(verdictOf(1, { elapsed: 0.1, spentAt: NOW_MS })).toBe('spent');
+    expect(verdictOf(0.2, { elapsed: 0.9, spentAt: NOW_MS + HOUR })).toBe('dry');
+    expect(verdictOf(0.9, { elapsed: 0.1, pace: { perHour: 0, basis: 'recent', overMs: HOUR } })).toBe('idle');
+    // An average since the window opened is not a sign of being idle.
+    expect(verdictOf(0, { elapsed: 0.1, pace: { perHour: 0, basis: 'window' } })).toBe('under');
+  });
+
+  it('cannot judge without an amount or a clock', () => {
+    expect(verdictOf(undefined, { elapsed: 0.5 })).toBe('unknown');
+    expect(verdictOf(0.5, {})).toBe('unknown');
   });
 });

@@ -107,3 +107,28 @@ export function forecast(limit: Limit, samples: readonly UsageSample[], now: num
 
   return out;
 }
+
+/** How far ahead of or behind an even pace a window may be and still be on it. */
+const EVEN_MARGIN = 0.05;
+
+/**
+ * Where a window stands against its clock, in a word: `spent`; `dry` when at
+ * this pace it runs out before it resets; `idle` when nothing was used
+ * lately; else `ahead`, `even` or `under` an even pace. `unknown` without an
+ * amount or a clock to judge it by.
+ */
+export type Verdict = 'spent' | 'dry' | 'idle' | 'ahead' | 'even' | 'under' | 'unknown';
+
+/** A window's verdict, from its used share and its forecast. */
+export function verdictOf(used: number | undefined, view: Forecast): Verdict {
+  if (used === undefined) return 'unknown';
+  if (used >= 1) return 'spent';
+  if (view.spentAt !== undefined) return 'dry';
+  if (view.pace?.basis === 'recent' && view.pace.perHour === 0) return 'idle';
+  if (view.elapsed === undefined) return 'unknown';
+
+  const lead = used - view.elapsed;
+  if (lead > EVEN_MARGIN) return 'ahead';
+  if (lead < -EVEN_MARGIN) return 'under';
+  return 'even';
+}

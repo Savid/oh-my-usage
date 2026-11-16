@@ -9,6 +9,7 @@ import {
   seatFixture,
 } from '@/test-utils/handlers';
 import { AccountPage } from './AccountPage';
+import { freezeClock } from '@/test-utils/time';
 
 const meta = {
   title: 'Pages/Accounts/AccountPage',
@@ -19,6 +20,9 @@ const meta = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.ok, historyHandlers.ok, trendsHandlers.ok] },
   },
   args: { accountId: seatFixture.id },
+  // The fixtures are built against NOW_MS, so the page reads its clock there; a
+  // showcase builds its own against the real clock and says so.
+  beforeEach: ({ parameters }) => (parameters.liveClock === true ? undefined : freezeClock()),
 } satisfies Meta<typeof AccountPage>;
 
 export default meta;
