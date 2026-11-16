@@ -78,6 +78,13 @@ pnpm format
 - Fixtures, tests and stories take time from `@/test-utils/time` (`NOW_MS`,
   `at(ms)`), never `Date.now()` or a literal date.
 
+## Principles
+
+What the UI shows, and in what order, is set down in Storybook under
+Foundations → Principles (`src/design-docs/Principles.mdx`). Read it before
+changing what a page shows or how it is laid out, and keep it current when the
+answer changes.
+
 ## Topic rules
 
 `.claude/rules/` holds the rules for each kind of file. Claude Code loads them

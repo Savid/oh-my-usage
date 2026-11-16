@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from 'react';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
 import { providerName } from '@/lib/accounts';
-import { formatClock, formatShort } from '@/lib/format';
+import { formatClock, formatPrice, formatShort } from '@/lib/format';
 import type { AccountFactsProps } from './AccountFacts.types';
 
 /** Usage older than this is called out: the provider has not answered for a while. */
@@ -82,6 +82,7 @@ export function AccountFacts({ account, now }: AccountFactsProps): JSX.Element {
         </Fact>
         {account.orgName && <Fact name="Organisation">{account.orgName}</Fact>}
         {account.plan && <Fact name="Plan">{account.plan}</Fact>}
+        {account.monthlyUsd !== undefined && <Fact name="Price">{formatPrice(account.monthlyUsd)} a month</Fact>}
         <Fact name="Usage read">
           {reported === undefined ? (
             <span className="text-muted">The provider has reported no usage.</span>

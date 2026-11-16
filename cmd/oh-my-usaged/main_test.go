@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/savid/oh-my-usage/pkg/accounts"
 )
 
 func TestParse(t *testing.T) {
@@ -36,11 +38,19 @@ func TestParse(t *testing.T) {
 			}(),
 		},
 		"a flag wins over its variable": {
-			args: []string{"-listen", ":9000"},
-			env:  map[string]string{envListen: "0.0.0.0:8080"},
+			args: []string{"-listen", ":9000", "-prices", "/etc/flag.json"},
+			env:  map[string]string{envListen: "0.0.0.0:8080", envPrices: "/etc/env.json"},
 			want: func() options {
 				o := defaults
-				o.listen = ":9000"
+				o.listen, o.prices = ":9000", "/etc/flag.json"
+				return o
+			}(),
+		},
+		"prices from the environment": {
+			env: map[string]string{envPrices: "/etc/prices.json"},
+			want: func() options {
+				o := defaults
+				o.prices = "/etc/prices.json"
 				return o
 			}(),
 		},
@@ -49,13 +59,13 @@ func TestParse(t *testing.T) {
 				"-listen", ":9000", "-log-format", "json", "-log-level", "debug", "-version",
 				"-gateway-url", "https://omp.example.com", "-gateway-token-file", "/run/gw",
 				"-broker-url", "http://auth-broker:8765", "-broker-token-file", "/run/br",
-				"-db", "/data/usage.db", "-poll-interval", "2m", "-traffic-interval", "5s", "-retention", "0",
+				"-db", "/data/usage.db", "-prices", "/etc/prices.json", "-poll-interval", "2m", "-traffic-interval", "5s", "-retention", "0",
 			},
 			want: options{
 				listen: ":9000", logFormat: "json", logLevel: slog.LevelDebug, version: true,
 				gatewayURL: "https://omp.example.com", gatewayTokenFile: "/run/gw",
 				brokerURL: "http://auth-broker:8765", brokerTokenFile: "/run/br",
-				db: "/data/usage.db", pollInterval: 2 * time.Minute, trafficInterval: 5 * time.Second,
+				db: "/data/usage.db", prices: "/etc/prices.json", pollInterval: 2 * time.Minute, trafficInterval: 5 * time.Second,
 			},
 		},
 		"bad format":         {args: []string{"-log-format", "yaml"}, wantErr: `-log-format "yaml": text or json`},
@@ -154,6 +164,60 @@ func TestEndpoints(t *testing.T) {
 				t.Fatalf("endpoints() = %+v %+v, want %+v %+v", gateway, broker, tc.wantGateway, tc.wantBroker)
 			}
 		})
+	}
+}
+
+func TestPrices(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	good := filepath.Join(dir, "prices.json")
+	bad := filepath.Join(dir, "bad.json")
+
+	for path, content := range map[string]string{
+		good: `{"providers": {"anthropic": 200}}`,
+		bad:  `{"providers": {"anthropic": -1}}`,
+	} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	seat := accounts.Account{ID: "a1", Provider: "anthropic"}
+
+	none, err := prices("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, priced := none.Monthly(seat); priced {
+		t.Errorf("no price file priced %v", got)
+	}
+
+	table, err := prices(good)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, priced := table.Monthly(seat); !priced || got != 200 {
+		t.Errorf("Monthly = %v %v, want 200", got, priced)
+	}
+
+	if _, err = prices(bad); err == nil || !strings.Contains(err.Error(), bad) ||
+		!strings.Contains(err.Error(), `providers["anthropic"]`) {
+		t.Errorf("prices(bad) = %v", err)
+	}
+
+	if _, err = prices(filepath.Join(dir, "nope.json")); err == nil || !strings.Contains(err.Error(), "nope.json") {
+		t.Errorf("prices(missing) = %v", err)
+	}
+
+	// A bad file stops the daemon before it starts.
+	var stdout, stderr bytes.Buffer
+
+	startup := env(map[string]string{envGatewayURL: "https://gw", envGatewayToken: "t", envPrices: bad})
+	if err = run(nil, startup, &stdout, &stderr); err == nil || !strings.Contains(err.Error(), "price file "+bad) {
+		t.Errorf("run with a bad price file = %v", err)
 	}
 }
 

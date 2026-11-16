@@ -73,6 +73,12 @@ const claudeGrace = {
   week: limit('anthropic:7d', 'Claude 7 Day', '7 Day', 0.97, 19 * HOUR, 7 * DAY),
   fable: limit('anthropic:7d:fable', 'Claude 7 Day (Fable)', '7 Day', 0.88, 19 * HOUR, 7 * DAY),
 };
+// A seat that did its work early in the week and has sat idle since.
+const claudeHedy = {
+  fiveHour: limit('anthropic:5h', 'Claude 5 Hour', '5 Hour', 0, 3 * HOUR, 5 * HOUR),
+  week: limit('anthropic:7d', 'Claude 7 Day', '7 Day', 0.12, 2 * DAY + 5 * HOUR, 7 * DAY),
+  fable: limit('anthropic:7d:fable', 'Claude 7 Day (Fable)', '7 Day', 0.09, 2 * DAY + 5 * HOUR, 7 * DAY),
+};
 const codex = {
   primary: limit('openai-codex:primary', '5 hours', '5 hours', 0.34, 3 * HOUR + 20 * MINUTE, 5 * HOUR),
   secondary: limit('openai-codex:secondary', '7 days', '7 days', 0.58, 3 * DAY + 10 * HOUR, 7 * DAY),
@@ -100,6 +106,7 @@ const showcaseAccounts: AccountList = {
       provider: 'anthropic',
       kind: 'oauth',
       email: 'ada@example.com',
+      monthlyUsd: 200,
       orgName: 'Analytical Engines',
       paused: false,
       pausable: true,
@@ -131,6 +138,7 @@ const showcaseAccounts: AccountList = {
       provider: 'anthropic',
       kind: 'oauth',
       email: 'grace@example.com',
+      monthlyUsd: 200,
       orgName: 'Compilers Ltd',
       // Paused from here, and blocked by omp until its 5-hour window resets.
       paused: true,
@@ -142,10 +150,24 @@ const showcaseAccounts: AccountList = {
       fetchedAt: at(-31_000),
     },
     {
+      id: '5e1ec7ed0000a003',
+      provider: 'anthropic',
+      kind: 'oauth',
+      email: 'hedy@example.com',
+      orgName: 'Frequency Hopping',
+      monthlyUsd: 100,
+      paused: false,
+      pausable: true,
+      blocks: [],
+      limits: limits(claudeHedy),
+      fetchedAt: at(-11_000),
+    },
+    {
       id: '5e1ec7ed0000c001',
       provider: 'openai-codex',
       kind: 'oauth',
       email: 'linus@example.com',
+      monthlyUsd: 200,
       plan: 'pro',
       paused: false,
       pausable: true,
@@ -159,6 +181,7 @@ const showcaseAccounts: AccountList = {
       provider: 'xai-oauth',
       kind: 'oauth',
       email: 'margaret@example.com',
+      monthlyUsd: 30,
       plan: 'SuperGrok',
       paused: false,
       pausable: true,
@@ -171,6 +194,7 @@ const showcaseAccounts: AccountList = {
       provider: 'opencode-go',
       kind: 'api_key',
       plan: 'OpenCode Go',
+      monthlyUsd: 10,
       paused: false,
       pausable: true,
       blocks: [],
@@ -218,10 +242,22 @@ function history(
   return { accountId, limitId: id, points };
 }
 
+/** A limit that climbed to where it stands in the window's first day and has not moved since. */
+function idle(accountId: string, { limit: { id, usedFraction = 0, resetsAt }, span }: Window): UsageTrend {
+  const opened = Date.parse(resetsAt ?? at(span)) - span;
+  const steps = Math.floor((NOW - opened) / HOUR);
+  const points = Array.from({ length: steps + 1 }, (_, step) => ({
+    at: new Date(opened + step * HOUR).toISOString(),
+    usedFraction: Math.round(usedFraction * Math.min(1, step / 20) * 1000) / 1000,
+  }));
+  return { accountId, limitId: id, points };
+}
+
 const showcaseTrends: UsageTrendList = {
   trends: [
     ...Object.values(claudeAda).map((window, index) => history('5e1ec7ed0000a001', window, 11 + index)),
     ...Object.values(claudeGrace).map((window, index) => history('5e1ec7ed0000a002', window, 21 + index)),
+    ...Object.values(claudeHedy).map(window => idle('5e1ec7ed0000a003', window)),
     ...Object.values(codex).map((window, index) => history('5e1ec7ed0000c001', window, 31 + index)),
     ...Object.values(grok).map((window, index) => history('5e1ec7ed0000e001', window, 41 + index)),
     ...Object.values(opencode).map((window, index) => history('5e1ec7ed0000d001', window, 51 + index)),

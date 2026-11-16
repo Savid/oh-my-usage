@@ -7,6 +7,7 @@ import {
   formatDay,
   formatPace,
   formatPercent,
+  formatPrice,
   formatShare,
   formatShort,
   formatUntil,
@@ -113,5 +114,14 @@ describe('formatPace', () => {
     expect(formatPace(0.3)).toBe('30.0%/h');
     expect(formatPace(0.004)).toBe('9.6%/day');
     expect(formatPace(0)).toBe('0%/h');
+  });
+});
+
+describe('formatPrice', () => {
+  it('leaves the cents off a whole price', () => {
+    expect(formatPrice(50)).toBe('$50');
+    expect(formatPrice(1200)).toBe('$1,200');
+    expect(formatPrice(19.99)).toBe('$19.99');
+    expect(formatPrice(0)).toBe('$0');
   });
 });

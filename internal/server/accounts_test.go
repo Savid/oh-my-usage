@@ -10,6 +10,7 @@ import (
 
 	"github.com/savid/oh-my-usage/api/rest"
 	"github.com/savid/oh-my-usage/internal/monitor"
+	"github.com/savid/oh-my-usage/pkg/pricing"
 )
 
 func TestListAccounts(t *testing.T) {
@@ -36,14 +37,14 @@ func TestListAccounts(t *testing.T) {
 	checkSeat(t, list.Accounts[0])
 
 	stray := list.Accounts[1]
-	if stray.Pausable || stray.Kind.Set || stray.Email.Set || stray.Resets.Set || stray.FetchedAt.Set || stray.Limits == nil {
+	if stray.Pausable || stray.Kind.Set || stray.MonthlyUsd.Set || stray.Email.Set || stray.Resets.Set || stray.FetchedAt.Set || stray.Limits == nil {
 		t.Errorf("stray = %+v", stray)
 	}
 
 	// testNow is in a local zone; the generated web client accepts only UTC.
 	for _, want := range []string{
 		`"fetchedAt":"2026-09-26T11:59:00Z"`, `"resetsAt":"2026-09-27T09:00:00Z"`,
-		`"blockedUntil":"2026-09-26T13:00:00Z"`, `"updatedAt":"2026-09-26T12:00:00Z"`, `"limits":[]`,
+		`"blockedUntil":"2026-09-26T13:00:00Z"`, `"updatedAt":"2026-09-26T12:00:00Z"`, `"limits":[]`, `"monthlyUsd":100`,
 	} {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Errorf("body lacks %s: %s", want, rec.Body.String())
@@ -56,7 +57,8 @@ func checkSeat(t *testing.T, seat rest.Account) {
 	t.Helper()
 
 	if seat.ID != seatID || seat.Kind.Value != rest.AccountKindOAuth || seat.Email.Value != "one@example.com" ||
-		seat.Plan.Value != "max" || !seat.Pausable || seat.Paused || !seat.BlockedUntil.Set {
+		seat.Plan.Value != "max" || !seat.Pausable || seat.Paused || !seat.BlockedUntil.Set ||
+		seat.MonthlyUsd != rest.NewOptFloat64(100) {
 		t.Errorf("seat = %+v", seat)
 	}
 
@@ -148,7 +150,7 @@ func TestSetAccountPaused(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if rec.Code != http.StatusOK || got.ID != seatID || got.Paused != paused {
+		if rec.Code != http.StatusOK || got.ID != seatID || got.Paused != paused || got.MonthlyUsd.Value != 100 {
 			t.Errorf("PUT paused=%v = %d %+v", paused, rec.Code, got)
 		}
 
@@ -307,5 +309,27 @@ func TestListUsageTrends(t *testing.T) {
 
 	if failed := get(t, h, http.MethodGet, "/api/v1/trends"); failed.Code != http.StatusInternalServerError {
 		t.Errorf("store failure = %d", failed.Code)
+	}
+}
+
+// Without a price file no account carries a price.
+func TestAccountWithoutPrices(t *testing.T) {
+	t.Parallel()
+
+	for _, a := range accountList(testState(), pricing.Table{}).Accounts {
+		if a.MonthlyUsd.Set {
+			t.Errorf("account %s priced at %v", a.ID, a.MonthlyUsd.Value)
+		}
+	}
+
+	seat := account(testState().Accounts[0], pricing.Table{})
+
+	body, err := seat.MarshalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(body), "monthlyUsd") {
+		t.Errorf("unpriced account = %s", body)
 	}
 }

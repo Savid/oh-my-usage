@@ -1,20 +1,24 @@
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
+import { fleetOf, orderAccounts, viewAccount, type AccountOrder } from '@/lib/fleet';
 import { headlinePools, poolLimits } from '@/lib/pools';
 import { AccountRow } from './components/AccountRow';
+import { AccountsToolbar } from './components/AccountsToolbar';
+import { FleetSummary } from './components/FleetSummary';
 import { PoolTile } from './components/PoolTile';
+import { Pulse } from './components/Pulse';
 import { SourceAlerts } from './components/SourceAlerts';
-import { TrafficBand } from './components/TrafficBand';
 import { useAccounts } from './hooks/useAccounts';
 import { useCharts } from './hooks/useCharts';
 
 /**
- * The whole fleet on one screen. First, for each provider, how much of its
- * main usage window is used in total and when it resets; then, with a broker,
- * what is passing through the gateway right now; then every account on a line
- * of its own, drawn over the last seven days of what it had used.
+ * The whole fleet on one screen. A line of figures for the fleet; for each
+ * provider, how much of its main usage window is used in total and when it
+ * resets; with a broker, the gateway's pulse; then every account on a row of
+ * its own row, its windows read against their clocks as meters and a
+ * runway, riskiest first unless another order is picked.
  */
 export function AccountsPage(): JSX.Element {
   const now = useNow();
@@ -24,7 +28,10 @@ export function AccountsPage(): JSX.Element {
   const traffic = useTraffic();
   const controls = config.data?.controls ?? false;
   const list = accounts.data;
+  const [order, setOrder] = useState<AccountOrder>('risk');
   const pools = list ? headlinePools(poolLimits(list.accounts, now)) : [];
+  const views = list ? list.accounts.map(account => viewAccount(account, charts.trends, now)) : [];
+  const fleet = fleetOf(views);
 
   return (
     <section className="flex flex-col gap-2">
@@ -41,6 +48,7 @@ export function AccountsPage(): JSX.Element {
       ) : (
         <>
           <SourceAlerts list={list} stale={accounts.isError} now={now} />
+          <FleetSummary fleet={fleet} updatedAt={list.gateway.updatedAt} now={now} />
           {charts.failed && (
             <p role="alert" className="px-1 text-caption text-danger">
               Could not load the usage history. The rows show current levels only.
@@ -65,27 +73,27 @@ export function AccountsPage(): JSX.Element {
               Could not load the traffic.
             </p>
           ) : (
-            traffic.data.available && <TrafficBand traffic={traffic.data} now={now} />
+            traffic.data.available && <Pulse traffic={traffic.data} monthlyUsd={fleet.monthlyUsd} now={now} />
           )}
 
           {list.accounts.length === 0 ? (
             <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>
           ) : (
-            <section
-              aria-label="Every account"
-              className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface"
-            >
-              {list.accounts.map(account => (
-                <AccountRow
-                  key={account.id}
-                  account={account}
-                  trends={charts.trends}
-                  start={charts.since}
-                  now={now}
-                  controls={controls}
-                  headingLevel={2}
-                />
-              ))}
+            <section aria-label="Every account" className="flex flex-col gap-2">
+              <AccountsToolbar count={views.length} order={order} onOrder={setOrder} />
+              <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
+                {orderAccounts(views, order).map(view => (
+                  <AccountRow
+                    key={view.account.id}
+                    account={view.account}
+                    trends={charts.trends}
+                    start={charts.since}
+                    now={now}
+                    controls={controls}
+                    headingLevel={3}
+                  />
+                ))}
+              </div>
             </section>
           )}
         </>

@@ -38,6 +38,9 @@ type Account struct {
 	Resets OptResets `json:"resets"`
 	// When the provider reported the usage. Absent without a report.
 	FetchedAt OptDateTime `json:"fetchedAt"`
+	// What the account's subscription costs a month, in US dollars, as the daemon's price file says.
+	// Absent when the file prices nothing for it or there is no price file.
+	MonthlyUsd OptFloat64 `json:"monthlyUsd"`
 }
 
 // GetID returns the value of ID.
@@ -105,6 +108,11 @@ func (s *Account) GetFetchedAt() OptDateTime {
 	return s.FetchedAt
 }
 
+// GetMonthlyUsd returns the value of MonthlyUsd.
+func (s *Account) GetMonthlyUsd() OptFloat64 {
+	return s.MonthlyUsd
+}
+
 // SetID sets the value of ID.
 func (s *Account) SetID(val string) {
 	s.ID = val
@@ -168,6 +176,11 @@ func (s *Account) SetResets(val OptResets) {
 // SetFetchedAt sets the value of FetchedAt.
 func (s *Account) SetFetchedAt(val OptDateTime) {
 	s.FetchedAt = val
+}
+
+// SetMonthlyUsd sets the value of MonthlyUsd.
+func (s *Account) SetMonthlyUsd(val OptFloat64) {
+	s.MonthlyUsd = val
 }
 
 // Absent when no broker credential is known for the account.

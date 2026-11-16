@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getConfigQueryKey } from '@/api/@tanstack/react-query.gen';
-import { render, screen, server, waitFor, within } from '@/test-utils';
+import { fireEvent, render, screen, server, waitFor, within } from '@/test-utils';
 import { accountsHandlers, configFixture, trafficHandlers, trendsHandlers } from '@/test-utils/handlers';
 import { NOW_MS } from '@/test-utils/time';
 import { AccountsPage } from './AccountsPage';
@@ -48,10 +48,11 @@ describe('AccountsPage', () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
     const { container } = renderPage();
 
-    await screen.findByRole('region', { name: 'Every account' });
+    const every = await screen.findByRole('region', { name: 'Every account' });
     // Three accounts report usage and have history; the API key has neither.
-    await waitFor(() => expect(container.querySelectorAll('[data-chart="history"]')).toHaveLength(3));
-    expect(container.querySelectorAll('[data-chart="none"]')).toHaveLength(1);
+    await waitFor(() => expect(every.querySelectorAll('[data-chart="history"]')).toHaveLength(3));
+    expect(every.querySelectorAll('[data-chart="none"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-chart]').length).toBeGreaterThan(4);
   });
 
   it('offers pause controls only when a broker is configured', async () => {
@@ -66,14 +67,60 @@ describe('AccountsPage', () => {
     renderPage(false);
 
     expect(await screen.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
   });
 
   it('shows what is passing through the gateway when a broker is configured', async () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    expect(await screen.findByRole('region', { name: 'Traffic' })).toHaveTextContent('last hour, at API prices');
+    const traffic = await screen.findByRole('region', { name: 'Traffic' });
+    expect(traffic).toHaveTextContent('Burn at API prices');
+    // One seat is priced, so the week is set against what it costs.
+    expect(traffic).toHaveTextContent('Value · last 7 days');
+  });
+
+  it('opens on a line of figures for the fleet', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW_MS);
+    server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
+    renderPage();
+
+    const fleet = await screen.findByRole('region', { name: 'Fleet' });
+    // Each name comes before its figure for assistive technology; the figure is drawn first.
+    expect(fleet).toHaveTextContent('accounts4');
+    expect(fleet).toHaveTextContent('running dry▲1');
+    expect(fleet).toHaveTextContent('for 1 priced$200/mo');
+    expect(fleet).toHaveTextContent('gateway read 5s ago');
+  });
+
+  it('orders the accounts as asked', async () => {
+    server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
+    renderPage();
+
+    const every = await screen.findByRole('region', { name: 'Every account' });
+    const names = (): string[] =>
+      within(every)
+        .getAllByRole('article')
+        .map(row => row.getAttribute('aria-labelledby') ?? '');
+
+    fireEvent.click(within(every).getByRole('button', { name: 'Listed' }));
+    expect(within(every).getByRole('button', { name: 'Listed' })).toHaveAttribute('aria-pressed', 'true');
+    expect(names()).toEqual([
+      'account-00000000000000a1',
+      'account-00000000000000a2',
+      'account-00000000000000c1',
+      'account-00000000000000d1',
+    ]);
+
+    fireEvent.click(within(every).getByRole('button', { name: 'Used' }));
+    // The paused seat's 5-hour window is spent, but it lives on its week: 19%.
+    expect(names()).toEqual([
+      'account-00000000000000a1',
+      'account-00000000000000c1',
+      'account-00000000000000a2',
+      'account-00000000000000d1',
+    ]);
   });
 
   it('says nothing about traffic without a broker', async () => {
@@ -131,7 +178,9 @@ describe('AccountsPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not load the usage history. The rows show current levels only.'
     );
-    expect(container.querySelector('[data-chart="history"]')).not.toBeInTheDocument();
-    expect(container.querySelectorAll('[data-chart="level"]')).toHaveLength(3);
+    const every = screen.getByRole('region', { name: 'Every account' });
+    expect(every.querySelector('[data-chart="history"]')).not.toBeInTheDocument();
+    expect(every.querySelectorAll('[data-chart="level"]')).toHaveLength(3);
+    expect(container).toBeInTheDocument();
   });
 });

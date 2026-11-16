@@ -3,6 +3,7 @@ import { expect, within } from 'storybook/test';
 import { AppShell } from '@/components/Layout/AppShell';
 import { configHandlers, showcaseHandlers, trafficHandlers } from '@/test-utils/handlers';
 import { TrafficPage } from './TrafficPage';
+import { freezeClock } from '@/test-utils/time';
 
 const meta = {
   title: 'Pages/Traffic/TrafficPage',
@@ -20,6 +21,9 @@ const meta = {
         </div>
       ),
   ],
+  // The fixtures are built against NOW_MS, so the page reads its clock there; a
+  // showcase builds its own against the real clock and says so.
+  beforeEach: ({ parameters }) => (parameters.liveClock === true ? undefined : freezeClock()),
 } satisfies Meta<typeof TrafficPage>;
 
 export default meta;
@@ -39,7 +43,7 @@ export const Default: Story = {
  * following the working day. Times count from when it opens.
  */
 export const Showcase: Story = {
-  parameters: { shell: true, path: '/traffic', msw: { handlers: showcaseHandlers } },
+  parameters: { shell: true, liveClock: true, path: '/traffic', msw: { handlers: showcaseHandlers } },
   render: () => (
     <AppShell name="oh-my-usage" traffic connection="live">
       <TrafficPage />

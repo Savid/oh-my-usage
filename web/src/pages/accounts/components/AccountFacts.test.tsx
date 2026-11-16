@@ -21,6 +21,7 @@ describe('AccountFacts', () => {
       'Provider: Anthropic',
       'Login: OAuth login',
       'Organisation: One Org',
+      'Price: $200 a month',
       'Usage read: 12s ago',
     ]);
     expect(screen.getByText('active')).toHaveAttribute('data-tone', 'ok');

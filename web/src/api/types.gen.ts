@@ -98,6 +98,10 @@ export type Account = {
    * When the provider reported the usage. Absent without a report.
    */
   fetchedAt?: string;
+  /**
+   * What the account's subscription costs a month, in US dollars, as the daemon's price file says. Absent when the file prices nothing for it or there is no price file.
+   */
+  monthlyUsd?: number;
 };
 
 /**

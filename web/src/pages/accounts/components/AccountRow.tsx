@@ -8,7 +8,8 @@ import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitSeverity } from '@/lib/accounts';
-import { formatPercent, formatShort } from '@/lib/format';
+import { viewAccount } from '@/lib/fleet';
+import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
 import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
@@ -43,7 +44,7 @@ function state(account: Account, now: number): { tone: StatusTone; label: string
   return { tone: 'ok', label: 'active' };
 }
 
-/** What follows the name: organisation, plan, saved resets, and how old the usage is when it is old. */
+/** What follows the name: organisation, plan, price, saved resets, and how old the usage is when it is old. */
 function about(account: Account, now: number): string {
   const parts: string[] = [];
   // A personal organisation is named after its owner's email, which the row already shows.
@@ -51,6 +52,7 @@ function about(account: Account, now: number): string {
   // A plan named after the provider says nothing the name does not.
   if (account.plan && !accountTitle(account).includes(account.plan)) parts.push(account.plan);
   if (account.kind === 'api_key' && account.email) parts.push('API key');
+  if (account.monthlyUsd !== undefined) parts.push(`${formatPrice(account.monthlyUsd)}/mo`);
 
   const resets = account.resets;
   if (resets && resets.available > 0) {
@@ -97,7 +99,7 @@ function chart(
     WIDTH,
     HEIGHT
   );
-  return { line: '', area: flat?.area ?? '', level: true };
+  return { line: '', area: flat?.area ?? '', end: flat?.end ?? { x: WIDTH, y: HEIGHT }, level: true };
 }
 
 function resetIn(limit: Limit, now: number): string | undefined {
@@ -106,7 +108,8 @@ function resetIn(limit: Limit, now: number): string | undefined {
 
 /**
  * One account as a band across the page, drawn over a chart of what it had
- * used, in its provider's colour. It leads with the big figure for its main usage window (the one that
+ * used, in its provider's colour. Trouble ahead (a window that runs dry
+ * before it resets at its pace) is the only forecast it shows. It leads with the big figure for its main usage window (the one that
  * resets last), then who it is and when that window resets. To the right, its
  * other windows as small values, whether it is taking traffic, and the pause
  * control when a broker is configured. Everything written sits on solid
@@ -139,6 +142,10 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
   const others = account.limits.filter(limit => limit !== primary);
+  // Where each window is heading at its pace: only trouble is called out.
+  const view = viewAccount(account, trends, now);
+  const runsDry = new Set(view.limits.filter(entry => entry.verdict === 'dry').map(entry => entry.limit.id));
+  const mainDryAt = primary ? view.limits.find(entry => entry.limit === primary)?.forecast.spentAt : undefined;
   const drawn =
     primary && used !== undefined
       ? chart(
@@ -195,7 +202,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       <div
         className={clsx(
           'relative flex flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:items-center lg:gap-6',
-          drawn ? 'min-h-28' : 'min-h-14'
+          drawn ? 'min-h-20' : 'min-h-14'
         )}
       >
         <div className="flex min-w-0 items-center gap-4 lg:flex-1">
@@ -244,6 +251,18 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                     <span className="font-semibold text-foreground tabular-nums">{reset}</span>
                   </>
                 )}
+                {mainDryAt !== undefined ? (
+                  <span className="text-danger">
+                    {' · '}
+                    <span aria-hidden="true">▲ </span>runs dry in{' '}
+                    <span className="font-semibold tabular-nums">{formatShort(mainDryAt - now)}</span>
+                  </span>
+                ) : view.idle === true ? (
+                  ' · idle'
+                ) : (
+                  view.burn !== undefined &&
+                  view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>
+                )}
               </p>
             )}
             {meta && <p className="truncate text-micro text-muted">{meta}</p>}
@@ -262,6 +281,12 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                   className="flex h-6 items-center gap-1.5 rounded-sm border border-border bg-surface px-2 whitespace-nowrap"
                 >
                   <span className="tracking-caps uppercase">{shortLimitLabel(limit)}</span>{' '}
+                  {runsDry.has(limit.id) && (
+                    <span className="text-danger">
+                      <span aria-hidden="true">▲</span>
+                      <span className="sr-only">runs dry before it resets,</span>
+                    </span>
+                  )}
                   {share === undefined ? (
                     'not reported'
                   ) : (

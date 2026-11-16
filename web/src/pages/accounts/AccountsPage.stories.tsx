@@ -8,6 +8,7 @@ import {
   trafficHandlers,
   trendsHandlers,
 } from '@/test-utils/handlers';
+import { freezeClock } from '@/test-utils/time';
 import { AccountsPage } from './AccountsPage';
 
 const meta = {
@@ -29,6 +30,9 @@ const meta = {
         </div>
       ),
   ],
+  // The fixtures are built against NOW_MS, so the page reads its clock there; a
+  // showcase builds its own against the real clock and says so.
+  beforeEach: ({ parameters }) => (parameters.liveClock === true ? undefined : freezeClock()),
 } satisfies Meta<typeof AccountsPage>;
 
 export default meta;
@@ -43,13 +47,13 @@ export const Default: Story = {
 };
 
 /**
- * The homepage in full use, under the top bar: two Claude seats (one busy,
- * one paused with its 5-hour window spent), a Codex seat, SuperGrok, OpenCode
+ * The homepage in full use, under the top bar: three Claude seats (one busy,
+ * one paused with its 5-hour window spent, one idle), a Codex seat, SuperGrok, OpenCode
  * Go and an OpenRouter key, a week of history through each window's resets,
  * and a week of traffic through the gateway. Times count from when it opens.
  */
 export const Showcase: Story = {
-  parameters: { shell: true, msw: { handlers: showcaseHandlers } },
+  parameters: { shell: true, liveClock: true, msw: { handlers: showcaseHandlers } },
   render: () => (
     <AppShell name="oh-my-usage" traffic connection="live">
       <AccountsPage />
@@ -57,7 +61,7 @@ export const Showcase: Story = {
   ),
   play: async ({ canvas }) => {
     const every = await canvas.findByRole('region', { name: 'Every account' });
-    await expect(within(every).getAllByRole('article')).toHaveLength(6);
+    await expect(within(every).getAllByRole('article')).toHaveLength(7);
     await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
     await expect(within(canvas.getByRole('navigation')).getByRole('link', { name: 'Traffic' })).toBeInTheDocument();
   },
@@ -69,7 +73,8 @@ export const WithoutControls: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
-    await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
+    // The order of the list can still be changed; nothing can be paused.
+    await expect(canvas.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
   },
 };
 
@@ -108,8 +113,9 @@ export const GatewayUnreachable: Story = {
 
 export const NoHistory: Story = {
   parameters: { msw: { handlers: [configHandlers.ok, accountsHandlers.ok, trendsHandlers.empty, trafficHandlers.ok] } },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(await canvas.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
-    await expect(canvasElement.querySelector('[data-chart="history"]')).not.toBeInTheDocument();
+  play: async ({ canvas }) => {
+    const every = await canvas.findByRole('region', { name: 'Every account' });
+    // The rows fall back to levels; the traffic's own charts are unaffected.
+    await expect(every.querySelector('[data-chart="history"]')).not.toBeInTheDocument();
   },
 };

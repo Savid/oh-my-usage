@@ -103,3 +103,8 @@ export function formatPace(perHour: number): string {
   if (points === 0) return '0%/h';
   return points >= 1 ? `${points.toFixed(1)}%/h` : `${(points * 24).toFixed(1)}%/day`;
 }
+
+/** A price, without cents when it has none: "$50", "$19.99", "$1,200". */
+export function formatPrice(value: number): string {
+  return Number.isInteger(value) ? dollars.format(value) : cents.format(value);
+}

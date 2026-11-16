@@ -8,3 +8,16 @@ export const NOW_MS = Date.parse(NOW);
 export function at(ms: number): string {
   return new Date(NOW_MS + ms).toISOString();
 }
+
+/**
+ * Holds `Date.now()` at `ms` (`NOW_MS` unless given) until the function it
+ * returns is called, so a page that reads the clock agrees with fixtures
+ * built against `NOW_MS`. For a story's `beforeEach`.
+ */
+export function freezeClock(ms = NOW_MS): () => void {
+  const real = Date.now;
+  Date.now = () => ms;
+  return () => {
+    Date.now = real;
+  };
+}

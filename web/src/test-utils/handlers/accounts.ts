@@ -12,6 +12,7 @@ export const seatFixture: Account = {
   kind: 'oauth',
   email: 'one@example.com',
   orgName: 'One Org',
+  monthlyUsd: 200,
   paused: false,
   pausable: true,
   blocks: [],

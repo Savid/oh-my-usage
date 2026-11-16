@@ -27,10 +27,10 @@ describe('AccountRow', () => {
       '/accounts/00000000000000a1'
     );
     expect(within(row).getByRole('img', { name: 'Anthropic' })).toBeInTheDocument();
-    expect(within(row).getByText('One Org · 2 resets, 1 usable')).toBeInTheDocument();
+    expect(within(row).getByText('One Org · $200/mo · 2 resets, 1 usable')).toBeInTheDocument();
     // Both weekly windows reset together; the first listed leads.
     expect(row).toHaveTextContent('76%used');
-    expect(row).toHaveTextContent('7 Day · resets in 21h');
+    expect(row).toHaveTextContent('7 Day · resets in 21h · +10.7%/day');
     expect(row).toHaveAttribute('data-severity', 'normal');
     expect(row).toHaveAttribute('data-chart', 'history');
     expect(within(row).getByText('active')).toHaveAttribute('data-tone', 'ok');
@@ -40,7 +40,11 @@ describe('AccountRow', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
     const others = within(screen.getByRole('list')).getAllByRole('listitem');
-    expect(others.map(item => item.textContent)).toEqual(['5 Hour not reported', '7 Day Fable 92% · 21h']);
+    // The Fable window runs dry before it resets at its pace, and is marked for it.
+    expect(others.map(item => item.textContent)).toEqual([
+      '5 Hour not reported',
+      '7 Day Fable ▲runs dry before it resets,92% · 21h',
+    ]);
     // The Fable window is nearly spent, and says so in more than position.
     expect(within(others[1]!).getByText('92%')).toHaveClass('text-warn');
     // Each sits on its own solid chip, so the chart never runs through it.
@@ -142,7 +146,7 @@ describe('AccountRow', () => {
   it('says when the usage it shows is old', () => {
     render(<AccountRow {...base} account={{ ...seatFixture, resets: undefined, fetchedAt: at(-40 * 60_000) }} />);
 
-    expect(screen.getByText('One Org · usage 40m old')).toBeInTheDocument();
+    expect(screen.getByText('One Org · $200/mo · usage 40m old')).toBeInTheDocument();
   });
 
   it('says when an account reports no usage', () => {
@@ -185,5 +189,36 @@ describe('AccountRow', () => {
       'Could not pause the account: pause: POST /v1/credential/1/block: HTTP 401: unauthorized'
     );
     expect(screen.getByRole('button', { name: 'Pause' })).toBeEnabled();
+  });
+});
+
+describe('AccountRow, looking ahead', () => {
+  it('warns when the main window runs dry before it resets, and says nothing more otherwise', () => {
+    const week = {
+      id: 'codex:7d',
+      label: '7 days',
+      usedFraction: 0.5,
+      resetsAt: at(50 * 3_600_000),
+      windowSeconds: 7 * 86_400,
+    };
+    const climbing = {
+      accountId: strayFixture.id,
+      limitId: 'codex:7d',
+      points: [
+        { at: at(-10 * 3_600_000), usedFraction: 0.3 },
+        { at: at(-3_600_000), usedFraction: 0.48 },
+      ],
+    };
+    const { rerender } = render(
+      <AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[climbing]} />
+    );
+
+    // Two points an hour with half left: 25 hours, of 50 to the reset.
+    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · ▲ runs dry in 1d 1h');
+
+    const flat = { ...climbing, points: climbing.points.map(point => ({ ...point, usedFraction: 0.5 })) };
+    rerender(<AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[flat]} />);
+    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · idle');
+    expect(screen.getByRole('article')).not.toHaveTextContent('runs dry');
   });
 });
