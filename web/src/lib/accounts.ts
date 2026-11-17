@@ -152,23 +152,26 @@ export function shortLimitLabel(limit: Limit): string {
 }
 
 /**
+ * Resets this close together end the same window: a provider reports a
+ * week's limits a second apart ("04:59:59" and "05:00:00").
+ */
+const SAME_RESET_MS = 3_600_000;
+
+/**
  * The window an account's row is drawn for: of those that report usage, the
  * one whose reset is furthest away, which is the budget the account lives on
- * (a week, not five hours). Ties go to the first listed; without any reset
- * time, the first that reports usage.
+ * (a week, not five hours). Windows that reset within an hour of it count as
+ * the same week, and of those the first listed wins: providers list the whole
+ * account's limit before a model's own ("7 Day" before "7 Day (Fable)").
+ * Without any reset time, the first that reports usage.
  */
 export function primaryLimit(limits: readonly Limit[]): Limit | undefined {
-  let best: Limit | undefined;
-  let bestReset = -Infinity;
-  for (const limit of limits) {
-    if (limit.usedFraction === undefined) continue;
-    const reset = limit.resetsAt ? Date.parse(limit.resetsAt) : -Infinity;
-    if (!best || reset > bestReset) {
-      best = limit;
-      bestReset = reset;
-    }
-  }
-  return best;
+  const reported = limits.filter(limit => limit.usedFraction !== undefined);
+  const resetOf = (limit: Limit): number => (limit.resetsAt ? Date.parse(limit.resetsAt) : -Infinity);
+  const furthest = Math.max(...reported.map(resetOf));
+  if (furthest === -Infinity) return reported[0];
+
+  return reported.find(limit => resetOf(limit) >= furthest - SAME_RESET_MS);
 }
 
 /** How close a limit is to stopping the account. */

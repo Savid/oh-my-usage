@@ -80,6 +80,17 @@ describe('primaryLimit', () => {
     expect(primaryLimit(limits)?.id).toBe('7d');
   });
 
+  it('counts windows that reset within the hour of each other as one, the first listed', () => {
+    // Anthropic reports a week's two limits a second apart, the model's own later.
+    const limits = [
+      { id: '5h', label: '5 Hour', usedFraction: 0.9, resetsAt: sooner },
+      { id: '7d', label: '7 Day', usedFraction: 0.81, resetsAt: '2026-09-30T23:59:59Z' },
+      { id: '7d:fable', label: '7 Day (Fable)', usedFraction: 0, resetsAt: later },
+    ];
+
+    expect(primaryLimit(limits)?.id).toBe('7d');
+  });
+
   it('skips windows that report no usage, and copes without reset times', () => {
     expect(
       primaryLimit([
