@@ -163,10 +163,12 @@ function WindowLine({
 }
 
 /**
- * Whether the gateway may hand the account work: on, its knob lit and to the
- * right; off, paused. It names the change it makes when pointed at.
+ * Pauses the account or resumes it: a small round button over the end of the
+ * chart. With a mouse it shows when the row is pointed at, so the chart runs
+ * clear; a paused account keeps it, lit, as a way back. It shows the change
+ * it makes: two bars to pause, a triangle to resume.
  */
-function PauseSwitch({
+function PauseButton({
   paused,
   pending,
   onToggle,
@@ -178,21 +180,27 @@ function PauseSwitch({
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={!paused}
-      aria-label="Take traffic"
-      title={paused ? 'Resume' : 'Pause'}
+      aria-label={paused ? 'Resume' : 'Pause'}
+      title={paused ? 'Resume: let omp send it traffic' : "Pause: move omp's traffic off it"}
       disabled={pending}
       onClick={onToggle}
-      className="inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong bg-raised hover:border-foreground disabled:cursor-wait"
+      className={clsx(
+        'grid size-7 place-items-center rounded-full border bg-surface transition duration-150 disabled:cursor-wait motion-reduce:transition-none',
+        paused
+          ? 'border-warn text-warn hover:bg-raised'
+          : 'border-border text-muted hover:border-border-strong hover:text-foreground focus-visible:scale-100 focus-visible:opacity-100 pointer-fine:scale-75 pointer-fine:opacity-0 pointer-fine:group-hover:scale-100 pointer-fine:group-hover:opacity-100'
+      )}
     >
-      <span
-        aria-hidden="true"
-        className={clsx(
-          'size-3.5 rounded-full transition duration-200 motion-reduce:transition-none',
-          paused ? 'translate-x-0.5 bg-muted' : 'translate-x-4.5 bg-ok'
+      <svg aria-hidden="true" viewBox="0 0 12 12" className="size-3 fill-current">
+        {paused ? (
+          <path d="M3.5 1.75v8.5L10.5 6z" />
+        ) : (
+          <>
+            <rect x="2.5" y="1.5" width="2.5" height="9" rx="0.75" />
+            <rect x="7" y="1.5" width="2.5" height="9" rx="0.75" />
+          </>
         )}
-      />
+      </svg>
     </button>
   );
 }
@@ -202,8 +210,8 @@ function PauseSwitch({
  * On solid ground at the left: the big figure for its main usage window (the
  * one that resets last), who it is, when that window resets, and its other
  * windows as short lines. In the open middle: a chart of what it had used,
- * in its provider's colour, ending at now. At the end, with a broker: a
- * switch for whether it takes traffic. Trouble ahead (a window that runs dry
+ * in its provider's colour, running to the row's end at now. Over that
+ * end, with a broker: a small button to pause or resume it. Trouble ahead (a window that runs dry
  * before it resets at its pace) is the only forecast it shows, and its state
  * shows only when it is not taking work.
  */
@@ -223,7 +231,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const headingId = `account-${account.id}`;
-  // The switch moves as soon as it is flipped, and back if the broker refuses.
+  // The button shows the change as soon as it is pressed, and back if the broker refuses.
   const paused = pause.isPending ? pause.variables.body.paused : account.paused;
   const { tone: stateTone, label } = state({ ...account, paused }, now);
   // The chart wears the provider's colour; the figure carries the state.
@@ -236,7 +244,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
   const others = account.limits.filter(limit => limit !== primary);
-  const switchable = controls && account.pausable;
+  const pausable = controls && account.pausable;
   // Where each window is heading at its pace: only trouble is called out.
   const view = viewAccount(account, trends, now);
   const runsDry = new Set(view.limits.filter(entry => entry.verdict === 'dry').map(entry => entry.limit.id));
@@ -256,19 +264,15 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       aria-labelledby={headingId}
       data-severity={severity}
       data-chart={drawn ? (drawn.level ? 'level' : 'history') : 'none'}
-      className="relative overflow-hidden"
+      className="group relative overflow-hidden"
     >
       {drawn && (
         <>
           {/* A glow under a line, deepest under the line and fading towards the foot of
               the row. Its stops take the text colour, which is how a gradient wears a token.
-              On a wide screen it has the middle of the row to itself, clear of the words
-              and the switch; on a narrow one it runs behind the row and shows at its end. */}
-          <div
-            data-testid="history"
-            aria-hidden="true"
-            className={clsx('absolute inset-0 lg:left-204', controls && 'lg:right-19')}
-          >
+              On a wide screen it starts where the words end and runs to the row's end; on a
+              narrow one it runs behind the row and shows at its end. */}
+          <div data-testid="history" aria-hidden="true" className="absolute inset-0 lg:right-3 lg:left-204">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -344,8 +348,8 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
         )}
 
         <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none">
-          {/* On a narrow row the switch sits at the end of this line, so only the name gives way to it. */}
-          <div className={clsx('flex items-center gap-2 text-muted', switchable && 'pr-12 lg:pr-0')}>
+          {/* On a narrow row the button sits at the end of this line, so only the name gives way to it. */}
+          <div className={clsx('flex items-center gap-2 text-muted', pausable && 'pr-8 lg:pr-0')}>
             <ProviderIcon provider={account.provider} size="md" />
             <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
               <Link
@@ -401,9 +405,9 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           </ul>
         )}
 
-        {switchable && (
-          <div className="absolute top-3 right-4 flex lg:static lg:ml-auto">
-            <PauseSwitch
+        {pausable && (
+          <div className="absolute top-2.5 right-3 flex lg:static lg:ml-auto">
+            <PauseButton
               paused={paused}
               pending={pause.isPending}
               onToggle={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !paused } })}

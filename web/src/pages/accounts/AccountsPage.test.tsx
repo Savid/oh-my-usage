@@ -60,14 +60,14 @@ describe('AccountsPage', () => {
     const { unmount } = renderPage(true);
 
     // Two of the four accounts are pausable and not paused; one is paused.
-    expect(await screen.findAllByRole('switch', { name: 'Take traffic', checked: true })).toHaveLength(2);
-    expect(screen.getByRole('switch', { name: 'Take traffic', checked: false })).toBeInTheDocument();
+    expect(await screen.findAllByRole('button', { name: 'Pause' })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
 
     unmount();
     renderPage(false);
 
     expect(await screen.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
   });
 
   it('shows what is passing through the gateway when a broker is configured', async () => {
