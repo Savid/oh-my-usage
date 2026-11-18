@@ -215,8 +215,8 @@ const showcaseAccounts: AccountList = {
 
 /**
  * A week of a limit's recorded usage, one point an hour: each past window
- * climbs to a peak of its own and resets; the current one climbs to where the
- * limit stands now.
+ * climbs to a peak of its own (a session's often to none) and resets; the
+ * current one climbs to where the limit stands now.
  */
 function history(
   accountId: string,
@@ -233,7 +233,12 @@ function history(
     const windowStart = resets - span * Math.ceil((resets - time) / span);
     const current = windowStart + span === resets;
     const done = (time - windowStart) / (current ? NOW - windowStart : span);
-    if (!peaks.has(windowStart)) peaks.set(windowStart, 0.45 + next() * 0.55);
+    if (!peaks.has(windowStart)) {
+      // A session's window sits idle as often as not and only now and then runs to its
+      // limit; a longer one fills steadily.
+      const roll = next();
+      peaks.set(windowStart, span < 24 * HOUR ? (roll < 0.4 ? 0 : 0.05 + next() ** 2 * 0.95) : 0.45 + roll * 0.55);
+    }
     const peak = current ? usedFraction : (peaks.get(windowStart) ?? 0.7);
     const wobble = current && done === 1 ? 0 : (next() - 0.5) * 0.02;
     const used = Math.min(1, Math.max(0, peak * done ** 1.15 + wobble));

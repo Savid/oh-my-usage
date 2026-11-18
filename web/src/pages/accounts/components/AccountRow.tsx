@@ -15,10 +15,10 @@ import {
   shortLimitLabel,
   type LimitSeverity,
 } from '@/lib/accounts';
-import { viewAccount, type LimitView } from '@/lib/fleet';
+import { viewAccount } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
-import { providerTone, type ProviderTone } from '@/lib/providerTones';
+import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
 import type { AccountRowProps } from './AccountRow.types';
 
@@ -85,7 +85,7 @@ function chart(
   used: number,
   start: number,
   now: number
-): SparkPaths & { level: boolean } {
+): SparkPaths & { level: boolean; from: number } {
   const recorded: SparkPoint[] = points
     .map(point => ({ time: Date.parse(point.at), value: point.usedFraction }))
     .filter(point => point.time >= start && point.time <= now);
@@ -94,7 +94,7 @@ function chart(
   // one recorded for less than the period would otherwise leave a gap.
   const from = Math.max(start, recorded[0]?.time ?? start);
   const drawn = sparkPaths([...recorded, { time: now, value: used }], from, now, WIDTH, HEIGHT);
-  if (recorded.length > 0 && drawn) return { ...drawn, level: false };
+  if (recorded.length > 0 && drawn) return { ...drawn, level: false, from };
 
   const flat = sparkPaths(
     [
@@ -106,100 +106,148 @@ function chart(
     WIDTH,
     HEIGHT
   );
-  return { line: '', area: flat?.area ?? '', end: flat?.end ?? { x: WIDTH, y: HEIGHT }, level: true };
+  return { line: '', area: flat?.area ?? '', end: flat?.end ?? { x: WIDTH, y: HEIGHT }, level: true, from };
+}
+
+/** Where a share sits up the chart, in its units: as `sparkPaths` places it. */
+function levelY(value: number): number {
+  return 1 + (1 - Math.min(Math.max(value, 0), 1)) * (HEIGHT - 1);
+}
+
+/** Another window's line over the same span as the main one's, ending at its current value. */
+function trace(points: readonly TrendPoint[], used: number, from: number, now: number): string | undefined {
+  const recorded: SparkPoint[] = points
+    .map(point => ({ time: Date.parse(point.at), value: point.usedFraction }))
+    .filter(point => point.time >= from && point.time <= now);
+  return sparkPaths([...recorded, { time: now, value: used }], from, now, WIDTH, HEIGHT)?.line;
+}
+
+/** A window this many times shorter than the chart runs through cycles too fast for a line: it is drawn as bars. */
+const BARS_FROM = 4;
+
+/**
+ * A short window's busiest moment in each stretch of its own length, counted
+ * back from now, as bars rising from the foot on the chart's own scale: one
+ * path, a rectangle a stretch, with a gap between.
+ */
+function peaks(points: readonly TrendPoint[], used: number, windowMs: number, from: number, now: number): string {
+  const span = now - from;
+  const x = (time: number): number => ((time - from) / span) * WIDTH;
+  const values = [
+    ...points
+      .map(point => ({ time: Date.parse(point.at), value: point.usedFraction }))
+      .filter(point => point.time >= from && point.time <= now),
+    { time: now, value: used },
+  ];
+  const bars: string[] = [];
+  for (let end = now; end > from; end -= windowMs) {
+    const start = Math.max(from, end - windowMs);
+    const inside = values.filter(point => point.time > start && point.time <= end);
+    if (inside.length === 0) continue;
+    const top = Math.max(...inside.map(point => point.value));
+    if (top <= 0) continue;
+    const gap = (x(end) - x(start)) * 0.45;
+    bars.push(
+      `M${(x(start) + gap / 2).toFixed(2)} ${HEIGHT} V${levelY(top).toFixed(2)} H${(x(end) - gap / 2).toFixed(2)} V${HEIGHT} Z`
+    );
+  }
+  return bars.join(' ');
+}
+
+// A label's height in tenths of the row's: each sits in a tenth, with one free between.
+const SLOT_GAP = 2;
+const slotClasses = [
+  'top-0',
+  'top-1/10',
+  'top-1/5',
+  'top-3/10',
+  'top-2/5',
+  'top-1/2',
+  'top-3/5',
+  'top-7/10',
+  'top-4/5',
+  'top-9/10',
+  'top-full',
+] as const;
+
+/**
+ * Tenths of the chart's height for labels that want to sit at `wanted`
+ * (0 to 1, top down), moved apart just enough not to overlap and kept off
+ * the edges. Each keeps its order.
+ */
+function spread(wanted: readonly number[]): number[] {
+  const order = wanted.map((at, index) => ({ index, slot: Math.round(at * 10) })).sort((a, b) => a.slot - b.slot);
+  const last = order.length - 1;
+  order.forEach((entry, k) => {
+    entry.slot = Math.max(entry.slot, 1, k > 0 ? order[k - 1]!.slot + SLOT_GAP : 1);
+  });
+  for (let k = last; k >= 0; k--) {
+    order[k]!.slot = Math.min(order[k]!.slot, k < last ? order[k + 1]!.slot - SLOT_GAP : 9);
+  }
+  const slots: number[] = [];
+  for (const entry of order) slots[entry.index] = Math.max(0, entry.slot);
+  return slots;
 }
 
 function resetIn(limit: Limit, now: number): string | undefined {
   return limit.resetsAt ? formatShort(Date.parse(limit.resetsAt) - now) : undefined;
 }
 
-/**
- * Another of the account's windows as a small ring, read like a watch's: the
- * outer arc is how much of it is used, in the provider's colour; the inner,
- * how much of its time has passed. An outer arc running ahead of the inner
- * one is a window filling faster than it resets. Its share sits inside and a
- * short tag under it; a mark at its shoulder calls out trouble. On a narrow
- * screen the ring shrinks to a glyph on a line, with its tag, share and reset
- * beside it. Assistive technology hears it as a sentence.
- */
-function WindowRing({ entry, tone, now }: { entry: LimitView; tone: ProviderTone; now: number }): JSX.Element {
-  const { limit, forecast: ahead } = entry;
-  const share = limit.usedFraction;
-  const severity = limitSeverity(limit);
-  const dry = entry.verdict === 'dry';
-  const marked = severityMarks[severity];
-  const mark = dry ? '▲' : marked?.mark;
-  const reset = resetIn(limit, now);
-  const elapsed = ahead.elapsed;
+/** Another of the account's windows, ready to draw and to say. */
+interface OtherWindow {
+  limit: Limit;
+  /** Its name in a few letters; the length is left off when the main window's is the same. */
+  tag: string;
+  share?: number;
+  severity: LimitSeverity;
+  dry: boolean;
+  /** When it resets, when that is not when the main window does. */
+  reset?: string;
+  /** Its line in the chart, when usage was recorded and it lasts long enough to draw as one. */
+  line?: string;
+  /** Its peaks as bars, when it is short beside the chart. */
+  bars?: string;
+  /** Where it ends up the chart, in the chart's units. */
+  y: number;
+  /** What a screen reader hears. */
+  said: string;
+}
 
-  const name = shortLimitLabel(limit);
-  const said =
-    share === undefined
-      ? `${name}: not reported`
-      : `${name}: ${formatPercent(share)} used${marked?.word ?? ''}${dry ? ', runs dry before it resets' : ''}${reset ? `, resets in ${reset}` : ''}`;
-
+/** The share, marked when it is in trouble, in the colour of its state. */
+function WindowShare({ window: other }: { window: OtherWindow }): JSX.Element {
+  const marked = severityMarks[other.severity];
+  const mark = other.dry ? '▲' : marked?.mark;
   return (
-    <li
-      title={elapsed === undefined ? said : `${said}; ${formatPercent(elapsed)} of its time gone`}
-      className="relative flex items-center gap-1.5 text-micro whitespace-nowrap lg:w-16 lg:flex-col lg:gap-0"
-    >
-      <span className="sr-only">{said}</span>
-      <svg aria-hidden="true" viewBox="0 0 40 40" className="size-5 shrink-0 lg:size-10">
-        <g transform="rotate(-90 20 20)" fill="none" strokeLinecap="round">
-          {/* The track takes the provider's paler step as its text colour. */}
-          <circle cx="20" cy="20" r="17" strokeWidth="3" stroke="currentColor" className={tone.glow} />
-          {share !== undefined && share > 0 && (
-            <circle
-              cx="20"
-              cy="20"
-              r="17"
-              strokeWidth="3"
-              pathLength={100}
-              strokeDasharray={`${Math.min(1, share) * 100} 100`}
-              className={tone.line}
-            />
-          )}
-          {elapsed !== undefined && (
-            <>
-              <circle cx="20" cy="20" r="13" strokeWidth="1.5" className="stroke-border" />
-              {elapsed > 0 && (
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="13"
-                  strokeWidth="1.5"
-                  pathLength={100}
-                  strokeDasharray={`${elapsed * 100} 100`}
-                  className="stroke-muted"
-                />
-              )}
-            </>
-          )}
-        </g>
-      </svg>
-      <span aria-hidden="true" className="tracking-caps text-muted uppercase lg:max-w-full lg:truncate">
-        {limitTag(limit)}
-      </span>
-      {mark && (
-        <span
-          aria-hidden="true"
-          className={clsx('lg:absolute lg:top-0 lg:right-1', dry ? 'text-danger' : figureClasses[severity])}
-        >
-          {mark}
-        </span>
+    <span
+      className={clsx(
+        'font-semibold tabular-nums',
+        other.share === undefined ? 'text-muted' : figureClasses[other.severity]
       )}
-      <span
-        aria-hidden="true"
-        className={clsx(
-          'font-semibold tabular-nums lg:absolute lg:inset-x-0 lg:top-0 lg:flex lg:h-10 lg:items-center lg:justify-center',
-          share === undefined ? 'text-muted' : figureClasses[severity]
-        )}
-      >
-        {share === undefined ? '–' : formatPercent(share)}
+    >
+      {mark && <span className={clsx(other.dry && 'text-danger')}>{mark} </span>}
+      {other.share === undefined ? '–' : formatPercent(other.share)}
+    </span>
+  );
+}
+
+/**
+ * Another of the account's windows in words: its tag, its share and when it
+ * resets. On a narrow screen these share a line under the row; on a wide one
+ * the chart carries them, and the list is for assistive technology.
+ */
+function WindowLine({ window: other }: { window: OtherWindow }): JSX.Element {
+  return (
+    <li className="flex items-baseline gap-1.5 text-micro whitespace-nowrap">
+      <span className="sr-only">{other.said}</span>
+      <span aria-hidden="true" className="tracking-caps text-muted uppercase">
+        {other.tag}
       </span>
-      {reset && (
-        <span aria-hidden="true" className="text-muted tabular-nums lg:hidden">
-          in {reset}
+      <span aria-hidden="true">
+        <WindowShare window={other} />
+      </span>
+      {other.reset && (
+        <span aria-hidden="true" className="text-muted tabular-nums">
+          in {other.reset}
         </span>
       )}
     </li>
@@ -291,7 +339,6 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const pausable = controls && account.pausable;
   // Where each window is heading at its pace: only trouble is called out.
   const view = viewAccount(account, trends, now);
-  const others = view.limits.filter(entry => entry.limit !== primary);
   const mainDryAt = primary ? view.limits.find(entry => entry.limit === primary)?.forecast.spentAt : undefined;
   const drawn =
     primary && used !== undefined
@@ -302,6 +349,44 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           now
         )
       : undefined;
+
+  const primaryTag = primary ? limitTag(primary) : undefined;
+  const others: OtherWindow[] = view.limits
+    .filter(entry => entry.limit !== primary)
+    .map(({ limit, verdict }) => {
+      const share = limit.usedFraction;
+      const severity = limitSeverity(limit);
+      const dry = verdict === 'dry';
+      const full = resetIn(limit, now);
+      // A window that resets with the main one says nothing new by saying when.
+      const together =
+        primary?.resetsAt !== undefined &&
+        limit.resetsAt !== undefined &&
+        Math.abs(Date.parse(limit.resetsAt) - Date.parse(primary.resetsAt)) < 3_600_000;
+      const length = primaryTag?.split(' ')[0];
+      const tag = limitTag(limit);
+      const name = shortLimitLabel(limit);
+      const points = trends.find(trend => trend.accountId === account.id && trend.limitId === limit.id)?.points ?? [];
+      const charted = drawn && !drawn.level && share !== undefined ? drawn : undefined;
+      const windowMs = limit.windowSeconds === undefined ? undefined : limit.windowSeconds * 1000;
+      const short = charted && windowMs !== undefined && windowMs * BARS_FROM <= now - charted.from;
+      return {
+        limit,
+        tag: length && tag.startsWith(`${length} `) ? tag.slice(length.length + 1) : tag,
+        share,
+        severity,
+        dry,
+        reset: together ? undefined : full,
+        line: charted && !short ? trace(points, share ?? 0, charted.from, now) : undefined,
+        bars: charted && short && windowMs ? peaks(points, share ?? 0, windowMs, charted.from, now) : undefined,
+        y: levelY(share ?? 0),
+        said:
+          share === undefined
+            ? `${name}: not reported`
+            : `${name}: ${formatPercent(share)} used${severityMarks[severity]?.word ?? ''}${dry ? ', runs dry before it resets' : ''}${full ? `, resets in ${full}` : ''}`,
+      };
+    });
+  const slots = spread(others.map(other => other.y / HEIGHT));
 
   return (
     <article
@@ -316,7 +401,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
               narrow one it runs behind the whole row, the words over it. */}
-          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-174">
+          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-134">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -328,7 +413,47 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                   <stop offset="1" stopColor="currentColor" stopOpacity="0.2" />
                 </linearGradient>
               </defs>
+              {/* A short window's peaks: quiet bars on the same scale, behind the glow, so a session
+                  that hit its limit stands as tall as the row. */}
+              {others.map(
+                other =>
+                  other.bars && (
+                    <path key={other.limit.id} data-window={other.limit.id} d={other.bars} className="fill-border" />
+                  )
+              )}
               <path d={drawn.area} fill={`url(#${glowId})`} />
+              {/* The longer ones: thin and quiet lines under the main one, each ending in a small dot. */}
+              <g fill="none" className="stroke-muted">
+                {others.map(
+                  (other, index) =>
+                    other.line && (
+                      <path
+                        key={other.limit.id}
+                        data-window={other.limit.id}
+                        d={other.line}
+                        strokeWidth="1"
+                        strokeLinejoin="round"
+                        strokeDasharray={index % 2 === 1 ? '3 2' : undefined}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )
+                )}
+                {others.map(
+                  other =>
+                    other.line && (
+                      <line
+                        key={other.limit.id}
+                        x1={WIDTH}
+                        x2={WIDTH}
+                        y1={other.y}
+                        y2={other.y}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )
+                )}
+              </g>
               {drawn.line && (
                 <>
                   <path
@@ -353,11 +478,26 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                 </>
               )}
             </svg>
+            {/* On a wide screen each other window is named on its line, short of the row's end,
+                moved apart from the others just enough to be read. */}
+            {others.map((other, index) => (
+              <span
+                key={other.limit.id}
+                className={clsx(
+                  'absolute right-10 hidden -translate-y-1/2 items-baseline gap-1.5 rounded-sm bg-surface px-1 text-micro whitespace-nowrap lg:flex',
+                  slotClasses[slots[index] ?? 9]
+                )}
+              >
+                <span className="tracking-caps text-muted uppercase">{other.tag}</span>
+                <WindowShare window={other} />
+                {other.reset && <span className="text-muted tabular-nums">in {other.reset}</span>}
+              </span>
+            ))}
           </div>
           {/* The chart fades in from the ground at its start. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-174"
+            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-134"
           />
         </>
       )}
@@ -438,14 +578,15 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {meta && <p className="truncate text-micro text-muted">{meta}</p>}
         </div>
 
-        {/* A line of their own under a narrow row; rings side by side beside the name on a wide one. */}
+        {/* A line of their own under a narrow row. On a wide one the chart names them, so
+            the list is only heard, unless there is no chart to name them on. */}
         {others.length > 0 && (
           <ul
             aria-label="Other windows"
-            className="order-last flex basis-full flex-wrap gap-x-4 gap-y-1 lg:order-0 lg:w-34 lg:basis-auto lg:gap-2"
+            className={clsx('order-last flex basis-full flex-wrap gap-x-4 gap-y-1', drawn && 'lg:sr-only')}
           >
-            {others.map(entry => (
-              <WindowRing key={entry.limit.id} entry={entry} tone={tone} now={now} />
+            {others.map(other => (
+              <WindowLine key={other.limit.id} window={other} />
             ))}
           </ul>
         )}
