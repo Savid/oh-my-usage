@@ -11,7 +11,7 @@ import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitS
 import { viewAccount } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
-import { providerTone } from '@/lib/providerTones';
+import { providerTone, type ProviderTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
 import type { AccountRowProps } from './AccountRow.types';
 
@@ -107,13 +107,102 @@ function resetIn(limit: Limit, now: number): string | undefined {
 }
 
 /**
+ * Another of the account's windows as a small meter: its name, how much of
+ * it is used and when it resets, over a bar in the provider's colour.
+ */
+function WindowMeter({
+  limit,
+  tone,
+  dry,
+  now,
+}: {
+  limit: Limit;
+  tone: ProviderTone;
+  dry: boolean;
+  now: number;
+}): JSX.Element {
+  const share = limit.usedFraction;
+  const severity = limitSeverity(limit);
+  const marked = severityMarks[severity];
+  const reset = resetIn(limit, now);
+
+  return (
+    <li className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 lg:w-32 lg:flex-none">
+      <span className="truncate text-micro tracking-caps text-muted uppercase">{shortLimitLabel(limit)}</span>
+      {share === undefined ? (
+        <span className="text-micro text-muted">not reported</span>
+      ) : (
+        <span className="flex items-baseline justify-between gap-2">
+          <span className={clsx('text-caption font-semibold whitespace-nowrap tabular-nums', figureClasses[severity])}>
+            {dry ? (
+              <span className="text-danger">
+                <span aria-hidden="true">▲ </span>
+                <span className="sr-only">runs dry before it resets, </span>
+              </span>
+            ) : (
+              marked && <span aria-hidden="true">{marked.mark} </span>
+            )}
+            {formatPercent(share)}
+            {marked && <span className="sr-only">{marked.word}</span>}
+          </span>
+          {reset && <span className="text-micro whitespace-nowrap text-muted tabular-nums">in {reset}</span>}
+        </span>
+      )}
+      {/* The filled part is what is used; the figure above carries the state. */}
+      <span className="block h-1 overflow-hidden rounded-sm">
+        <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
+          <rect width="100" height="1" className={tone.track} />
+          {share !== undefined && <rect width={Math.min(1, share) * 100} height="1" className={tone.fill} />}
+        </svg>
+      </span>
+    </li>
+  );
+}
+
+/**
+ * Whether the gateway may hand the account work: on, its knob lit and to the
+ * right; off, paused. It names the change it makes when pointed at.
+ */
+function PauseSwitch({
+  paused,
+  pending,
+  onToggle,
+}: {
+  paused: boolean;
+  pending: boolean;
+  onToggle: () => void;
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={!paused}
+      aria-label="Take traffic"
+      title={paused ? 'Resume' : 'Pause'}
+      disabled={pending}
+      onClick={onToggle}
+      className="inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong bg-raised hover:border-foreground disabled:cursor-wait"
+    >
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'size-3.5 rounded-full transition duration-200 motion-reduce:transition-none',
+          paused ? 'translate-x-0.5 bg-muted' : 'translate-x-4.5 bg-ok'
+        )}
+      />
+    </button>
+  );
+}
+
+/**
  * One account as a band across the page, drawn over a chart of what it had
  * used, in its provider's colour. Trouble ahead (a window that runs dry
- * before it resets at its pace) is the only forecast it shows. It leads with the big figure for its main usage window (the one that
- * resets last), then who it is and when that window resets. To the right, its
- * other windows as small values, whether it is taking traffic, and the pause
- * control when a broker is configured. Everything written sits on solid
- * ground: the chart fades in beside the name and runs behind the chips.
+ * before it resets at its pace) is the only forecast it shows. It leads with
+ * the big figure for its main usage window (the one that resets last), then
+ * who it is and when that window resets. It ends in one panel: its other
+ * windows as small meters, then its state, with a switch for taking traffic
+ * when a broker is configured. Everything written sits on solid ground: the
+ * chart fades in beside the name and runs behind the panel.
  */
 export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
@@ -131,7 +220,9 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const headingId = `account-${account.id}`;
-  const { tone: stateTone, label } = state(account, now);
+  // The switch moves as soon as it is flipped, and back if the broker refuses.
+  const paused = pause.isPending ? pause.variables.body.paused : account.paused;
+  const { tone: stateTone, label } = state({ ...account, paused }, now);
   // The chart wears the provider's colour; the figure carries the state.
   const tone = providerTone(account.provider);
   const meta = about(account, now);
@@ -201,7 +292,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
       <div
         className={clsx(
-          'relative flex flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:items-center lg:gap-6',
+          'relative flex flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6',
           drawn ? 'min-h-20' : 'min-h-14'
         )}
       >
@@ -269,62 +360,39 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
-          {/* Each small value sits on its own solid chip, so the chart never runs through it. */}
-          <ul className="flex flex-wrap gap-1.5 text-micro text-muted">
-            {others.map(limit => {
-              const share = limit.usedFraction;
-              const otherReset = resetIn(limit, now);
-              return (
-                <li
-                  key={limit.id}
-                  className="flex h-6 items-center gap-1.5 rounded-sm border border-border bg-surface px-2 whitespace-nowrap"
-                >
-                  <span className="tracking-caps uppercase">{shortLimitLabel(limit)}</span>{' '}
-                  {runsDry.has(limit.id) && (
-                    <span className="text-danger">
-                      <span aria-hidden="true">▲</span>
-                      <span className="sr-only">runs dry before it resets,</span>
-                    </span>
-                  )}
-                  {share === undefined ? (
-                    'not reported'
-                  ) : (
-                    <>
-                      <span
-                        className={clsx('text-caption font-semibold tabular-nums', figureClasses[limitSeverity(limit)])}
-                      >
-                        {formatPercent(share)}
-                      </span>
-                      {otherReset && <span className="tabular-nums"> · {otherReset}</span>}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+        {/* The other windows and whether the account takes work, in one panel on solid
+            ground so the chart runs behind it, never through it. */}
+        <div
+          data-testid="dock"
+          className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface lg:shrink-0 lg:flex-row lg:divide-x lg:divide-y-0"
+        >
+          {others.length > 0 && (
+            <ul aria-label="Other windows" className="flex min-w-0 divide-x divide-border">
+              {others.map(limit => (
+                <WindowMeter key={limit.id} limit={limit} tone={tone} dry={runsDry.has(limit.id)} now={now} />
+              ))}
+            </ul>
+          )}
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 lg:ml-2">
-            <span className="flex h-6 items-center rounded-sm border border-border bg-surface px-2">
-              <StatusBadge tone={stateTone}>{label}</StatusBadge>
-            </span>
+          <div className="flex items-center justify-between gap-3 px-3 py-2 lg:w-32 lg:flex-col lg:items-start lg:justify-center lg:gap-1.5">
+            <StatusBadge tone={stateTone}>{label}</StatusBadge>
             {controls && account.pausable && (
-              <button
-                type="button"
-                disabled={pause.isPending}
-                onClick={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !account.paused } })}
-                className="h-6 w-16 rounded-sm border border-border-strong bg-surface text-micro tracking-caps uppercase hover:bg-raised disabled:text-muted"
-              >
-                {account.paused ? 'Resume' : 'Pause'}
-              </button>
+              <PauseSwitch
+                paused={paused}
+                pending={pause.isPending}
+                onToggle={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !paused } })}
+              />
             )}
           </div>
         </div>
 
         {pause.isError && (
-          <p role="alert" className="text-caption text-danger lg:absolute lg:right-4 lg:bottom-1">
-            {account.paused ? 'Could not resume the account' : 'Could not pause the account'}:{' '}
-            {problemDetail(pause.error, 'the server did not answer')}
+          // A line of its own under the row, on solid ground.
+          <p role="alert" className="text-caption text-danger lg:basis-full lg:text-right">
+            <span className="rounded-sm bg-surface px-1">
+              {account.paused ? 'Could not resume the account' : 'Could not pause the account'}:{' '}
+              {problemDetail(pause.error, 'the server did not answer')}
+            </span>
           </p>
         )}
       </div>

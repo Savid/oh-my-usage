@@ -33,7 +33,7 @@ describe('AccountPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Anthropic' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'one@example.com' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
     expect(await screen.findByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
   });
 

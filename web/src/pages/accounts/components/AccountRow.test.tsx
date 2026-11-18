@@ -36,19 +36,33 @@ describe('AccountRow', () => {
     expect(within(row).getByText('active')).toHaveAttribute('data-tone', 'ok');
   });
 
-  it('lists the other windows as small values', () => {
-    render(<AccountRow {...base} account={seatFixture} />);
+  it('lists the other windows as small meters, in one panel with the state', () => {
+    const { container } = render(<AccountRow {...base} account={seatFixture} />);
 
-    const others = within(screen.getByRole('list')).getAllByRole('listitem');
+    const others = within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem');
     // The Fable window runs dry before it resets at its pace, and is marked for it.
     expect(others.map(item => item.textContent)).toEqual([
-      '5 Hour not reported',
-      '7 Day Fable ▲runs dry before it resets,92% · 21h',
+      '5 Hournot reported',
+      '7 Day Fable▲ runs dry before it resets, 92%, near its limitin 21h',
     ]);
     // The Fable window is nearly spent, and says so in more than position.
-    expect(within(others[1]!).getByText('92%')).toHaveClass('text-warn');
-    // Each sits on its own solid chip, so the chart never runs through it.
-    expect(others[1]).toHaveClass('bg-surface');
+    expect(within(others[1]!).getByText(/92%/)).toHaveClass('text-warn');
+    // Its bar fills to what is used, in the provider's colour; one not reported stays empty.
+    expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveAttribute('width', '92');
+    expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveClass('fill-anthropic');
+    expect(others[0]!.querySelectorAll('svg rect')).toHaveLength(1);
+    // The windows and the state share one panel on solid ground, so the chart never runs through them.
+    const dock = screen.getByTestId('dock');
+    expect(dock).toHaveClass('bg-surface');
+    expect(dock).toContainElement(screen.getByText('active'));
+    expect(container.querySelectorAll('[data-testid="dock"] ul')).toHaveLength(1);
+  });
+
+  it('leaves the panel to the state when there are no other windows', () => {
+    render(<AccountRow {...base} account={strayFixture} />);
+
+    expect(screen.queryByRole('list', { name: 'Other windows' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('dock')).toHaveTextContent('active');
   });
 
   it('marks a main window that is nearly or wholly spent, in more than colour', () => {
@@ -113,7 +127,11 @@ describe('AccountRow', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'two@example.com' })).toBeInTheDocument();
     // Paused wins over omp's own block.
     expect(screen.getByText('paused')).toHaveAttribute('data-tone', 'warn');
-    expect(screen.getByRole('button', { name: 'Resume' })).toBeEnabled();
+    // A switch for taking traffic, off; pointed at, it names the change it makes.
+    const control = screen.getByRole('switch', { name: 'Take traffic' });
+    expect(control).not.toBeChecked();
+    expect(control).toBeEnabled();
+    expect(control).toHaveAttribute('title', 'Resume');
   });
 
   it("names omp's own block when the account is not paused", () => {
@@ -124,10 +142,12 @@ describe('AccountRow', () => {
 
   it('offers no pause without a broker or without a credential', () => {
     const { rerender } = render(<AccountRow {...base} account={seatFixture} controls={false} />);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    // The state still shows.
+    expect(screen.getByText('active')).toBeInTheDocument();
 
     rerender(<AccountRow {...base} account={strayFixture} />);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     // A provider that does not say how many resets are usable gets no count.
     expect(screen.getByText('pro · 1 reset')).toBeInTheDocument();
   });
@@ -162,7 +182,10 @@ describe('AccountRow', () => {
     const { client } = render(<AccountRow {...base} account={seatFixture} />);
     client.setQueryData(listAccountsQueryKey(), accountsFixture);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    const control = screen.getByRole('switch', { name: 'Take traffic' });
+    expect(control).toBeChecked();
+    expect(control).toHaveAttribute('title', 'Pause');
+    fireEvent.click(control);
 
     await waitFor(() => {
       const list = client.getQueryData<AccountList>(listAccountsQueryKey());
@@ -174,21 +197,28 @@ describe('AccountRow', () => {
     server.use(pauseHandlers.pending);
     render(<AccountRow {...base} account={seatFixture} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Take traffic' }));
 
-    expect(await screen.findByRole('button', { name: 'Pause' })).toBeDisabled();
+    // It moves at once, and the state with it, and holds still until the broker answers.
+    const control = await screen.findByRole('switch', { name: 'Take traffic' });
+    expect(control).toBeDisabled();
+    expect(control).not.toBeChecked();
+    expect(screen.getByText('paused')).toBeInTheDocument();
   });
 
   it('says why a pause failed', async () => {
     server.use(pauseHandlers.refused);
     render(<AccountRow {...base} account={seatFixture} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Take traffic' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not pause the account: pause: POST /v1/credential/1/block: HTTP 401: unauthorized'
     );
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeEnabled();
+    // Refused, it moves back.
+    expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeEnabled();
+    expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
+    expect(screen.getByText('active')).toBeInTheDocument();
   });
 });
 
