@@ -209,7 +209,7 @@ function PauseButton({
  * One account as a band across the page, in three parts that never overlap.
  * On solid ground at the left: the big figure for its main usage window (the
  * one that resets last), who it is, when that window resets, and its other
- * windows as short lines. In the open middle (at the foot, on a narrow
+ * windows as short lines. In the open middle (behind it all, on a narrow
  * screen): a chart of what it had used, in its provider's colour, running to
  * the row's end at now. Over that
  * end, with a broker: a small button to pause or resume it. Trouble ahead (a window that runs dry
@@ -272,12 +272,8 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {/* A glow under a line, deepest under the line and fading towards the foot of
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
-              narrow one it is a band the whole width of the row, under the words. */}
-          <div
-            data-testid="history"
-            aria-hidden="true"
-            className="absolute right-3 bottom-0 left-0 h-12 lg:top-0 lg:left-204 lg:h-auto"
-          >
+              narrow one it runs behind the whole row, the words over it. */}
+          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-204">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -325,9 +321,9 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
 
       <div
         className={clsx(
-          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 pt-3 lg:items-center lg:gap-x-6',
-          // A narrow row leaves room at its foot for the chart.
-          drawn ? 'min-h-20 pb-14 lg:pb-3' : 'min-h-14 pb-3'
+          // On a narrow row the words sit over the chart, haloed in the ground so its line never strikes them.
+          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6',
+          drawn ? 'min-h-20' : 'min-h-14'
         )}
       >
         {primary && used !== undefined ? (

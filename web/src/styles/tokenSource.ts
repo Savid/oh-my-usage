@@ -70,5 +70,6 @@ export function namespaceNames(namespace: string): string[] {
   return [...theme.keys()]
     .filter(key => key.startsWith(`${namespace}-`) && !key.includes('--'))
     .filter(key => namespace !== 'font' || !key.startsWith('font-weight-'))
+    .filter(key => namespace !== 'text' || !key.startsWith('text-shadow-'))
     .map(key => key.slice(namespace.length + 1));
 }

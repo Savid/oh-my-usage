@@ -56,3 +56,13 @@ export const Tracking: Story = {
     />
   ),
 };
+
+export const Halo: Story = {
+  render: () => (
+    <TokenTable
+      namespace="text-shadow"
+      usage={name => `text-shadow-${name}`}
+      notes={{ halo: "words over a chart: an account's row on a narrow screen" }}
+    />
+  ),
+};
