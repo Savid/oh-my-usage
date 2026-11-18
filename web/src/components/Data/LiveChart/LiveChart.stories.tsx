@@ -7,7 +7,7 @@ import { LiveChart } from './LiveChart';
 const view = liveView(trafficFixture.live);
 
 const meta = {
-  title: 'Pages/Accounts/Components/LiveChart',
+  title: 'Components/Data/LiveChart',
   component: LiveChart,
   args: { view, span: 10 * 60_000, onScrub: fn(), className: 'h-28 w-176' },
   decorators: [

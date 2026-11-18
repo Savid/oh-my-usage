@@ -31,10 +31,11 @@ export function cacheShare(counts: TokenKinds): number | undefined {
 }
 
 /** What one provider passed in one step of a series. */
-interface StepPart {
+interface StepPart extends TokenKinds {
   provider: string;
   costUsd: number;
   requests: number;
+  /** Tokens of every kind. */
   tokens: number;
 }
 
@@ -64,15 +65,18 @@ export function toSteps(series: TrafficSeries): Step[] {
     const parts: StepPart[] = [];
 
     for (const entry of series.providers) {
+      const own: TokenKinds = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
       let tokens = 0;
       for (const { key } of TOKEN_KINDS) {
         const value = entry[key][index] ?? 0;
+        own[key] = value;
         kinds[key] += value;
         tokens += value;
       }
 
-      const part = {
+      const part: StepPart = {
         provider: entry.provider,
+        ...own,
         costUsd: entry.costUsd[index] ?? 0,
         requests: entry.requests[index] ?? 0,
         tokens,

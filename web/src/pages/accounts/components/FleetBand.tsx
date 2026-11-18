@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import clsx from 'clsx';
-import { LiveTraffic } from './LiveTraffic';
+import { LiveTraffic } from '@/components/Data/LiveTraffic';
 import { PoolMeter } from './PoolMeter';
 import type { FleetBandProps } from './FleetBand.types';
 

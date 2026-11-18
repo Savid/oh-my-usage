@@ -1,4 +1,5 @@
 import type { TrafficSeries } from '@/api';
+import { amountOf, isShare, sentTokens, type Amounts, type Metric } from '@/lib/metrics';
 import { niceCeiling, stepMs } from '@/lib/traffic';
 
 /** How far back each rate reads: every point of the live chart, and the figure over it. */
@@ -7,32 +8,22 @@ const ROLLING_MS = 30_000;
 /** How much of the chart's height is left above its busiest point, for the figures drawn over it. */
 const HEADROOM = 0.12;
 
-/** What the live chart can show. */
-export type LiveMetric = 'output' | 'input' | 'cache' | 'cost' | 'requests';
-
 type SeriesEntry = TrafficSeries['providers'][number];
 
-interface MetricSpec {
-  /** How much of it one provider passed in one step. */
-  amount: (entry: SeriesEntry, index: number) => number;
-  /** For a share: the whole the amount is a share of. A rate has none. */
-  whole?: (entry: SeriesEntry, index: number) => number;
-  /** For a rate: how many seconds its figure counts, 1 a second, 60 a minute, 3600 an hour. */
-  per: number;
+/** One provider's traffic in one step of a series. */
+function amountsAt(entry: SeriesEntry, index: number): Amounts {
+  return {
+    inputTokens: entry.inputTokens[index] ?? 0,
+    outputTokens: entry.outputTokens[index] ?? 0,
+    cacheReadTokens: entry.cacheReadTokens[index] ?? 0,
+    cacheWriteTokens: entry.cacheWriteTokens[index] ?? 0,
+    requests: entry.requests[index] ?? 0,
+    costUsd: entry.costUsd[index] ?? 0,
+  };
 }
 
-/** Everything sent to the provider: fresh input, and input read from or written to a cache. */
-function sent(entry: SeriesEntry, index: number): number {
-  return (entry.inputTokens[index] ?? 0) + (entry.cacheReadTokens[index] ?? 0) + (entry.cacheWriteTokens[index] ?? 0);
-}
-
-const METRICS: Record<LiveMetric, MetricSpec> = {
-  output: { amount: (entry, index) => entry.outputTokens[index] ?? 0, per: 1 },
-  input: { amount: sent, per: 1 },
-  cache: { amount: (entry, index) => entry.cacheReadTokens[index] ?? 0, whole: sent, per: 1 },
-  cost: { amount: (entry, index) => entry.costUsd[index] ?? 0, per: 3600 },
-  requests: { amount: (entry, index) => entry.requests[index] ?? 0, per: 60 },
-};
+/** How many seconds a rate's figure counts: tokens a second, cost an hour, requests a minute. */
+const PER: Record<Metric, number> = { output: 1, input: 1, cache: 1, cost: 3600, requests: 60 };
 
 /** One provider's layer of the live chart. */
 interface LiveLayer {
@@ -63,17 +54,17 @@ export interface LiveView {
  * as the series holds, so a burst that one reading caught reads as the wave
  * it was.
  */
-export function liveView(series: TrafficSeries, metric: LiveMetric = 'output'): LiveView {
-  const spec = METRICS[metric];
+export function liveView(series: TrafficSeries, metric: Metric = 'output'): LiveView {
   const step = stepMs(series);
   const complete = Math.max(0, series.steps - 1);
   const reach = Math.max(1, Math.round(ROLLING_MS / step));
   const first = Date.parse(series.start);
   const indexes = Array.from({ length: complete }, (_, index) => index);
   const times = indexes.map(index => first + (index + 1) * step);
-  const { whole } = spec;
+  const amount = (entry: SeriesEntry, index: number): number => amountOf(amountsAt(entry, index), metric);
 
-  if (whole) {
+  if (isShare(metric)) {
+    const whole = (entry: SeriesEntry, index: number): number => sentTokens(amountsAt(entry, index));
     const entries = series.providers.filter(entry => indexes.some(index => whole(entry, index) > 0));
     const shareOf = (amounts: number[], wholes: number[]): number[] => {
       const parts = rollingSums(amounts, reach);
@@ -88,12 +79,12 @@ export function liveView(series: TrafficSeries, metric: LiveMetric = 'output'): 
     const layers = entries.map(entry => ({
       provider: entry.provider,
       rates: shareOf(
-        indexes.map(index => spec.amount(entry, index)),
+        indexes.map(index => amount(entry, index)),
         indexes.map(index => whole(entry, index))
       ),
     }));
     const totals = shareOf(
-      indexes.map(index => entries.reduce((sum, entry) => sum + spec.amount(entry, index), 0)),
+      indexes.map(index => entries.reduce((sum, entry) => sum + amount(entry, index), 0)),
       indexes.map(index => entries.reduce((sum, entry) => sum + whole(entry, index), 0))
     );
     return { times, layers, totals, share: true, stepMs: step };
@@ -103,9 +94,9 @@ export function liveView(series: TrafficSeries, metric: LiveMetric = 'output'): 
     .map(entry => ({
       provider: entry.provider,
       rates: rollingSums(
-        indexes.map(index => spec.amount(entry, index)),
+        indexes.map(index => amount(entry, index)),
         reach
-      ).map((sum, index) => (sum / ((Math.min(index + 1, reach) * step) / 1000)) * spec.per),
+      ).map((sum, index) => (sum / ((Math.min(index + 1, reach) * step) / 1000)) * PER[metric]),
     }))
     .filter(layer => layer.rates.some(rate => rate > 0));
   const totals = times.map((_, index) => layers.reduce((sum, layer) => sum + (layer.rates[index] ?? 0), 0));

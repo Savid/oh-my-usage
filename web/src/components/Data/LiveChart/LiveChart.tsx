@@ -28,7 +28,7 @@ const PING = '1.8s';
  * jumping. Moving the pointer over it picks the nearest point. It is
  * decoration: what it shows is written beside it.
  */
-export function LiveChart({ view, span, scrub, onScrub, className }: LiveChartProps): JSX.Element {
+export function LiveChart({ view, span, scrub, onScrub, onSelect, className }: LiveChartProps): JSX.Element {
   const gradientId = useId();
   const groupRef = useRef<SVGGElement>(null);
   const shownRef = useRef<{ end: number; max: number } | undefined>(undefined);
@@ -75,7 +75,8 @@ export function LiveChart({ view, span, scrub, onScrub, className }: LiveChartPr
     <div
       aria-hidden="true"
       data-chart={drawing ? 'live' : 'none'}
-      className={clsx('touch-pan-y', className)}
+      className={clsx('touch-pan-y', onSelect && 'cursor-pointer', className)}
+      onClick={onSelect}
       onPointerMove={onPointerMove}
       onPointerLeave={() => onScrub(undefined)}
     >

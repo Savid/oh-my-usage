@@ -20,7 +20,7 @@ const meta = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok] },
   },
   decorators: [
-    // The page as the app frames it; a story that draws the top bar brings its own frame.
+    // The page as the app frames it; a story that draws the frame brings its own.
     (Story, { parameters }) =>
       parameters.shell === true ? (
         <Story />
@@ -48,7 +48,7 @@ export const Default: Story = {
 };
 
 /**
- * The homepage in full use, under the top bar: three Claude seats (one busy,
+ * The homepage in full use, in the app's frame: three Claude seats (one busy,
  * one paused with its 5-hour window spent, one idle), a Codex seat, SuperGrok, OpenCode
  * Go and an OpenRouter key, a week of history through each window's resets,
  * and a week of traffic through the gateway. Times count from when it opens.
@@ -56,7 +56,7 @@ export const Default: Story = {
 export const Showcase: Story = {
   parameters: { shell: true, liveClock: true, msw: { handlers: showcaseHandlers } },
   render: () => (
-    <AppShell name="oh-my-usage" traffic connection="live">
+    <AppShell name="oh-my-usage" connection="live">
       <AccountsPage />
     </AppShell>
   ),
@@ -64,7 +64,12 @@ export const Showcase: Story = {
     const every = await canvas.findByRole('region', { name: 'Every account' });
     await expect(within(every).getAllByRole('article')).toHaveLength(7);
     await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
-    await expect(within(canvas.getByRole('navigation')).getByRole('link', { name: 'Traffic' })).toBeInTheDocument();
+    // No bar of pages: the traffic leads to its own page, with what it shows.
+    await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
+    await expect(await canvas.findByRole('link', { name: 'Traffic' })).toHaveAttribute(
+      'href',
+      '/traffic?metric=output'
+    );
   },
 };
 

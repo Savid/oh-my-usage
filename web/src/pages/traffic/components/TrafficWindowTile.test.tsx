@@ -11,7 +11,7 @@ describe('TrafficWindowTile', () => {
     const { container } = render(<TrafficWindowTile window={day} />);
 
     const tile = screen.getByRole('article', { name: '24 hours' });
-    expect(tile).toHaveTextContent('24 hoursat API prices$1,0688,607 req · 1.61B tok');
+    expect(tile).toHaveTextContent('24 hours8,607 req · 1.61B tok$1,068at API prices97% cached');
 
     const lines = within(tile).getAllByRole('listitem');
     expect(lines).toHaveLength(3);
@@ -33,15 +33,17 @@ describe('TrafficWindowTile', () => {
       .getAllByRole('term')
       .map(term => `${term.textContent} ${term.nextElementSibling?.textContent}`);
     expect(kinds).toEqual(['Input 17.2K', 'Output 7.75M', 'Cache read 1.55B', 'Cache write 51.6M']);
-    expect(screen.getByText('97% of what was sent was read from a cache.')).toBeInTheDocument();
+    expect(screen.getByText('97%').parentElement).toHaveTextContent('97% cached');
   });
 
   it('says when nothing passed', () => {
     const { container } = render(<TrafficWindowTile window={quietTrafficFixture.windows[0]!} />);
 
-    expect(screen.getByRole('article', { name: 'Last hour' })).toHaveTextContent('$00 req · 0 tok');
+    expect(screen.getByRole('article', { name: 'Last hour' })).toHaveTextContent(
+      'Last hour0 req · 0 tok$0at API prices'
+    );
     expect(screen.getByText('Nothing passed.')).toBeInTheDocument();
-    expect(screen.queryByText(/read from a cache/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cached/)).not.toBeInTheDocument();
     expect(container.querySelectorAll('svg[viewBox="0 0 100 1"] rect')).toHaveLength(1);
   });
 

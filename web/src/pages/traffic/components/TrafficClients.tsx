@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { providerName } from '@/lib/accounts';
 import { formatCount, formatUsd } from '@/lib/format';
+import { providerTone } from '@/lib/providerTones';
 import type { TrafficClientsProps } from './TrafficClients.types';
 
 const numberColumns = ['Requests', 'Input', 'Output', 'Cache read', 'Cache write', 'API value'];
@@ -12,6 +13,8 @@ const numberColumns = ['Requests', 'Input', 'Output', 'Cache read', 'Cache write
  * prices. It is also the figures behind the charts, in full.
  */
 export function TrafficClients({ clients }: TrafficClientsProps): JSX.Element {
+  const top = Math.max(0, ...clients.map(client => client.counts.costUsd));
+
   if (clients.length === 0) {
     return <p className="text-caption text-muted">No client has sent anything in the last 7 days.</p>;
   }
@@ -41,7 +44,10 @@ export function TrafficClients({ clients }: TrafficClientsProps): JSX.Element {
           {clients.map(client => (
             <tr key={`${client.installId} ${client.app} ${client.provider}`} className="border-b border-border">
               <th scope="row" title={client.installId} className="py-1 pr-4 font-medium whitespace-nowrap">
-                {client.hostname || client.installId}
+                {client.hostname || (
+                  // A client that never named its host is known by its installation.
+                  <span className="text-muted">{client.installId}</span>
+                )}
               </th>
               <td className="py-1 pr-4 whitespace-nowrap text-muted">{client.app || 'unnamed'}</td>
               <td className="py-1 pr-4 whitespace-nowrap">
@@ -55,7 +61,25 @@ export function TrafficClients({ clients }: TrafficClientsProps): JSX.Element {
               <td className="py-1 pl-4 text-right tabular-nums">{formatCount(client.counts.outputTokens)}</td>
               <td className="py-1 pl-4 text-right tabular-nums">{formatCount(client.counts.cacheReadTokens)}</td>
               <td className="py-1 pl-4 text-right tabular-nums">{formatCount(client.counts.cacheWriteTokens)}</td>
-              <td className="py-1 pl-4 text-right font-semibold tabular-nums">{formatUsd(client.counts.costUsd)}</td>
+              <td className="py-1 pl-4 tabular-nums">
+                {/* Each client's value against the costliest, in its provider's colour. */}
+                <span className="flex items-center justify-end gap-2">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 100 1"
+                    preserveAspectRatio="none"
+                    className="h-1.5 w-16 shrink-0"
+                  >
+                    <rect width="100" height="1" className="fill-raised" />
+                    <rect
+                      width={top > 0 ? Math.max(1, (client.counts.costUsd / top) * 100) : 0}
+                      height="1"
+                      className={providerTone(client.provider).fill}
+                    />
+                  </svg>
+                  <span className="w-16 text-right font-semibold">{formatUsd(client.counts.costUsd)}</span>
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>

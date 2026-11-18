@@ -13,6 +13,9 @@ export interface LiveChartProps {
   /** Called with the point nearest the pointer as it moves over the chart, and with nothing when it leaves. */
   onScrub: (index: number | undefined) => void;
 
+  /** Called when the chart is clicked; with it the chart reads as a way through to more. */
+  onSelect?: () => void;
+
   /** Sizing and placing classes for the box the chart fills. */
   className?: string;
 }

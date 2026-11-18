@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { UsageSample } from '@/api';
+import { PageHeader } from '@/components/Layout/PageHeader';
 import { getAccountHistoryOptions } from '@/api/@tanstack/react-query.gen';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
@@ -39,15 +40,17 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
 
   return (
     <section className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-2 px-1">
-        <Link to="/" className="text-body text-muted underline-offset-4 hover:text-foreground hover:underline">
-          Accounts
-        </Link>
-        <span aria-hidden="true" className="text-body text-muted">
-          /
-        </span>
-        <h1 className="text-body font-semibold">{account ? providerName(account.provider) : 'Account'}</h1>
-      </div>
+      <PageHeader>
+        <div className="flex items-baseline gap-2">
+          <Link to="/" className="text-body text-muted underline-offset-4 hover:text-foreground hover:underline">
+            Accounts
+          </Link>
+          <span aria-hidden="true" className="text-body text-muted">
+            /
+          </span>
+          <h1 className="text-body font-semibold">{account ? providerName(account.provider) : 'Account'}</h1>
+        </div>
+      </PageHeader>
 
       {accounts.isPending ? (
         <p role="status" className="px-1 text-caption text-muted">

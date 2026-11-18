@@ -5,12 +5,9 @@ export interface AppShellProps {
   /** The daemon's display name from its configuration, which names the mark's link; undefined until known. */
   name: string | undefined;
 
-  /** Whether the daemon reads traffic from a broker; the Traffic page is linked only then. */
-  traffic: boolean;
-
-  /** The event stream's state; the top bar says so when it is down. */
+  /** The event stream's state; each page's header says so when it is down. */
   connection: StreamConnection;
 
-  /** The current page. */
+  /** The current page, which opens on a `PageHeader`. */
   children: ReactNode;
 }

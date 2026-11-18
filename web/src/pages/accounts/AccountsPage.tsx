@@ -1,4 +1,5 @@
 import { useState, type JSX } from 'react';
+import { PageHeader } from '@/components/Layout/PageHeader';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
@@ -36,6 +37,7 @@ export function AccountsPage(): JSX.Element {
   return (
     <section className="flex flex-col gap-2">
       <h1 className="sr-only">Accounts</h1>
+      <PageHeader>{list && <FleetSummary fleet={fleet} updatedAt={list.gateway.updatedAt} now={now} />}</PageHeader>
 
       {accounts.isPending ? (
         <p role="status" className="px-1 text-caption text-muted">
@@ -48,7 +50,6 @@ export function AccountsPage(): JSX.Element {
       ) : (
         <>
           <SourceAlerts list={list} stale={accounts.isError} now={now} />
-          <FleetSummary fleet={fleet} updatedAt={list.gateway.updatedAt} now={now} />
           {charts.failed && (
             <p role="alert" className="px-1 text-caption text-danger">
               Could not load the usage history. The rows show current levels only.
