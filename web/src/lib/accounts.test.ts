@@ -91,6 +91,40 @@ describe('primaryLimit', () => {
     expect(primaryLimit(limits)?.id).toBe('7d');
   });
 
+  it('never takes a window known to be shorter, however close the week is to its reset', () => {
+    // The week ends at 02:00 and the five hours at 01:20: within the hour, and still not the same window.
+    const fiveHour = {
+      id: '5h',
+      label: '5 Hour',
+      usedFraction: 0.28,
+      resetsAt: '2026-11-18T01:20:00Z',
+      windowSeconds: 18_000,
+    };
+    const week = {
+      id: '7d',
+      label: '7 Day',
+      usedFraction: 0.99,
+      resetsAt: '2026-11-18T02:00:00Z',
+      windowSeconds: 604_800,
+    };
+    const fable = { ...week, id: '7d:fable', label: '7 Day (Fable)', usedFraction: 0.02 };
+
+    expect(primaryLimit([fiveHour, week, fable])?.id).toBe('7d');
+    // Even one that resets after the week.
+    expect(primaryLimit([{ ...fiveHour, resetsAt: '2026-11-19T00:00:00Z' }, week])?.id).toBe('7d');
+  });
+
+  it('lets a window of unknown length compete on its reset', () => {
+    // OpenCode Go gives its five hours and week a length, and its month none.
+    const limits = [
+      { id: 'rolling-5h', label: '5 Hour limit', usedFraction: 0, resetsAt: sooner, windowSeconds: 18_000 },
+      { id: 'weekly', label: 'Weekly limit', usedFraction: 0, resetsAt: sooner, windowSeconds: 604_800 },
+      { id: 'monthly', label: 'Monthly limit', usedFraction: 0.27, resetsAt: later },
+    ];
+
+    expect(primaryLimit(limits)?.id).toBe('monthly');
+  });
+
   it('skips windows that report no usage, and copes without reset times', () => {
     expect(
       primaryLimit([
@@ -99,6 +133,13 @@ describe('primaryLimit', () => {
         { id: 'b', label: 'B', usedFraction: 0.2 },
       ])?.id
     ).toBe('a');
+    // Without reset times, still not a shorter window.
+    expect(
+      primaryLimit([
+        { id: '5h', label: '5 Hour', usedFraction: 0.5, windowSeconds: 18_000 },
+        { id: '7d', label: '7 Day', usedFraction: 0.1, windowSeconds: 604_800 },
+      ])?.id
+    ).toBe('7d');
     expect(primaryLimit([{ id: '5h', label: '5 Hour' }])).toBeUndefined();
     expect(primaryLimit([])).toBeUndefined();
   });
