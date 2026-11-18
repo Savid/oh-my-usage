@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TrafficSeries } from '@/api';
 import { at, NOW_MS } from '@/test-utils/time';
-import { drawLive, liveView, monotoneCurve, nearestPoint } from './live';
+import { drawLive, liveView, monotoneCurve, nearestPoint, shareFloor } from './live';
 
 function provider(name: string, outputTokens: number[]): TrafficSeries['providers'][number] {
   const none = outputTokens.map(() => 0);
@@ -67,6 +67,76 @@ describe('liveView', () => {
     });
 
     expect(view.layers[0]?.rates).toEqual([10, 20]);
+  });
+});
+
+describe('liveView by metric', () => {
+  /** Two steps read in full and one filling, of one provider. */
+  const counts: TrafficSeries = {
+    start: at(-10_000),
+    stepSeconds: 5,
+    steps: 3,
+    providers: [
+      {
+        provider: 'anthropic',
+        requests: [1, 2, 9],
+        inputTokens: [10, 0, 9],
+        outputTokens: [50, 100, 9],
+        cacheReadTokens: [900, 1800, 9],
+        cacheWriteTokens: [90, 200, 9],
+        costUsd: [0.05, 0.1, 9],
+      },
+    ],
+  };
+
+  it('counts tokens in a second, cache reads and writes included', () => {
+    const view = liveView(counts, 'input');
+
+    expect(view.share).toBe(false);
+    expect(view.totals).toEqual([200, 300]);
+  });
+
+  it('counts the cost an hour and requests a minute', () => {
+    expect(liveView(counts, 'cost').totals.map(value => Math.round(value))).toEqual([36, 54]);
+    expect(liveView(counts, 'requests').totals).toEqual([12, 18]);
+  });
+
+  it('reads the cache as a share of everything sent, which does not stack', () => {
+    const view = liveView(counts, 'cache');
+
+    expect(view.share).toBe(true);
+    expect(view.totals).toEqual([0.9, 0.9]);
+    expect(view.layers.map(layer => [layer.provider, layer.rates])).toEqual([['anthropic', [0.9, 0.9]]]);
+
+    // One line for all providers, from the tenth below its lowest point to all of it.
+    const drawing = drawLive(view, { width: 1000, height: 100, span: 10_000, end: NOW_MS });
+    expect(drawing?.layers.map(layer => layer.provider)).toEqual(['']);
+    expect(drawing?.max).toBe(1);
+    // 90% sits on the floor of 80%..100%, an eighth of the way up its room.
+    expect(drawing?.head.y).toBeCloseTo(100 - 0.5 * 88);
+  });
+
+  it('starts a share at the tenth at or below its lowest point', () => {
+    expect(shareFloor([0.97, 0.93, 0.99])).toBe(0.9);
+    expect(shareFloor([0.9])).toBe(0.8);
+    expect(shareFloor([0.04])).toBe(0);
+    expect(shareFloor([])).toBe(0);
+  });
+
+  it('holds a share through a stretch with nothing sent', () => {
+    const quiet: TrafficSeries = {
+      ...counts,
+      steps: 9,
+      providers: counts.providers.map(entry => ({
+        ...entry,
+        inputTokens: [10, 0, 0, 0, 0, 0, 0, 0, 0],
+        cacheReadTokens: [90, 0, 0, 0, 0, 0, 0, 0, 0],
+        cacheWriteTokens: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      })),
+    };
+
+    // Six steps on, the first has left the thirty seconds read; nothing was sent since.
+    expect(liveView(quiet, 'cache').totals).toEqual([0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]);
   });
 });
 

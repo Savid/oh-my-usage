@@ -157,6 +157,16 @@ export const ManyProviders: Story = {
   },
 };
 
+/** Picking what to show redraws the chart, the figure and each provider's part for it. */
+export const MetricInteraction: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: /^Cost/ }));
+    await expect(canvas.getByText('an hour at API prices')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: /^Cached/ }));
+    await expect(canvas.getByText('of input read from a cache')).toBeVisible();
+  },
+};
+
 /** Moving the pointer over the chart reads the point under it. */
 export const ScrubInteraction: Story = {
   play: async ({ canvas, canvasElement }) => {

@@ -8,7 +8,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { providerName } from '@/lib/accounts';
 import { WEEKS_PER_MONTH } from '@/lib/fleet';
 import { formatCount, formatPercent, formatShort, formatTime, formatUsd } from '@/lib/format';
-import { liveView } from '@/lib/live';
+import { liveView, shareFloor, type LiveMetric } from '@/lib/live';
 import { cacheShare } from '@/lib/traffic';
 import { LiveChart } from './LiveChart';
 import type { LiveTrafficProps } from './LiveTraffic.types';
@@ -82,31 +82,72 @@ function StatusDot({ pulsing }: { pulsing: boolean }): JSX.Element {
   );
 }
 
+/** How a requests figure reads: to a tenth under ten, whole above. */
+function formatRequests(value: number): string {
+  return value < 10 ? value.toFixed(1) : formatCount(Math.round(value));
+}
+
+/** What the switch offers, in its order: what each is called, how its figure reads, and what it counts. */
+const METRICS: readonly {
+  id: LiveMetric;
+  name: string;
+  format: (value: number) => string;
+  /** What follows the figure on a chip. */
+  suffix: string;
+  /** What follows the big figure. */
+  unit: string;
+}[] = [
+  {
+    id: 'output',
+    name: 'Out',
+    format: value => formatCount(Math.round(value)),
+    suffix: '/s',
+    unit: 'tokens out a second',
+  },
+  {
+    id: 'input',
+    name: 'In',
+    format: value => formatCount(Math.round(value)),
+    suffix: '/s',
+    unit: 'tokens in a second, cache reads included',
+  },
+  { id: 'cache', name: 'Cached', format: formatPercent, suffix: '', unit: 'of input read from a cache' },
+  { id: 'cost', name: 'Cost', format: formatUsd, suffix: '/h', unit: 'an hour at API prices' },
+  { id: 'requests', name: 'Requests', format: formatRequests, suffix: '/min', unit: 'requests a minute' },
+];
+
 /**
  * The gateway's traffic as it happens, drawn edge to edge behind its
- * figures: how many tokens it is generating a second, by provider, over the
- * last ten minutes, gliding left as each reading comes in. Over it, the
- * rate now (or at the point the pointer is on), each provider's share of
- * it, and what the last hour, day and week came to at API prices.
+ * figures over the last ten minutes, gliding left as each reading comes in.
+ * A switch picks what is drawn: tokens out or in a second, the share read
+ * from a cache, the cost an hour at API prices, or requests a minute, each
+ * with its figure now (or at the point the pointer is on). Rates stack by
+ * provider in each one's colour; the cache share is one line. Below, what the
+ * last hour, day and week came to at API prices.
  */
 export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX.Element {
+  const [metric, setMetric] = useState<LiveMetric>('output');
   const [scrub, setScrub] = useState<number>();
   const still = usePrefersReducedMotion();
 
-  const live = liveView(traffic.live);
-  const warming = live.times.length < LIVE_MIN_POINTS;
-  const view = warming ? liveView(traffic.minutes) : live;
+  const warming = liveView(traffic.live).times.length < LIVE_MIN_POINTS;
+  const source = warming ? traffic.minutes : traffic.live;
   const span = warming ? HOUR_SPAN_MS : LIVE_SPAN_MS;
+  const metrics = METRICS.map(entry => ({ ...entry, view: liveView(source, entry.id) }));
+  const selected = metrics.find(entry => entry.id === metric) ?? metrics[0];
+  if (!selected) throw new Error('no metrics');
+  const { view } = selected;
 
   const last = view.times.length - 1;
   const shown = scrub !== undefined && scrub <= last ? scrub : last;
   const scrubbing = shown !== last;
-  const rate = view.totals[shown] ?? 0;
-  const rates = view.layers
-    .map(layer => ({ provider: layer.provider, rate: layer.rates[shown] ?? 0 }))
-    .sort((one, other) => other.rate - one.rate);
-  const named = rates.slice(0, LEGEND_MAX);
-  const others = rates.slice(LEGEND_MAX).reduce((sum, entry) => sum + entry.rate, 0);
+  const figure = view.totals[shown] ?? 0;
+  const parts = view.layers
+    .map(layer => ({ provider: layer.provider, value: layer.rates[shown] ?? 0 }))
+    .sort((one, other) => other.value - one.value);
+  const named = parts.slice(0, LEGEND_MAX);
+  // Rates add up; shares do not.
+  const others = view.share ? 0 : parts.slice(LEGEND_MAX).reduce((sum, entry) => sum + entry.value, 0);
 
   const age = traffic.updatedAt === undefined ? undefined : now - Date.parse(traffic.updatedAt);
   const status: Status = traffic.error ? 'down' : age === undefined ? 'waiting' : age > STALE_MS ? 'stale' : 'live';
@@ -120,10 +161,12 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
   const cached = day ? cacheShare(day.total) : undefined;
 
   return (
-    <section aria-labelledby="traffic-heading" className="relative flex min-h-52 min-w-0 flex-1 flex-col lg:min-h-36">
-      {/* Before the first reading nothing is known, not even that it is quiet. */}
+    <section aria-labelledby="traffic-heading" className="relative flex min-h-72 min-w-0 flex-1 flex-col lg:min-h-36">
+      {/* Before the first reading nothing is known, not even that it is quiet. A new
+          metric is a new chart: it is drawn afresh, not glided into from the last. */}
       {traffic.updatedAt !== undefined && (
         <LiveChart
+          key={metric}
           view={view}
           span={span}
           scrub={scrub}
@@ -132,7 +175,7 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
         />
       )}
 
-      {/* The figures sit over the chart and let the pointer through to it, all but the link. */}
+      {/* The figures sit over the chart and let the pointer through to it, all but the controls. */}
       <div className="pointer-events-none relative flex flex-1 flex-col gap-1 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 id="traffic-heading" className="pointer-events-auto text-body font-semibold tracking-caps uppercase">
@@ -158,9 +201,41 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
               <span className="text-muted tabular-nums">
                 {age === undefined ? 'no reading yet' : `read ${formatShort(age)} ago`} ·{' '}
                 {warming ? 'last hour by minute' : 'last 10 min'}
+                {/* A share is drawn from its floor, not from nothing, so the floor is named. */}
+                {view.share && view.layers.length > 0 && ` · ${Math.round(shareFloor(view.totals) * 100)}–100%`}
               </span>
             </span>
           )}
+
+          <div role="group" aria-label="Show" className="pointer-events-auto ml-auto flex flex-wrap items-center gap-1">
+            {metrics.map(entry => (
+              <button
+                key={entry.id}
+                type="button"
+                aria-pressed={entry.id === metric}
+                onClick={() => setMetric(entry.id)}
+                className={clsx(
+                  'flex h-6 items-center gap-1.5 rounded-sm border bg-surface px-2 text-micro whitespace-nowrap tabular-nums',
+                  entry.id === metric
+                    ? 'border-accent text-foreground'
+                    : 'border-border text-muted hover:border-border-strong hover:text-foreground'
+                )}
+              >
+                <span className="tracking-caps uppercase">{entry.name}</span>
+                <span className="font-semibold text-foreground">
+                  {entry.format(entry.view.totals[shown] ?? 0)}
+                  {entry.suffix}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="flex items-baseline gap-2">
+            <RollingNumber value={selected.format(figure)} className="text-display font-semibold" />
+            <span className="text-caption text-muted">{selected.unit}</span>
+          </p>
 
           {named.length > 0 && (
             <ul aria-label="By provider" className="ml-auto flex flex-wrap items-center gap-1.5">
@@ -170,7 +245,8 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
                     <ProviderIcon provider={entry.provider} decorative />
                     <span className="sr-only">{providerName(entry.provider)}</span>
                     <span>
-                      <span className="font-semibold text-foreground">{formatCount(Math.round(entry.rate))}</span>/s
+                      <Figure>{selected.format(entry.value)}</Figure>
+                      {selected.suffix}
                     </span>
                   </Chip>
                 </li>
@@ -179,8 +255,8 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
                 <li>
                   <Chip>
                     <span>
-                      +{rates.length - LEGEND_MAX} more{' '}
-                      <span className="font-semibold text-foreground">{formatCount(Math.round(others))}</span>/s
+                      +{parts.length - LEGEND_MAX} more <Figure>{selected.format(others)}</Figure>
+                      {selected.suffix}
                     </span>
                   </Chip>
                 </li>
@@ -188,11 +264,6 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
             </ul>
           )}
         </div>
-
-        <p className="flex items-baseline gap-2">
-          <RollingNumber value={formatCount(Math.round(rate))} className="text-display font-semibold" />
-          <span className="text-caption text-muted">tokens out a second</span>
-        </p>
 
         {traffic.error && (
           <p role="alert" className="pointer-events-auto self-start">
