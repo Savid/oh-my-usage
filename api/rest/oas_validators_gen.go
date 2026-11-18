@@ -509,6 +509,17 @@ func (s *Traffic) Validate() error {
 		})
 	}
 	if err := func() error {
+		if err := s.Live.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "live",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if err := s.Minutes.Validate(); err != nil {
 			return err
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/savid/oh-my-usage/internal/monitor"
 	"github.com/savid/oh-my-usage/internal/store"
 	"github.com/savid/oh-my-usage/pkg/accounts"
+	"github.com/savid/oh-my-usage/pkg/traffic"
 )
 
 // Account IDs the fakes know.
@@ -154,6 +155,10 @@ type fakeCollector struct {
 	mu      sync.Mutex
 	status  collector.Status
 	changed chan struct{}
+
+	liveStart time.Time
+	liveSteps int
+	live      []traffic.LiveCounts
 }
 
 func (c *fakeCollector) Status() collector.Status {
@@ -165,6 +170,13 @@ func (c *fakeCollector) Status() collector.Status {
 
 func (c *fakeCollector) Subscribe() (changed <-chan struct{}, cancel func()) {
 	return c.changed, func() {}
+}
+
+func (c *fakeCollector) Live() (start time.Time, steps int, counts []traffic.LiveCounts) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.liveStart, c.liveSteps, c.live
 }
 
 // fakeTraffic answers every read with the same streams and steps, and

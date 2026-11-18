@@ -1,6 +1,6 @@
 import type { Pool } from '@/lib/pools';
 
-export interface PoolTileProps {
+export interface PoolMeterProps {
   /** One usage window added up over a provider's accounts. */
   pool: Pool;
 

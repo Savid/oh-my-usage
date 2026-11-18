@@ -106,7 +106,7 @@ func parse(args []string, getenv func(string) string, stderr io.Writer) (options
 	fs.StringVar(&o.prices, "prices", getenv(envPrices),
 		"JSON file of what each account costs a month; none prices nothing (or "+envPrices+")")
 	fs.DurationVar(&o.pollInterval, "poll-interval", time.Minute, "time between polls of the gateway, at least 30s")
-	fs.DurationVar(&o.trafficInterval, "traffic-interval", 15*time.Second,
+	fs.DurationVar(&o.trafficInterval, "traffic-interval", minTrafficInterval,
 		"time between readings of the broker's traffic, at least 5s")
 	fs.DurationVar(&o.retention, "retention", 90*24*time.Hour, "how long usage history is kept; 0 keeps it forever")
 

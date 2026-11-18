@@ -242,6 +242,10 @@ export type Traffic = {
    * Totals for the last hour, day and week, in that order.
    */
   windows: Array<TrafficWindow>;
+  /**
+   * The last ten minutes by provider in steps of five seconds, up to the last reading, whose step is the last and still filling. What passed between two readings is shared out over the steps between them. It is held in memory: after the daemon starts, or after a gap of over a minute between readings, it begins again at the next reading, and until two readings it is one empty step.
+   */
+  live: TrafficSeries;
   minutes: TrafficSeries;
   hours: TrafficSeries;
   /**

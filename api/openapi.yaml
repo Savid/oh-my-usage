@@ -145,8 +145,9 @@ paths:
       summary: Read what is passing through the gateway
       description: >-
         Requests, tokens and their cost at API prices, as the broker counts
-        them: totals for the last hour, day and week, the last hour by minute,
-        the last week by hour, and the week by client. Traffic is measured
+        them: totals for the last hour, day and week, the last ten minutes by
+        five seconds, the last hour by minute, the last week by hour, and the
+        week by client. Traffic is measured
         from the daemon's first reading of the broker on. What came before,
         and what passed while the daemon was stopped for over an hour, is an
         estimate known to the hour: it counts in the day, the week and the
@@ -460,7 +461,7 @@ components:
     Traffic:
       type: object
       description: What is passing through the gateway, as the broker counts it.
-      required: [available, windows, minutes, hours, clients]
+      required: [available, windows, live, minutes, hours, clients]
       properties:
         available:
           type: boolean
@@ -484,6 +485,15 @@ components:
           description: Totals for the last hour, day and week, in that order.
           items:
             $ref: '#/components/schemas/TrafficWindow'
+        live:
+          $ref: '#/components/schemas/TrafficSeries'
+          description: >-
+            The last ten minutes by provider in steps of five seconds, up to the
+            last reading, whose step is the last and still filling. What
+            passed between two readings is shared out over the steps between
+            them. It is held in memory: after the daemon starts, or after a
+            gap of over a minute between readings, it begins again at the next
+            reading, and until two readings it is one empty step.
         minutes:
           $ref: '#/components/schemas/TrafficSeries'
         hours:

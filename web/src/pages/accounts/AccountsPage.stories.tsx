@@ -40,8 +40,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    const totals = await canvas.findByRole('region', { name: 'Totals' });
-    await expect(within(totals).getByRole('article', { name: 'Anthropic 7 Day' })).toBeInTheDocument();
+    const totals = await canvas.findByRole('list', { name: 'Totals' });
+    await expect(within(totals).getByRole('listitem', { name: 'Anthropic 7 Day' })).toBeInTheDocument();
+    await expect(await canvas.findByRole('region', { name: 'Traffic' })).toBeInTheDocument();
     await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
   },
 };

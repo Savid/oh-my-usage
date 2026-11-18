@@ -64,6 +64,7 @@ type Collector struct {
 
 	mu          sync.Mutex
 	status      Status
+	live        traffic.Live
 	subscribers map[chan struct{}]struct{}
 }
 
@@ -99,6 +100,15 @@ func (c *Collector) Status() Status {
 	defer c.mu.Unlock()
 
 	return c.status
+}
+
+// Live returns the last few minutes of traffic by provider in fine steps,
+// as traffic.Live.Series does.
+func (c *Collector) Live() (start time.Time, steps int, counts []traffic.LiveCounts) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.live.Series()
 }
 
 // Subscribe returns a channel that receives after each collection, and a
@@ -185,7 +195,10 @@ func (c *Collector) collect(ctx context.Context, now time.Time) error {
 		at = last
 	}
 
-	var buckets []traffic.Bucket
+	var (
+		buckets []traffic.Bucket
+		passed  map[traffic.Key]traffic.Counts
+	)
 
 	if last.IsZero() {
 		if buckets, err = c.backfill(ctx, now); err != nil {
@@ -194,11 +207,20 @@ func (c *Collector) collect(ctx context.Context, now time.Time) error {
 
 		c.log.InfoContext(ctx, "traffic history estimated", "buckets", len(buckets))
 	} else {
-		buckets = traffic.Spread(last, at, traffic.Delta(totals, reading.Counts), reading.Hostnames)
+		passed = traffic.Delta(totals, reading.Counts)
+		buckets = traffic.Spread(last, at, passed, reading.Hostnames)
 	}
 
 	if err = c.cfg.Record.AddTraffic(ctx, buckets, at, reading.Counts); err != nil {
 		return fmt.Errorf("store traffic: %w", err)
+	}
+
+	// The live record follows the stored one: only what was stored is in it.
+	// The first reading has no stretch to file; the live record begins at it.
+	if !last.IsZero() {
+		c.mu.Lock()
+		c.live.Add(last, at, passed)
+		c.mu.Unlock()
 	}
 
 	return nil

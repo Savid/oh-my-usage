@@ -26,6 +26,10 @@ type Collector interface {
 	// Subscribe returns a channel that receives after each collection, and
 	// a function that ends the subscription.
 	Subscribe() (changed <-chan struct{}, cancel func())
+	// Live returns the last few minutes of traffic by provider in fine
+	// steps: when the first step begins, how many there are and what passed
+	// in each. Before two readings it has no steps.
+	Live() (start time.Time, steps int, counts []traffic.LiveCounts)
 }
 
 // TrafficRecord reads recorded traffic.
@@ -56,6 +60,7 @@ func (a *operations) traffic(ctx context.Context) (*rest.Traffic, error) {
 
 	out := &rest.Traffic{
 		Windows: []rest.TrafficWindow{},
+		Live:    series(now.Truncate(traffic.LiveStep), traffic.LiveStep, 1, nil),
 		Minutes: series(minutesFrom, time.Minute, minuteSteps, nil),
 		Hours:   series(hoursFrom, time.Hour, hourSteps, nil),
 		Clients: []rest.TrafficClient{},
@@ -126,6 +131,15 @@ func (a *operations) traffic(ctx context.Context) (*rest.Traffic, error) {
 
 	out.Minutes = series(minutesFrom, time.Minute, minuteSteps, minutes)
 	out.Hours = series(hoursFrom, time.Hour, hourSteps, hours)
+
+	if liveFrom, liveSteps, live := a.collector.Live(); liveSteps > 0 {
+		points := make([]store.TrafficStep, 0, len(live))
+		for _, c := range live {
+			points = append(points, store.TrafficStep{Index: c.Index, Provider: c.Provider, Counts: c.Counts})
+		}
+
+		out.Live = series(liveFrom, traffic.LiveStep, liveSteps, points)
+	}
 
 	return out, nil
 }

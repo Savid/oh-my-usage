@@ -63,14 +63,14 @@ func (b *fakeBroker) ClientUsage(_ context.Context, since time.Time) (traffic.Su
 	return out, nil
 }
 
-// grow adds to a burst that is still running and stamps it with now.
-func (b *fakeBroker) grow(index int, now time.Time, more traffic.Counts) {
+// grow adds to the first burst, still running, and stamps it with now.
+func (b *fakeBroker) grow(now time.Time, more traffic.Counts) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	b.now = now
-	b.bursts[index].ended = now
-	b.bursts[index].counts = b.bursts[index].counts.Add(more)
+	b.bursts[0].ended = now
+	b.bursts[0].counts = b.bursts[0].counts.Add(more)
 }
 
 func (b *fakeBroker) set(now time.Time, err error) {
@@ -198,7 +198,7 @@ func TestLaterCollectionsMeasureTheGrowth(t *testing.T) {
 	// Fifteen seconds on, the running burst has four more requests.
 	later := t0.Add(15 * time.Second)
 	h.at(later)
-	h.broker.grow(0, later, traffic.Counts{Requests: 4, OutputTokens: 800, CostUSD: 1.25})
+	h.broker.grow(later, traffic.Counts{Requests: 4, OutputTokens: 800, CostUSD: 1.25})
 	h.Collect(ctx)
 
 	// One question per collection once measuring has begun.
@@ -223,6 +223,52 @@ func TestLaterCollectionsMeasureTheGrowth(t *testing.T) {
 
 	if measured := h.totals(t, true); measured[claude] != want {
 		t.Errorf("measured after an idle collection = %+v", measured)
+	}
+}
+
+func TestLiveFollowsTheReadings(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	h := newHarness(t, 0, burst{ended: t0.Add(-time.Second), key: claude, counts: traffic.Counts{Requests: 300, CostUSD: 90}})
+
+	// The first reading only estimates the days before it: nothing is live yet.
+	h.Collect(ctx)
+
+	if _, steps, _ := h.Live(); steps != 0 {
+		t.Errorf("Live() after the first reading has %d steps, want none", steps)
+	}
+
+	later := t0.Add(10 * time.Second)
+	h.at(later)
+	h.broker.grow(later, traffic.Counts{Requests: 2, OutputTokens: 100, CostUSD: 1})
+	h.Collect(ctx)
+
+	start, steps, counts := h.Live()
+	if !start.Equal(t0) || steps != 3 {
+		t.Errorf("Live() starts %v with %d steps, want %v with 3", start, steps, t0)
+	}
+
+	var total traffic.Counts
+	for _, c := range counts {
+		if c.Provider != "anthropic" {
+			t.Errorf("Live() has traffic to %q, want only anthropic", c.Provider)
+		}
+
+		total = total.Add(c.Counts)
+	}
+
+	if total.Requests != 2 || total.OutputTokens != 100 {
+		t.Errorf("Live() holds %+v, want the 2 requests and 100 tokens read", total)
+	}
+
+	// A failed collection files nothing.
+	h.at(later.Add(5 * time.Second))
+	h.broker.set(later.Add(5*time.Second), errors.New("broker down"))
+	h.Collect(ctx)
+
+	if _, again, _ := h.Live(); again != steps {
+		t.Errorf("Live() after a failed collection has %d steps, want %d", again, steps)
 	}
 }
 
@@ -263,7 +309,7 @@ func TestFailedCollectionIsMadeUpLater(t *testing.T) {
 	back := t0.Add(30 * time.Second)
 	h.at(back)
 	h.broker.set(back, nil)
-	h.broker.grow(0, back, traffic.Counts{Requests: 6, CostUSD: 2})
+	h.broker.grow(back, traffic.Counts{Requests: 6, CostUSD: 2})
 	h.Collect(ctx)
 
 	if status = h.Status(); status.Err != "" || !status.UpdatedAt.Equal(back) {
@@ -298,7 +344,7 @@ func TestShrunkTotalsStartOver(t *testing.T) {
 
 	// From the new totals on, growth is measured again.
 	h.at(t0.Add(30 * time.Second))
-	h.broker.grow(0, t0.Add(30*time.Second), traffic.Counts{Requests: 3, CostUSD: 1})
+	h.broker.grow(t0.Add(30*time.Second), traffic.Counts{Requests: 3, CostUSD: 1})
 	h.Collect(ctx)
 
 	if measured := h.totals(t, true); measured[claude].Requests != 3 {

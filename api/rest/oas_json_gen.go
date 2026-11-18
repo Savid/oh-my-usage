@@ -2138,6 +2138,10 @@ func (s *Traffic) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		e.FieldStart("live")
+		s.Live.Encode(e)
+	}
+	{
 		e.FieldStart("minutes")
 		s.Minutes.Encode(e)
 	}
@@ -2155,15 +2159,16 @@ func (s *Traffic) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraffic = [8]string{
+var jsonFieldsNameOfTraffic = [9]string{
 	0: "available",
 	1: "updatedAt",
 	2: "error",
 	3: "measuredSince",
 	4: "windows",
-	5: "minutes",
-	6: "hours",
-	7: "clients",
+	5: "live",
+	6: "minutes",
+	7: "hours",
+	8: "clients",
 }
 
 // Decode decodes Traffic from json.
@@ -2171,7 +2176,7 @@ func (s *Traffic) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode Traffic to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -2235,8 +2240,18 @@ func (s *Traffic) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"windows\"")
 			}
-		case "minutes":
+		case "live":
 			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				if err := s.Live.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"live\"")
+			}
+		case "minutes":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Minutes.Decode(d); err != nil {
 					return err
@@ -2246,7 +2261,7 @@ func (s *Traffic) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"minutes\"")
 			}
 		case "hours":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Hours.Decode(d); err != nil {
 					return err
@@ -2256,7 +2271,7 @@ func (s *Traffic) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"hours\"")
 			}
 		case "clients":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.Clients = make([]TrafficClient, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -2282,8 +2297,9 @@ func (s *Traffic) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b11110001,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

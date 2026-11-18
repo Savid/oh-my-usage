@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from 'msw';
 import type { Traffic, TrafficCounts, TrafficSeries } from '@/api';
-import { at } from '@/test-utils/time';
+import { at, NOW_MS } from '@/test-utils/time';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -42,6 +42,42 @@ function providerSeries(
   };
 }
 
+/**
+ * A provider's last ten minutes in five-second steps: a rolling swell with a
+ * burst now and then, as a gateway's readings come in. The last step is the
+ * one still filling, and holds little.
+ */
+function liveSeries(
+  provider: string,
+  steps: number,
+  perStep: number,
+  phase: number
+): TrafficSeries['providers'][number] {
+  const outputTokens = Array.from({ length: steps }, (_, step) => {
+    if (step === steps - 1) return Math.round(perStep * 0.2);
+    const swell = 0.6 + 0.4 * Math.sin((step + phase) / 9) + 0.25 * Math.sin((step + phase) / 2.3);
+    const burst = (step + phase) % 13 === 0 ? 2.2 : 1;
+    return Math.max(0, Math.round(perStep * swell * burst));
+  });
+  return {
+    provider,
+    outputTokens,
+    requests: outputTokens.map(tokens => Math.round(tokens / 900)),
+    inputTokens: outputTokens.map(tokens => Math.round(tokens / 400)),
+    cacheReadTokens: outputTokens.map(tokens => tokens * 190),
+    cacheWriteTokens: outputTokens.map(tokens => tokens * 8),
+    costUsd: outputTokens.map(tokens => Math.round(tokens * 0.00012 * 100) / 100),
+  };
+}
+
+const LIVE_STEP = 5000;
+
+/** Where a live series of `steps` begins, its last step holding the reading eight seconds ago. */
+function liveStart(steps: number): string {
+  const reading = NOW_MS - 8000;
+  return new Date(reading - (reading % LIVE_STEP) - (steps - 1) * LIVE_STEP).toISOString();
+}
+
 /** A busy gateway: two providers over the last hour, three over the week, measured for three days. */
 export const trafficFixture: Traffic = {
   available: true,
@@ -78,6 +114,12 @@ export const trafficFixture: Traffic = {
       ],
     },
   ],
+  live: {
+    start: liveStart(120),
+    stepSeconds: 5,
+    steps: 120,
+    providers: [liveSeries('anthropic', 120, 1100, 0), liveSeries('openai-codex', 120, 260, 40)],
+  },
   minutes: {
     start: at(-59 * MINUTE),
     stepSeconds: 60,
@@ -130,9 +172,21 @@ export const quietTrafficFixture: Traffic = {
     { id: 'day', since: at(-24 * HOUR), total: counts(0, 0), providers: [] },
     { id: 'week', since: at(-7 * 24 * HOUR), total: counts(0, 0), providers: [] },
   ],
+  live: { start: liveStart(120), stepSeconds: 5, steps: 120, providers: [] },
   minutes: { start: at(-59 * MINUTE), stepSeconds: 60, steps: 60, providers: [] },
   hours: { start: at(-167 * HOUR), stepSeconds: 3600, steps: 168, providers: [] },
   clients: [],
+};
+
+/** The daemon started moments ago: a few seconds live, the last hour from the record. */
+export const warmingTrafficFixture: Traffic = {
+  ...trafficFixture,
+  live: {
+    start: liveStart(4),
+    stepSeconds: 5,
+    steps: 4,
+    providers: [liveSeries('anthropic', 4, 1100, 0)],
+  },
 };
 
 /** No broker configured: nothing to show. */
@@ -156,6 +210,7 @@ const TRAFFIC = '/api/v1/traffic';
 export const trafficHandlers = {
   ok: http.get(TRAFFIC, () => HttpResponse.json(trafficFixture)),
   quiet: http.get(TRAFFIC, () => HttpResponse.json(quietTrafficFixture)),
+  warming: http.get(TRAFFIC, () => HttpResponse.json(warmingTrafficFixture)),
   unavailable: http.get(TRAFFIC, () => HttpResponse.json(noTrafficFixture)),
   stale: http.get(TRAFFIC, () => HttpResponse.json(staleTrafficFixture)),
   down: http.get(TRAFFIC, () => new HttpResponse(null, { status: 502 })),

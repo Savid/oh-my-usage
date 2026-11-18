@@ -79,6 +79,13 @@ export function formatClock(ms: number): string {
   return clock.format(ms);
 }
 
+const seconds = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+/** A time of day to the second in the viewer's time zone: "09:45:05". */
+export function formatTime(ms: number): string {
+  return seconds.format(ms);
+}
+
 const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric' });
 
 /** A day by its weekday and date, in the viewer's time zone: "Fri 13". */
