@@ -11,7 +11,7 @@ const IDLE_MS = 2 * HOUR;
 const RISE = 0.005;
 
 /** One window of an account with where it is heading. */
-export interface LimitView {
+interface LimitView {
   limit: Limit;
   forecast: Forecast;
   verdict: Verdict;
