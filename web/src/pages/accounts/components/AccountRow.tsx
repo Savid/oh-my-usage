@@ -209,8 +209,9 @@ function PauseButton({
  * One account as a band across the page, in three parts that never overlap.
  * On solid ground at the left: the big figure for its main usage window (the
  * one that resets last), who it is, when that window resets, and its other
- * windows as short lines. In the open middle: a chart of what it had used,
- * in its provider's colour, running to the row's end at now. Over that
+ * windows as short lines. In the open middle (at the foot, on a narrow
+ * screen): a chart of what it had used, in its provider's colour, running to
+ * the row's end at now. Over that
  * end, with a broker: a small button to pause or resume it. Trouble ahead (a window that runs dry
  * before it resets at its pace) is the only forecast it shows, and its state
  * shows only when it is not taking work.
@@ -271,8 +272,12 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {/* A glow under a line, deepest under the line and fading towards the foot of
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
-              narrow one it runs behind the row and shows at its end. */}
-          <div data-testid="history" aria-hidden="true" className="absolute inset-0 lg:right-3 lg:left-204">
+              narrow one it is a band the whole width of the row, under the words. */}
+          <div
+            data-testid="history"
+            aria-hidden="true"
+            className="absolute right-3 bottom-0 left-0 h-12 lg:top-0 lg:left-204 lg:h-auto"
+          >
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -304,24 +309,25 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                     strokeWidth="5"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
-                    className={clsx('hidden lg:inline', tone.line)}
+                    className={tone.line}
                   />
                 </>
               )}
             </svg>
           </div>
-          {/* Solid ground under the words; the chart fades in from it. */}
+          {/* The chart fades in from the ground at its start. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-85% to-transparent lg:left-204 lg:w-16 lg:via-0%"
+            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-204"
           />
         </>
       )}
 
       <div
         className={clsx(
-          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 lg:items-center lg:gap-x-6',
-          drawn ? 'min-h-20' : 'min-h-14'
+          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 pt-3 lg:items-center lg:gap-x-6',
+          // A narrow row leaves room at its foot for the chart.
+          drawn ? 'min-h-20 pb-14 lg:pb-3' : 'min-h-14 pb-3'
         )}
       >
         {primary && used !== undefined ? (
