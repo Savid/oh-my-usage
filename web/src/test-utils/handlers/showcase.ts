@@ -403,7 +403,8 @@ function liveSeries(provider: TrafficSeries['providers'][number], seed: number):
         1,
         recent.reduce((a, b) => a + b, 0)
       );
-    return outputTokens.map(tokens => Math.round(tokens * per));
+    // Rounded up or down at random, so a count under one a step still adds up over a few.
+    return outputTokens.map(tokens => Math.floor(tokens * per + next()));
   };
   return {
     provider: provider.provider,

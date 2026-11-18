@@ -7,7 +7,7 @@ import { LiveTraffic } from './LiveTraffic';
 
 /** The figure as assistive technology reads it: the digits drawn beside it are hidden. */
 function rate(): string {
-  return screen.getByText(/^[\d,.K]+$/, { selector: '.sr-only' }).textContent ?? '';
+  return screen.getByText(/^\$?[\d,.]+[KM%]?$/, { selector: '.sr-only' }).textContent ?? '';
 }
 
 describe('LiveTraffic', () => {
@@ -74,6 +74,39 @@ describe('LiveTraffic', () => {
     fireEvent.pointerLeave(chart);
     expect(screen.getByText('Live')).toBeInTheDocument();
     expect(container.querySelector('[data-testid="crosshair"]')).not.toBeInTheDocument();
+  });
+
+  it('switches what it shows, each choice with its figure now', () => {
+    const { container } = render(<LiveTraffic traffic={trafficFixture} now={NOW_MS} />);
+
+    const choices = within(screen.getByRole('group', { name: 'Show' })).getAllByRole('button');
+    expect(choices.map(choice => choice.textContent)).toEqual([
+      expect.stringMatching(/^Out[\d,.K]+\/s$/),
+      expect.stringMatching(/^In[\d,.KM]+\/s$/),
+      expect.stringMatching(/^Cached\d+%$/),
+      expect.stringMatching(/^Cost\$[\d,.]+\/h$/),
+      expect.stringMatching(/^Requests[\d,.]+\/min$/),
+    ]);
+    expect(screen.getByRole('button', { name: /^Out/ })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cost/ }));
+
+    expect(screen.getByRole('button', { name: /^Cost/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('an hour at API prices')).toBeInTheDocument();
+    const cost = liveView(trafficFixture.live, 'cost');
+    expect(rate()).toBe(`$${(cost.totals.at(-1) ?? 0).toFixed(2)}`);
+    const legend = within(screen.getByRole('list', { name: 'By provider' })).getAllByRole('listitem');
+    expect(legend[0]).toHaveTextContent(/^Anthropic\$[\d.]+\/h$/);
+    expect(container.querySelector('path[data-provider="anthropic"]')).toHaveClass('stroke-anthropic');
+
+    // The cache is a share: one line for all providers, and each provider's own share.
+    fireEvent.click(screen.getByRole('button', { name: /^Cached/ }));
+    expect(screen.getByText('of input read from a cache')).toBeInTheDocument();
+    expect(container.querySelectorAll('path[data-provider]')).toHaveLength(1);
+    expect(container.querySelector('path[data-provider=""]')).toHaveClass('stroke-meter');
+    expect(within(screen.getByRole('list', { name: 'By provider' })).getAllByRole('listitem')[0]).toHaveTextContent(
+      /\d+%$/
+    );
   });
 
   it('says when the broker stopped answering and how old the figures are', () => {

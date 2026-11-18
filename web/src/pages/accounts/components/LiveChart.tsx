@@ -39,7 +39,7 @@ export function LiveChart({ view, span, scrub, onScrub, className }: LiveChartPr
   const drawn = drawing !== undefined;
   const max = drawing?.max ?? 0;
   const top = drawing?.layers.at(-1)?.provider;
-  const headClass = top ? providerTone(top).line : 'stroke-border-strong';
+  const headClass = top === undefined ? 'stroke-border-strong' : providerTone(top).line;
   const quiet = drawing?.layers.length === 0;
   const head = drawing && { x: drawing.head.x, y: Math.min(HEIGHT - INSET, Math.max(INSET, drawing.head.y)) };
   const scrubbed = scrub === undefined ? undefined : drawing?.tops[scrub];

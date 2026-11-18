@@ -17,7 +17,8 @@ passing through. One static binary with the UI built in.
   resets, its saved resets, and any blocks omp has put on it.
 - **Traffic** (needs the broker): requests, tokens and cost at API prices, by
   provider: live on the accounts page, the last ten minutes in five-second
-  steps, and on its own page by the minute and by the hour.
+  steps (tokens out or in, cache share, cost an hour, requests a minute), and
+  on its own page by the minute and by the hour.
 - **Pause** (needs the broker): move omp's traffic off an account and back.
 
 <picture>
