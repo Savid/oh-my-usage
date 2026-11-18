@@ -57,7 +57,7 @@ describe('AccountRow', () => {
   it('gives the chart the rest of the row on a wide screen, clear of the words', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('lg:left-208');
+    expect(screen.getByTestId('history')).toHaveClass('lg:left-204');
     // Nothing written is drawn over it: the words end where it starts.
     expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-64');
   });
