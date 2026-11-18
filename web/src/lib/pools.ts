@@ -1,5 +1,5 @@
 import type { Account } from '@/api';
-import { severityOf, shortLimitLabel, type LimitSeverity } from './accounts';
+import { budgetWindow, severityOf, shortLimitLabel, type LimitSeverity } from './accounts';
 
 /** One usage window added up over every account of a provider that reports it. */
 export interface Pool {
@@ -7,6 +7,8 @@ export interface Pool {
   limitId: string;
   /** The window's short name, as the cells show it. */
   label: string;
+  /** How long the window lasts, in seconds, when the provider said. */
+  windowSeconds?: number;
   /** How many accounts report the window. */
   seats: number;
   /** How much is used, in accounts' worth: from 0 to `seats`. An account over its limit counts as one. */
@@ -21,23 +23,20 @@ export interface Pool {
 }
 
 /**
- * One pool per provider, for the top of the page: the window whose next reset
- * is furthest away, which is the budget the provider's accounts live on. Ties
- * go to the first listed.
+ * One pool per provider, for the top of the page: the budget its accounts
+ * live on (`budgetWindow`), by window length and then by next reset.
+ * Providers keep the order they first appear in.
  */
 export function headlinePools(pools: readonly Pool[]): Pool[] {
-  const headlines: Pool[] = [];
-  for (const pool of pools) {
-    const index = headlines.findIndex(candidate => candidate.provider === pool.provider);
-    const current = headlines[index];
-    if (!current) headlines.push(pool);
-    else if (resetTime(pool) > resetTime(current)) headlines[index] = pool;
-  }
-  return headlines;
-}
-
-function resetTime(pool: Pool): number {
-  return pool.nextReset ? Date.parse(pool.nextReset) : -Infinity;
+  const providers = [...new Set(pools.map(pool => pool.provider))];
+  return providers.flatMap(provider => {
+    const headline = budgetWindow(
+      pools.filter(pool => pool.provider === provider),
+      pool => pool.windowSeconds,
+      pool => (pool.nextReset ? Date.parse(pool.nextReset) : undefined)
+    );
+    return headline ? [headline] : [];
+  });
 }
 
 /**
@@ -61,6 +60,7 @@ export function poolLimits(accounts: readonly Account[], now: number): Pool[] {
           provider: account.provider,
           limitId: limit.id,
           label: shortLimitLabel(limit),
+          windowSeconds: limit.windowSeconds,
           seats: 0,
           used: 0,
           usedFraction: 0,

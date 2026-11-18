@@ -95,4 +95,26 @@ describe('headlinePools', () => {
     ]);
     expect(headlinePools([])).toEqual([]);
   });
+
+  it('never heads a provider with a shorter window, nor with a model window a second later', () => {
+    const pools = poolLimits(
+      [
+        account('a', 'anthropic', [
+          // The five hours reset after the week does, and are still not the budget.
+          { id: '5h', label: 'Claude 5 Hour', usedFraction: 0.3, resetsAt: at(3 * HOUR), windowSeconds: 18_000 },
+          { id: '7d', label: 'Claude 7 Day', usedFraction: 0.99, resetsAt: at(HOUR - 1000), windowSeconds: 604_800 },
+          {
+            id: '7d:fable',
+            label: 'Claude 7 Day (Fable)',
+            usedFraction: 0.02,
+            resetsAt: at(HOUR),
+            windowSeconds: 604_800,
+          },
+        ]),
+      ],
+      NOW_MS
+    );
+
+    expect(headlinePools(pools).map(pool => pool.limitId)).toEqual(['7d']);
+  });
 });

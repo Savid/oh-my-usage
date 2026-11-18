@@ -158,20 +158,38 @@ export function shortLimitLabel(limit: Limit): string {
 const SAME_RESET_MS = 3_600_000;
 
 /**
+ * Of some usage windows, the budget they live on: a week, not five hours. A
+ * window known to be shorter than another is never it, however close its
+ * reset falls. Of the rest, the one whose reset is furthest away, where
+ * resets within an hour of it count as the same window and the first listed
+ * of those wins: providers list the whole account's limit before a model's
+ * own ("7 Day" before "7 Day (Fable)"). A window of unknown length, such as
+ * a monthly limit, competes on its reset. Without any reset time, the first.
+ */
+export function budgetWindow<T>(
+  windows: readonly T[],
+  lengthOf: (window: T) => number | undefined,
+  resetOf: (window: T) => number | undefined
+): T | undefined {
+  const longest = Math.max(0, ...windows.map(window => lengthOf(window) ?? 0));
+  const candidates = windows.filter(window => (lengthOf(window) ?? longest) >= longest);
+  const reset = (window: T): number => resetOf(window) ?? -Infinity;
+  const furthest = Math.max(...candidates.map(reset));
+  if (furthest === -Infinity) return candidates[0];
+
+  return candidates.find(window => reset(window) >= furthest - SAME_RESET_MS);
+}
+
+/**
  * The window an account's row is drawn for: of those that report usage, the
- * one whose reset is furthest away, which is the budget the account lives on
- * (a week, not five hours). Windows that reset within an hour of it count as
- * the same week, and of those the first listed wins: providers list the whole
- * account's limit before a model's own ("7 Day" before "7 Day (Fable)").
- * Without any reset time, the first that reports usage.
+ * budget the account lives on (`budgetWindow`).
  */
 export function primaryLimit(limits: readonly Limit[]): Limit | undefined {
-  const reported = limits.filter(limit => limit.usedFraction !== undefined);
-  const resetOf = (limit: Limit): number => (limit.resetsAt ? Date.parse(limit.resetsAt) : -Infinity);
-  const furthest = Math.max(...reported.map(resetOf));
-  if (furthest === -Infinity) return reported[0];
-
-  return reported.find(limit => resetOf(limit) >= furthest - SAME_RESET_MS);
+  return budgetWindow(
+    limits.filter(limit => limit.usedFraction !== undefined),
+    limit => limit.windowSeconds,
+    limit => (limit.resetsAt ? Date.parse(limit.resetsAt) : undefined)
+  );
 }
 
 /** How close a limit is to stopping the account. */

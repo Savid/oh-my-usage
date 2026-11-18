@@ -207,7 +207,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       >
         <div className="flex min-w-0 items-center gap-4 lg:flex-1">
           {primary && used !== undefined ? (
-            <p className="w-24 shrink-0 text-right">
+            <p className="w-24 shrink-0 lg:text-right">
               <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
                 {marked && (
                   <span aria-hidden="true" className="mr-1 text-body">
@@ -226,7 +226,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               </span>
             </p>
           ) : (
-            <p className="w-24 shrink-0 text-right text-micro text-muted">no usage reported</p>
+            <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
           )}
 
           <div className="flex min-w-0 flex-1 flex-col">
