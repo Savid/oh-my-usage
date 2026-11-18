@@ -107,10 +107,12 @@ function resetIn(limit: Limit, now: number): string | undefined {
 }
 
 /**
- * Another of the account's windows as a small meter: its name, how much of
- * it is used and when it resets, over a bar in the provider's colour.
+ * Another of the account's windows on one short line: its name, how much of
+ * it is used, a bar of that in the provider's colour, and when it resets.
+ * Beside the name on a wide screen the lines stack, so their parts fall in
+ * columns.
  */
-function WindowMeter({
+function WindowLine({
   limit,
   tone,
   dry,
@@ -127,13 +129,15 @@ function WindowMeter({
   const reset = resetIn(limit, now);
 
   return (
-    <li className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-3 py-2 lg:w-32 lg:flex-none">
-      <span className="truncate text-micro tracking-caps text-muted uppercase">{shortLimitLabel(limit)}</span>
+    <li className="flex items-center gap-2 text-micro whitespace-nowrap">
+      <span className="tracking-caps text-muted uppercase lg:w-24 lg:truncate">{shortLimitLabel(limit)}</span>
       {share === undefined ? (
-        <span className="text-micro text-muted">not reported</span>
+        <span className="text-muted">not reported</span>
       ) : (
-        <span className="flex items-baseline justify-between gap-2">
-          <span className={clsx('text-caption font-semibold whitespace-nowrap tabular-nums', figureClasses[severity])}>
+        <>
+          <span
+            className={clsx('text-caption font-semibold tabular-nums lg:w-12 lg:text-right', figureClasses[severity])}
+          >
             {dry ? (
               <span className="text-danger">
                 <span aria-hidden="true">▲ </span>
@@ -145,16 +149,15 @@ function WindowMeter({
             {formatPercent(share)}
             {marked && <span className="sr-only">{marked.word}</span>}
           </span>
-          {reset && <span className="text-micro whitespace-nowrap text-muted tabular-nums">in {reset}</span>}
-        </span>
+          <span className="hidden h-1 w-10 overflow-hidden rounded-sm lg:block">
+            <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
+              <rect width="100" height="1" className={tone.track} />
+              <rect width={Math.min(1, share) * 100} height="1" className={tone.fill} />
+            </svg>
+          </span>
+          {reset && <span className="text-muted tabular-nums">in {reset}</span>}
+        </>
       )}
-      {/* The filled part is what is used; the figure above carries the state. */}
-      <span className="block h-1 overflow-hidden rounded-sm">
-        <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
-          <rect width="100" height="1" className={tone.track} />
-          {share !== undefined && <rect width={Math.min(1, share) * 100} height="1" className={tone.fill} />}
-        </svg>
-      </span>
     </li>
   );
 }
@@ -195,14 +198,14 @@ function PauseSwitch({
 }
 
 /**
- * One account as a band across the page, drawn over a chart of what it had
- * used, in its provider's colour. Trouble ahead (a window that runs dry
- * before it resets at its pace) is the only forecast it shows. It leads with
- * the big figure for its main usage window (the one that resets last), then
- * who it is and when that window resets. It ends in one panel: its other
- * windows as small meters, then its state, with a switch for taking traffic
- * when a broker is configured. Everything written sits on solid ground: the
- * chart fades in beside the name and runs behind the panel.
+ * One account as a band across the page, in three parts that never overlap.
+ * On solid ground at the left: the big figure for its main usage window (the
+ * one that resets last), who it is, when that window resets, and its other
+ * windows as short lines. In the open middle: a chart of what it had used,
+ * in its provider's colour, ending at now. At the end, with a broker: a
+ * switch for whether it takes traffic. Trouble ahead (a window that runs dry
+ * before it resets at its pace) is the only forecast it shows, and its state
+ * shows only when it is not taking work.
  */
 export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
@@ -233,6 +236,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
   const others = account.limits.filter(limit => limit !== primary);
+  const switchable = controls && account.pausable;
   // Where each window is heading at its pace: only trouble is called out.
   const view = viewAccount(account, trends, now);
   const runsDry = new Set(view.limits.filter(entry => entry.verdict === 'dry').map(entry => entry.limit.id));
@@ -257,138 +261,159 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       {drawn && (
         <>
           {/* A glow under a line, deepest under the line and fading towards the foot of
-              the row. Its stops take the text colour, which is how a gradient wears a token. */}
-          <svg
+              the row. Its stops take the text colour, which is how a gradient wears a token.
+              On a wide screen it has the middle of the row to itself, clear of the words
+              and the switch; on a narrow one it runs behind the row and shows at its end. */}
+          <div
+            data-testid="history"
             aria-hidden="true"
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            preserveAspectRatio="none"
-            className="absolute inset-0 size-full"
+            className={clsx('absolute inset-0 lg:left-204', controls && 'lg:right-19')}
           >
-            <defs>
-              <linearGradient id={glowId} x1="0" y1="0" x2="0" y2="1" className={tone.glow}>
-                <stop offset="0" stopColor="currentColor" />
-                <stop offset="1" stopColor="currentColor" stopOpacity="0.2" />
-              </linearGradient>
-            </defs>
-            <path d={drawn.area} fill={`url(#${glowId})`} />
-            {drawn.line && (
-              <path
-                d={drawn.line}
-                fill="none"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-                className={tone.line}
-              />
-            )}
-          </svg>
-          {/* Solid ground under the figure and the name; the chart shows through as it fades. */}
+            <svg
+              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+              preserveAspectRatio="none"
+              className="block size-full overflow-visible"
+            >
+              <defs>
+                <linearGradient id={glowId} x1="0" y1="0" x2="0" y2="1" className={tone.glow}>
+                  <stop offset="0" stopColor="currentColor" />
+                  <stop offset="1" stopColor="currentColor" stopOpacity="0.2" />
+                </linearGradient>
+              </defs>
+              <path d={drawn.area} fill={`url(#${glowId})`} />
+              {drawn.line && (
+                <>
+                  <path
+                    d={drawn.line}
+                    fill="none"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    className={tone.line}
+                  />
+                  {/* Now: a line of no length with round ends, a dot the chart's stretch cannot squash. */}
+                  <line
+                    x1={drawn.end.x}
+                    x2={drawn.end.x}
+                    y1={drawn.end.y}
+                    y2={drawn.end.y}
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    className={clsx('hidden lg:inline', tone.line)}
+                  />
+                </>
+              )}
+            </svg>
+          </div>
+          {/* Solid ground under the words; the chart fades in from it. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-85% to-transparent lg:w-176 lg:via-65%"
+            className="absolute inset-y-0 left-0 w-full bg-linear-to-r from-surface via-surface via-85% to-transparent lg:left-204 lg:w-16 lg:via-0%"
           />
         </>
       )}
 
       <div
         className={clsx(
-          'relative flex flex-col justify-center gap-2 px-4 py-3 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-6',
+          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 lg:items-center lg:gap-x-6',
           drawn ? 'min-h-20' : 'min-h-14'
         )}
       >
-        <div className="flex min-w-0 items-center gap-4 lg:flex-1">
-          {primary && used !== undefined ? (
-            <p className="w-24 shrink-0 lg:text-right">
-              <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
-                {marked && (
-                  <span aria-hidden="true" className="mr-1 text-body">
-                    {marked.mark}
-                  </span>
-                )}
-                {formatPercent(used)}
-              </span>
-              <span
-                className={clsx(
-                  'block text-micro tracking-caps uppercase',
-                  severity === 'normal' ? 'text-muted' : figureClasses[severity]
-                )}
+        {primary && used !== undefined ? (
+          <p className="w-24 shrink-0 lg:text-right">
+            <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
+              {marked && (
+                <span aria-hidden="true" className="mr-1 text-body">
+                  {marked.mark}
+                </span>
+              )}
+              {formatPercent(used)}
+            </span>
+            <span
+              className={clsx(
+                'block text-micro tracking-caps uppercase',
+                severity === 'normal' ? 'text-muted' : figureClasses[severity]
+              )}
+            >
+              used{marked && <span className="sr-only">{marked.word}</span>}
+            </span>
+          </p>
+        ) : (
+          <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none">
+          {/* On a narrow row the switch sits at the end of this line, so only the name gives way to it. */}
+          <div className={clsx('flex items-center gap-2 text-muted', switchable && 'pr-12 lg:pr-0')}>
+            <ProviderIcon provider={account.provider} size="md" />
+            <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
+              <Link
+                to="/accounts/$accountId"
+                params={{ accountId: account.id }}
+                className="underline-offset-4 hover:underline"
               >
-                used{marked && <span className="sr-only">{marked.word}</span>}
+                {accountTitle(account)}
+              </Link>
+            </Heading>
+            {/* Taking work is the normal state and says nothing; anything else is named. */}
+            {stateTone !== 'ok' && (
+              <span className="shrink-0">
+                <StatusBadge tone={stateTone}>{label}</StatusBadge>
               </span>
+            )}
+          </div>
+          {primary && (
+            <p className="truncate text-caption text-muted">
+              {shortLimitLabel(primary)}
+              {reset && (
+                <>
+                  {' · resets in '}
+                  <span className="font-semibold text-foreground tabular-nums">{reset}</span>
+                </>
+              )}
+              {mainDryAt !== undefined ? (
+                <span className="text-danger">
+                  {' · '}
+                  <span aria-hidden="true">▲ </span>runs dry in{' '}
+                  <span className="font-semibold tabular-nums">{formatShort(mainDryAt - now)}</span>
+                </span>
+              ) : view.idle === true ? (
+                ' · idle'
+              ) : (
+                view.burn !== undefined &&
+                view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>
+              )}
             </p>
-          ) : (
-            <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
           )}
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center gap-2 text-muted">
-              <ProviderIcon provider={account.provider} size="md" />
-              <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
-                <Link
-                  to="/accounts/$accountId"
-                  params={{ accountId: account.id }}
-                  className="underline-offset-4 hover:underline"
-                >
-                  {accountTitle(account)}
-                </Link>
-              </Heading>
-            </div>
-            {primary && (
-              <p className="truncate text-caption text-muted">
-                {shortLimitLabel(primary)}
-                {reset && (
-                  <>
-                    {' · resets in '}
-                    <span className="font-semibold text-foreground tabular-nums">{reset}</span>
-                  </>
-                )}
-                {mainDryAt !== undefined ? (
-                  <span className="text-danger">
-                    {' · '}
-                    <span aria-hidden="true">▲ </span>runs dry in{' '}
-                    <span className="font-semibold tabular-nums">{formatShort(mainDryAt - now)}</span>
-                  </span>
-                ) : view.idle === true ? (
-                  ' · idle'
-                ) : (
-                  view.burn !== undefined &&
-                  view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>
-                )}
-              </p>
-            )}
-            {meta && <p className="truncate text-micro text-muted">{meta}</p>}
-          </div>
+          {meta && <p className="truncate text-micro text-muted">{meta}</p>}
         </div>
 
-        {/* The other windows and whether the account takes work, in one panel on solid
-            ground so the chart runs behind it, never through it. */}
-        <div
-          data-testid="dock"
-          className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface lg:shrink-0 lg:flex-row lg:divide-x lg:divide-y-0"
-        >
-          {others.length > 0 && (
-            <ul aria-label="Other windows" className="flex min-w-0 divide-x divide-border">
-              {others.map(limit => (
-                <WindowMeter key={limit.id} limit={limit} tone={tone} dry={runsDry.has(limit.id)} now={now} />
-              ))}
-            </ul>
-          )}
+        {/* A line of their own under a narrow row; a column beside the name on a wide one. */}
+        {others.length > 0 && (
+          <ul
+            aria-label="Other windows"
+            className="order-last flex basis-full flex-wrap gap-x-4 gap-y-1 lg:order-0 lg:w-64 lg:basis-auto lg:flex-col lg:gap-y-0.5"
+          >
+            {others.map(limit => (
+              <WindowLine key={limit.id} limit={limit} tone={tone} dry={runsDry.has(limit.id)} now={now} />
+            ))}
+          </ul>
+        )}
 
-          <div className="flex items-center justify-between gap-3 px-3 py-2 lg:w-32 lg:flex-col lg:items-start lg:justify-center lg:gap-1.5">
-            <StatusBadge tone={stateTone}>{label}</StatusBadge>
-            {controls && account.pausable && (
-              <PauseSwitch
-                paused={paused}
-                pending={pause.isPending}
-                onToggle={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !paused } })}
-              />
-            )}
+        {switchable && (
+          <div className="absolute top-3 right-4 flex lg:static lg:ml-auto">
+            <PauseSwitch
+              paused={paused}
+              pending={pause.isPending}
+              onToggle={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !paused } })}
+            />
           </div>
-        </div>
+        )}
 
         {pause.isError && (
           // A line of its own under the row, on solid ground.
-          <p role="alert" className="text-caption text-danger lg:basis-full lg:text-right">
+          <p role="alert" className="order-last basis-full text-caption text-danger lg:text-right">
             <span className="rounded-sm bg-surface px-1">
               {account.paused ? 'Could not resume the account' : 'Could not pause the account'}:{' '}
               {problemDetail(pause.error, 'the server did not answer')}
