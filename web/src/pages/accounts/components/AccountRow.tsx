@@ -273,7 +273,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
               narrow one it runs behind the whole row, the words over it. */}
-          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-204">
+          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-208">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -314,7 +314,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {/* The chart fades in from the ground at its start. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-204"
+            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-208"
           />
         </>
       )}
@@ -322,13 +322,16 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       <div
         className={clsx(
           // On a narrow row the words sit over the chart, haloed in the ground so its line never strikes them.
-          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6',
-          drawn ? 'min-h-20' : 'min-h-14'
+          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6 lg:py-2',
+          // Two lines high on a wide screen; a narrow row keeps room for its chart.
+          drawn ? 'min-h-20 lg:min-h-0' : 'min-h-14 lg:min-h-0'
         )}
       >
         {primary && used !== undefined ? (
-          <p className="w-24 shrink-0 lg:text-right">
-            <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
+          <p className="w-24 shrink-0 lg:flex lg:w-28 lg:items-baseline lg:justify-end lg:gap-1.5">
+            <span
+              className={clsx('block text-display font-semibold tabular-nums lg:text-heading', figureClasses[severity])}
+            >
               {marked && (
                 <span aria-hidden="true" className="mr-1 text-body">
                   {marked.mark}
@@ -346,12 +349,19 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
             </span>
           </p>
         ) : (
-          <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
+          <p className="w-24 shrink-0 text-micro text-muted lg:w-28 lg:text-right">no usage reported</p>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none">
+        {/* Three lines on a narrow screen. On a wide one, two: the name with what follows it
+            in small type, then the main window. */}
+        <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-3">
           {/* On a narrow row the button sits at the end of this line, so only the name gives way to it. */}
-          <div className={clsx('flex items-center gap-2 text-muted', pausable && 'pr-8 lg:pr-0')}>
+          <div
+            className={clsx(
+              'flex min-w-0 items-center gap-2 text-muted lg:max-w-full lg:shrink-0',
+              pausable && 'pr-8 lg:pr-0'
+            )}
+          >
             <ProviderIcon provider={account.provider} size="md" />
             <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
               <Link
@@ -370,7 +380,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
             )}
           </div>
           {primary && (
-            <p className="truncate text-caption text-muted">
+            <p className="truncate text-caption text-muted lg:order-2 lg:basis-full">
               {shortLimitLabel(primary)}
               {reset && (
                 <>
@@ -392,7 +402,11 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               )}
             </p>
           )}
-          {meta && <p className="truncate text-micro text-muted">{meta}</p>}
+          {meta && (
+            <p title={meta} className="truncate text-micro text-muted lg:order-1 lg:min-w-0 lg:flex-1">
+              {meta}
+            </p>
+          )}
         </div>
 
         {/* A line of their own under a narrow row; a column beside the name on a wide one. */}
