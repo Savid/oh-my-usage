@@ -39,7 +39,8 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('article', { name: 'one@example.com' })).toBeInTheDocument();
-    await expect(canvas.getByText('active')).toHaveAttribute('data-tone', 'ok');
+    // Taking work is the normal state and says nothing; the switch shows it.
+    await expect(canvas.queryByText('active')).not.toBeInTheDocument();
     await expect(canvas.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
   },
 };

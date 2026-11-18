@@ -33,11 +33,12 @@ describe('AccountRow', () => {
     expect(row).toHaveTextContent('7 Day · resets in 21h · +10.7%/day');
     expect(row).toHaveAttribute('data-severity', 'normal');
     expect(row).toHaveAttribute('data-chart', 'history');
-    expect(within(row).getByText('active')).toHaveAttribute('data-tone', 'ok');
+    // Taking work is the normal state and says nothing.
+    expect(within(row).queryByText('active')).not.toBeInTheDocument();
   });
 
-  it('lists the other windows as small meters, in one panel with the state', () => {
-    const { container } = render(<AccountRow {...base} account={seatFixture} />);
+  it('lists the other windows as short lines beside the name', () => {
+    render(<AccountRow {...base} account={seatFixture} />);
 
     const others = within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem');
     // The Fable window runs dry before it resets at its pace, and is marked for it.
@@ -47,22 +48,28 @@ describe('AccountRow', () => {
     ]);
     // The Fable window is nearly spent, and says so in more than position.
     expect(within(others[1]!).getByText(/92%/)).toHaveClass('text-warn');
-    // Its bar fills to what is used, in the provider's colour; one not reported stays empty.
+    // Its bar fills to what is used, in the provider's colour; one not reported has none.
     expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveAttribute('width', '92');
     expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveClass('fill-anthropic');
-    expect(others[0]!.querySelectorAll('svg rect')).toHaveLength(1);
-    // The windows and the state share one panel on solid ground, so the chart never runs through them.
-    const dock = screen.getByTestId('dock');
-    expect(dock).toHaveClass('bg-surface');
-    expect(dock).toContainElement(screen.getByText('active'));
-    expect(container.querySelectorAll('[data-testid="dock"] ul')).toHaveLength(1);
+    expect(others[0]!.querySelector('svg')).toBeNull();
   });
 
-  it('leaves the panel to the state when there are no other windows', () => {
+  it('gives the chart the open middle of the row on a wide screen, clear of the words and the switch', () => {
+    const { rerender } = render(<AccountRow {...base} account={seatFixture} />);
+
+    expect(screen.getByTestId('history')).toHaveClass('lg:left-204', 'lg:right-19');
+    // Nothing written is drawn over it: the words end where it starts.
+    expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-64');
+
+    rerender(<AccountRow {...base} account={seatFixture} controls={false} />);
+    // Without a switch it runs to the edge.
+    expect(screen.getByTestId('history')).not.toHaveClass('lg:right-19');
+  });
+
+  it('leaves out the list when there are no other windows', () => {
     render(<AccountRow {...base} account={strayFixture} />);
 
     expect(screen.queryByRole('list', { name: 'Other windows' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('dock')).toHaveTextContent('active');
   });
 
   it('marks a main window that is nearly or wholly spent, in more than colour', () => {
@@ -107,7 +114,7 @@ describe('AccountRow', () => {
     );
 
     // Two hours of history in a seven-day period: the line still runs edge to edge.
-    expect(container.querySelector('article > svg path:nth-of-type(2)')).toHaveAttribute(
+    expect(container.querySelector('[data-testid="history"] path:nth-of-type(2)')).toHaveAttribute(
       'd',
       'M0.00 40.00 L50.00 30.25 L100.00 20.50'
     );
@@ -118,7 +125,7 @@ describe('AccountRow', () => {
 
     expect(screen.getByRole('article')).toHaveAttribute('data-chart', 'level');
     // The row's own chart, not the provider's mark: a glow and no line.
-    expect(container.querySelectorAll('article > svg path')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-testid="history"] path')).toHaveLength(1);
   });
 
   it('marks a paused account and offers to resume it', () => {
@@ -143,8 +150,9 @@ describe('AccountRow', () => {
   it('offers no pause without a broker or without a credential', () => {
     const { rerender } = render(<AccountRow {...base} account={seatFixture} controls={false} />);
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    // The state still shows.
-    expect(screen.getByText('active')).toBeInTheDocument();
+    // A paused account still says so.
+    rerender(<AccountRow {...base} account={pausedSeatFixture} controls={false} />);
+    expect(screen.getByText('paused')).toBeInTheDocument();
 
     rerender(<AccountRow {...base} account={strayFixture} />);
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
@@ -218,7 +226,7 @@ describe('AccountRow', () => {
     // Refused, it moves back.
     expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeEnabled();
     expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
-    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.queryByText('paused')).not.toBeInTheDocument();
   });
 });
 
