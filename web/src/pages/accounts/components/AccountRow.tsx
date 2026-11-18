@@ -7,8 +7,15 @@ import { listAccountsQueryKey, setAccountPausedMutation } from '@/api/@tanstack/
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
-import { accountTitle, limitSeverity, primaryLimit, shortLimitLabel, type LimitSeverity } from '@/lib/accounts';
-import { viewAccount } from '@/lib/fleet';
+import {
+  accountTitle,
+  limitSeverity,
+  limitTag,
+  primaryLimit,
+  shortLimitLabel,
+  type LimitSeverity,
+} from '@/lib/accounts';
+import { viewAccount, type LimitView } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
 import { problemDetail } from '@/lib/problem';
 import { providerTone, type ProviderTone } from '@/lib/providerTones';
@@ -107,56 +114,93 @@ function resetIn(limit: Limit, now: number): string | undefined {
 }
 
 /**
- * Another of the account's windows on one short line: its name, how much of
- * it is used, a bar of that in the provider's colour, and when it resets.
- * Beside the name on a wide screen the lines stack, so their parts fall in
- * columns.
+ * Another of the account's windows as a small ring, read like a watch's: the
+ * outer arc is how much of it is used, in the provider's colour; the inner,
+ * how much of its time has passed. An outer arc running ahead of the inner
+ * one is a window filling faster than it resets. Its share sits inside and a
+ * short tag under it; a mark at its shoulder calls out trouble. On a narrow
+ * screen the ring shrinks to a glyph on a line, with its tag, share and reset
+ * beside it. Assistive technology hears it as a sentence.
  */
-function WindowLine({
-  limit,
-  tone,
-  dry,
-  now,
-}: {
-  limit: Limit;
-  tone: ProviderTone;
-  dry: boolean;
-  now: number;
-}): JSX.Element {
+function WindowRing({ entry, tone, now }: { entry: LimitView; tone: ProviderTone; now: number }): JSX.Element {
+  const { limit, forecast: ahead } = entry;
   const share = limit.usedFraction;
   const severity = limitSeverity(limit);
+  const dry = entry.verdict === 'dry';
   const marked = severityMarks[severity];
+  const mark = dry ? '▲' : marked?.mark;
   const reset = resetIn(limit, now);
+  const elapsed = ahead.elapsed;
+
+  const name = shortLimitLabel(limit);
+  const said =
+    share === undefined
+      ? `${name}: not reported`
+      : `${name}: ${formatPercent(share)} used${marked?.word ?? ''}${dry ? ', runs dry before it resets' : ''}${reset ? `, resets in ${reset}` : ''}`;
 
   return (
-    <li className="flex items-center gap-2 text-micro whitespace-nowrap">
-      <span className="tracking-caps text-muted uppercase lg:w-24 lg:truncate">{shortLimitLabel(limit)}</span>
-      {share === undefined ? (
-        <span className="text-muted">not reported</span>
-      ) : (
-        <>
-          <span
-            className={clsx('text-caption font-semibold tabular-nums lg:w-12 lg:text-right', figureClasses[severity])}
-          >
-            {dry ? (
-              <span className="text-danger">
-                <span aria-hidden="true">▲ </span>
-                <span className="sr-only">runs dry before it resets, </span>
-              </span>
-            ) : (
-              marked && <span aria-hidden="true">{marked.mark} </span>
-            )}
-            {formatPercent(share)}
-            {marked && <span className="sr-only">{marked.word}</span>}
-          </span>
-          <span className="hidden h-1 w-10 overflow-hidden rounded-sm lg:block">
-            <svg aria-hidden="true" viewBox="0 0 100 1" preserveAspectRatio="none" className="block size-full">
-              <rect width="100" height="1" className={tone.track} />
-              <rect width={Math.min(1, share) * 100} height="1" className={tone.fill} />
-            </svg>
-          </span>
-          {reset && <span className="text-muted tabular-nums">in {reset}</span>}
-        </>
+    <li
+      title={elapsed === undefined ? said : `${said}; ${formatPercent(elapsed)} of its time gone`}
+      className="relative flex items-center gap-1.5 text-micro whitespace-nowrap lg:w-16 lg:flex-col lg:gap-0"
+    >
+      <span className="sr-only">{said}</span>
+      <svg aria-hidden="true" viewBox="0 0 40 40" className="size-5 shrink-0 lg:size-10">
+        <g transform="rotate(-90 20 20)" fill="none" strokeLinecap="round">
+          {/* The track takes the provider's paler step as its text colour. */}
+          <circle cx="20" cy="20" r="17" strokeWidth="3" stroke="currentColor" className={tone.glow} />
+          {share !== undefined && share > 0 && (
+            <circle
+              cx="20"
+              cy="20"
+              r="17"
+              strokeWidth="3"
+              pathLength={100}
+              strokeDasharray={`${Math.min(1, share) * 100} 100`}
+              className={tone.line}
+            />
+          )}
+          {elapsed !== undefined && (
+            <>
+              <circle cx="20" cy="20" r="13" strokeWidth="1.5" className="stroke-border" />
+              {elapsed > 0 && (
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="13"
+                  strokeWidth="1.5"
+                  pathLength={100}
+                  strokeDasharray={`${elapsed * 100} 100`}
+                  className="stroke-muted"
+                />
+              )}
+            </>
+          )}
+        </g>
+      </svg>
+      <span aria-hidden="true" className="tracking-caps text-muted uppercase lg:max-w-full lg:truncate">
+        {limitTag(limit)}
+      </span>
+      {mark && (
+        <span
+          aria-hidden="true"
+          className={clsx('lg:absolute lg:top-0 lg:right-1', dry ? 'text-danger' : figureClasses[severity])}
+        >
+          {mark}
+        </span>
+      )}
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'font-semibold tabular-nums lg:absolute lg:inset-x-0 lg:top-0 lg:flex lg:h-10 lg:items-center lg:justify-center',
+          share === undefined ? 'text-muted' : figureClasses[severity]
+        )}
+      >
+        {share === undefined ? '–' : formatPercent(share)}
+      </span>
+      {reset && (
+        <span aria-hidden="true" className="text-muted tabular-nums lg:hidden">
+          in {reset}
+        </span>
       )}
     </li>
   );
@@ -244,11 +288,10 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const severity = primary ? limitSeverity(primary) : 'normal';
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
-  const others = account.limits.filter(limit => limit !== primary);
   const pausable = controls && account.pausable;
   // Where each window is heading at its pace: only trouble is called out.
   const view = viewAccount(account, trends, now);
-  const runsDry = new Set(view.limits.filter(entry => entry.verdict === 'dry').map(entry => entry.limit.id));
+  const others = view.limits.filter(entry => entry.limit !== primary);
   const mainDryAt = primary ? view.limits.find(entry => entry.limit === primary)?.forecast.spentAt : undefined;
   const drawn =
     primary && used !== undefined
@@ -273,7 +316,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
               narrow one it runs behind the whole row, the words over it. */}
-          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-208">
+          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-174">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -314,7 +357,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
           {/* The chart fades in from the ground at its start. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-208"
+            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-174"
           />
         </>
       )}
@@ -322,16 +365,13 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
       <div
         className={clsx(
           // On a narrow row the words sit over the chart, haloed in the ground so its line never strikes them.
-          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6 lg:py-2',
-          // Two lines high on a wide screen; a narrow row keeps room for its chart.
-          drawn ? 'min-h-20 lg:min-h-0' : 'min-h-14 lg:min-h-0'
+          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6',
+          drawn ? 'min-h-20' : 'min-h-14'
         )}
       >
         {primary && used !== undefined ? (
-          <p className="w-24 shrink-0 lg:flex lg:w-28 lg:items-baseline lg:justify-end lg:gap-1.5">
-            <span
-              className={clsx('block text-display font-semibold tabular-nums lg:text-heading', figureClasses[severity])}
-            >
+          <p className="w-24 shrink-0 lg:text-right">
+            <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
               {marked && (
                 <span aria-hidden="true" className="mr-1 text-body">
                   {marked.mark}
@@ -349,19 +389,12 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
             </span>
           </p>
         ) : (
-          <p className="w-24 shrink-0 text-micro text-muted lg:w-28 lg:text-right">no usage reported</p>
+          <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
         )}
 
-        {/* Three lines on a narrow screen. On a wide one, two: the name with what follows it
-            in small type, then the main window. */}
-        <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-3">
+        <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none">
           {/* On a narrow row the button sits at the end of this line, so only the name gives way to it. */}
-          <div
-            className={clsx(
-              'flex min-w-0 items-center gap-2 text-muted lg:max-w-full lg:shrink-0',
-              pausable && 'pr-8 lg:pr-0'
-            )}
-          >
+          <div className={clsx('flex items-center gap-2 text-muted', pausable && 'pr-8 lg:pr-0')}>
             <ProviderIcon provider={account.provider} size="md" />
             <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
               <Link
@@ -380,7 +413,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
             )}
           </div>
           {primary && (
-            <p className="truncate text-caption text-muted lg:order-2 lg:basis-full">
+            <p className="truncate text-caption text-muted">
               {shortLimitLabel(primary)}
               {reset && (
                 <>
@@ -402,21 +435,17 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               )}
             </p>
           )}
-          {meta && (
-            <p title={meta} className="truncate text-micro text-muted lg:order-1 lg:min-w-0 lg:flex-1">
-              {meta}
-            </p>
-          )}
+          {meta && <p className="truncate text-micro text-muted">{meta}</p>}
         </div>
 
-        {/* A line of their own under a narrow row; a column beside the name on a wide one. */}
+        {/* A line of their own under a narrow row; rings side by side beside the name on a wide one. */}
         {others.length > 0 && (
           <ul
             aria-label="Other windows"
-            className="order-last flex basis-full flex-wrap gap-x-4 gap-y-1 lg:order-0 lg:w-64 lg:basis-auto lg:flex-col lg:gap-y-0.5"
+            className="order-last flex basis-full flex-wrap gap-x-4 gap-y-1 lg:order-0 lg:w-34 lg:basis-auto lg:gap-2"
           >
-            {others.map(limit => (
-              <WindowLine key={limit.id} limit={limit} tone={tone} dry={runsDry.has(limit.id)} now={now} />
+            {others.map(entry => (
+              <WindowRing key={entry.limit.id} entry={entry} tone={tone} now={now} />
             ))}
           </ul>
         )}
