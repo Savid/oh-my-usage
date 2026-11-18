@@ -8,7 +8,7 @@ passing through. One static binary with the UI built in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
-  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a band with a total for each provider beside the gateway's live traffic, and a band for each account drawn over its last seven days" width="800" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a band with a total for each provider beside the gateway's live traffic, and a band for each account drawn over its last seven days, ending in a panel of its other windows, its state and a switch for taking traffic" width="800" />
 </picture>
 
 - **Accounts**: every account the gateway reports, with each usage window,
@@ -20,7 +20,8 @@ passing through. One static binary with the UI built in.
   steps (tokens out or in, cache share, cost an hour, requests a minute); the
   traffic on the accounts page opens its own page, where the same switch
   redraws the last hour by minute and the week by hour.
-- **Pause** (needs the broker): move omp's traffic off an account and back.
+- **Pause** (needs the broker): a switch on each account's row moves omp's
+  traffic off it and back.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/traffic-dark.png" />

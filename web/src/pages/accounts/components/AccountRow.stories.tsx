@@ -40,7 +40,7 @@ export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('article', { name: 'one@example.com' })).toBeInTheDocument();
     await expect(canvas.getByText('active')).toHaveAttribute('data-tone', 'ok');
-    await expect(canvas.getByRole('button', { name: 'Pause' })).toBeEnabled();
+    await expect(canvas.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
   },
 };
 
@@ -48,7 +48,7 @@ export const Paused: Story = {
   args: { account: pausedSeatFixture },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('paused')).toHaveAttribute('data-tone', 'warn');
-    await expect(canvas.getByRole('button', { name: 'Resume' })).toBeEnabled();
+    await expect(canvas.getByRole('switch', { name: 'Take traffic' })).not.toBeChecked();
   },
 };
 
@@ -62,7 +62,7 @@ export const Blocked: Story = {
 export const WithoutControls: Story = {
   args: { controls: false },
   play: async ({ canvas }) => {
-    await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
   },
 };
 
@@ -70,7 +70,7 @@ export const NoBrokerCredential: Story = {
   args: { account: strayFixture },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('pro · 1 reset')).toBeInTheDocument();
-    await expect(canvas.queryByRole('button')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
   },
 };
 
@@ -112,22 +112,26 @@ export const LongIdentifiers: Story = {
     },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('button', { name: 'Pause' })).toBeVisible();
+    await expect(canvas.getByRole('switch', { name: 'Take traffic' })).toBeVisible();
   },
 };
 
 export const PausingInteraction: Story = {
   parameters: { msw: { handlers: [pauseHandlers.pending] } },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Pause' }));
-    await expect(await canvas.findByRole('button', { name: 'Pause' })).toBeDisabled();
+    await userEvent.click(canvas.getByRole('switch', { name: 'Take traffic' }));
+    // The switch moves at once, and holds still until the broker answers.
+    const control = await canvas.findByRole('switch', { name: 'Take traffic' });
+    await expect(control).toBeDisabled();
+    await expect(control).not.toBeChecked();
   },
 };
 
 export const PauseFailedInteraction: Story = {
   parameters: { msw: { handlers: [pauseHandlers.refused] } },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Pause' }));
+    await userEvent.click(canvas.getByRole('switch', { name: 'Take traffic' }));
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Could not pause the account');
+    await expect(canvas.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
   },
 };
