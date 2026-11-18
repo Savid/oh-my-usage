@@ -381,6 +381,49 @@ const minutes: TrafficSeries = {
   steps: 60,
   providers: RATES.map((rate, index) => series(rate, minuteStart, MINUTE, 60, 201 + index)),
 };
+// The last ten minutes in five-second steps, up to the reading six seconds
+// ago: each provider at the pace of its last few minutes, in swells and bursts.
+const LIVE_STEP = 5000;
+const LIVE_STEPS = 120;
+const liveStart = Math.floor((NOW - 6000) / LIVE_STEP) * LIVE_STEP - (LIVE_STEPS - 1) * LIVE_STEP;
+
+function liveSeries(provider: TrafficSeries['providers'][number], seed: number): TrafficSeries['providers'][number] {
+  const next = random(seed);
+  const recent = provider.outputTokens.slice(-10);
+  const perStep = recent.reduce((sum, tokens) => sum + tokens, 0) / recent.length / (MINUTE / LIVE_STEP);
+  const outputTokens = Array.from({ length: LIVE_STEPS }, (_, index) => {
+    const swell = 0.7 + 0.3 * Math.sin((index + seed) / 8);
+    const burst = next() > 0.9 ? 2.5 : 1;
+    return Math.round(perStep * swell * burst * (0.5 + next()));
+  });
+  const share = (values: number[]): number[] => {
+    const per =
+      values.slice(-10).reduce((sum, value) => sum + value, 0) /
+      Math.max(
+        1,
+        recent.reduce((a, b) => a + b, 0)
+      );
+    return outputTokens.map(tokens => Math.round(tokens * per));
+  };
+  return {
+    provider: provider.provider,
+    outputTokens,
+    requests: share(provider.requests),
+    inputTokens: share(provider.inputTokens),
+    cacheReadTokens: share(provider.cacheReadTokens),
+    cacheWriteTokens: share(provider.cacheWriteTokens),
+    costUsd: outputTokens.map(tokens => tokens * 0.0001),
+  };
+}
+
+const live: TrafficSeries = {
+  start: new Date(liveStart).toISOString(),
+  stepSeconds: 5,
+  steps: LIVE_STEPS,
+  providers: minutes.providers
+    .filter(provider => provider.outputTokens.slice(-10).some(tokens => tokens > 0))
+    .map((provider, index) => liveSeries(provider, 301 + index)),
+};
 
 /** A provider's counts over its series' last `steps` steps. */
 function total(provider: TrafficSeries['providers'][number], steps: number): TrafficCounts {
@@ -437,6 +480,7 @@ const showcaseTraffic: Traffic = {
   // Measured for the last three days; the days before are estimated.
   measuredSince: at(-3 * DAY),
   windows: [trafficWindow('hour', HOUR, minutes, 60), trafficWindow('day', DAY, hours, 24), week],
+  live,
   minutes,
   hours,
   clients: week.providers.flatMap(({ provider, counts }) => [

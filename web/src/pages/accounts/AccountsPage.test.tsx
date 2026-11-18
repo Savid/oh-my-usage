@@ -27,14 +27,14 @@ describe('AccountsPage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Accounts' })).toBeInTheDocument();
 
-    const totals = within(await screen.findByRole('region', { name: 'Totals' }));
+    const totals = within(await screen.findByRole('list', { name: 'Totals' }));
     // Two Claude seats with 76% and 19% of the week used; one Codex seat with 66%.
-    expect(totals.getByRole('article', { name: 'Anthropic 7 Day' })).toHaveTextContent(
-      'Anthropic7 Day · 2 seats48%usednext reset 21h'
+    expect(totals.getByRole('listitem', { name: 'Anthropic 7 Day' })).toHaveTextContent(
+      'Anthropic7 Day · 2 seats48%usednext 21h'
     );
-    expect(totals.getByRole('article', { name: 'OpenAI Codex 7 days' })).toHaveTextContent('66%usedresets in 4d 14h');
+    expect(totals.getByRole('listitem', { name: 'OpenAI Codex 7 days' })).toHaveTextContent('66%usedin 4d 14h');
     // The API key reports no usage, so it has no total.
-    expect(totals.getAllByRole('article')).toHaveLength(2);
+    expect(totals.getAllByRole('listitem')).toHaveLength(2);
 
     const rows = within(screen.getByRole('region', { name: 'Every account' })).getAllByRole('article');
     expect(rows).toHaveLength(4);
@@ -74,10 +74,11 @@ describe('AccountsPage', () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    const traffic = await screen.findByRole('region', { name: 'Traffic' });
-    expect(traffic).toHaveTextContent('Burn at API prices');
+    const traffic = within(await screen.findByRole('region', { name: 'Traffic' }));
+    expect(traffic.getByText('tokens out a second')).toBeInTheDocument();
+    expect(traffic.getByText('$249').parentElement).toHaveTextContent('$249 last hour');
     // One seat is priced, so the week is set against what it costs.
-    expect(traffic).toHaveTextContent('Value · last 7 days');
+    expect(traffic.getByText(/the subscriptions/)).toBeInTheDocument();
   });
 
   it('opens on a line of figures for the fleet', async () => {
@@ -168,7 +169,7 @@ describe('AccountsPage', () => {
     renderPage();
 
     expect(await screen.findByText('The gateway reports no accounts.')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Totals' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Totals' })).not.toBeInTheDocument();
   });
 
   it('falls back to current levels when the history cannot be read', async () => {

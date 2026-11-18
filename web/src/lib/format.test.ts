@@ -10,6 +10,7 @@ import {
   formatPrice,
   formatShare,
   formatShort,
+  formatTime,
   formatUntil,
   formatUsd,
 } from './format';
@@ -100,10 +101,11 @@ describe('formatShare', () => {
   });
 });
 
-describe('formatClock and formatDay', () => {
+describe('formatClock, formatTime and formatDay', () => {
   it("give the time of day and the day, in the viewer's zone", () => {
     // The hour and the day depend on the viewer's zone; the shape does not.
     expect(formatClock(now)).toMatch(/^\d{2}:\d{2}$/);
+    expect(formatTime(now + 5000)).toMatch(/^\d{2}:\d{2}:05$/);
     expect(formatDay(now)).toMatch(/^(Sat|Sun) 2[67]$/);
   });
 });

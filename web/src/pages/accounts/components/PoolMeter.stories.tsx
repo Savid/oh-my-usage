@@ -1,46 +1,47 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { at, NOW_MS } from '@/test-utils/time';
-import { PoolTile } from './PoolTile';
+import { PoolMeter } from './PoolMeter';
 
 const HOUR = 3_600_000;
 
 const meta = {
-  title: 'Pages/Accounts/Components/PoolTile',
-  component: PoolTile,
+  title: 'Pages/Accounts/Components/PoolMeter',
+  component: PoolMeter,
   args: {
     pool: {
       provider: 'anthropic',
       limitId: 'anthropic:7d',
       label: '7 Day',
-      seats: 2,
-      used: 1.1,
-      usedFraction: 0.55,
+      seats: 8,
+      used: 3.4,
+      usedFraction: 0.42,
       severity: 'normal',
-      nextReset: at(20 * HOUR),
+      nextReset: at(2 * HOUR),
       staggered: true,
     },
     now: NOW_MS,
   },
   decorators: [
     Story => (
-      <div className="flex w-104">
+      <ul className="w-120 rounded-md border border-border bg-surface px-4 py-3">
         <Story />
-      </div>
+      </ul>
     ),
   ],
-} satisfies Meta<typeof PoolTile>;
+} satisfies Meta<typeof PoolMeter>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article', { name: 'Anthropic 7 Day' })).toHaveTextContent('55%');
-    await expect(canvas.getByText('20h')).toBeInTheDocument();
+    await expect(canvas.getByRole('listitem', { name: 'Anthropic 7 Day' })).toHaveTextContent('42%');
+    await expect(canvas.getByText('2h')).toBeInTheDocument();
   },
 };
 
+/** One account, one reset time: it says when, not when the next one is. */
 export const OneSeat: Story = {
   args: {
     pool: {
@@ -48,42 +49,47 @@ export const OneSeat: Story = {
       limitId: 'codex:7d',
       label: '7 days',
       seats: 1,
-      used: 0.68,
-      usedFraction: 0.68,
+      used: 0.22,
+      usedFraction: 0.22,
       severity: 'normal',
-      nextReset: at(110 * HOUR),
+      nextReset: at(45 * HOUR),
       staggered: false,
     },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article')).toHaveTextContent('resets in 4d 14h');
+    await expect(canvas.getByRole('listitem')).toHaveTextContent('in 1d 21h');
   },
 };
 
 export const NearLimit: Story = {
-  args: { pool: { ...meta.args.pool, used: 1.84, usedFraction: 0.92, severity: 'warn' } },
+  args: { pool: { ...meta.args.pool, used: 7, usedFraction: 0.87, severity: 'warn' } },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('used, near limit')).toBeInTheDocument();
   },
 };
 
 export const Spent: Story = {
-  args: { pool: { ...meta.args.pool, used: 2, usedFraction: 1, severity: 'danger' } },
+  args: { pool: { ...meta.args.pool, used: 8, usedFraction: 1, severity: 'danger' } },
   play: async ({ canvas }) => {
     await expect(canvas.getByText('used, spent')).toBeInTheDocument();
   },
 };
 
-export const NoResetTime: Story = {
+/** No account gave a reset time. */
+export const NoReset: Story = {
   args: { pool: { ...meta.args.pool, nextReset: undefined, staggered: false } },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article')).not.toHaveTextContent('reset');
+    await expect(canvas.queryByText(/^(in|next) /)).not.toBeInTheDocument();
   },
 };
 
-export const UnknownProvider: Story = {
-  args: { pool: { ...meta.args.pool, provider: 'some-new-provider', label: 'A window with a long name', seats: 12 } },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article', { name: 'some-new-provider A window with a long name' })).toBeVisible();
+export const LongName: Story = {
+  args: {
+    pool: {
+      ...meta.args.pool,
+      provider: 'xiaomi-token-plan-ams',
+      label: 'Monthly token allowance',
+      seats: 12,
+    },
   },
 };

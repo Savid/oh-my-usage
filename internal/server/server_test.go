@@ -94,6 +94,13 @@ func newServer(t *testing.T, broker bool) *testServer {
 		ts.collector = &fakeCollector{
 			status:  collector.Status{UpdatedAt: testNow.Add(-8 * time.Second)},
 			changed: make(chan struct{}, 1),
+			// Three steps of five seconds up to the last reading, the last still filling.
+			liveStart: testNow.Add(-20 * time.Second), liveSteps: 3,
+			live: []traffic.LiveCounts{
+				{Index: 0, Provider: "anthropic", Requests: 1, OutputTokens: 400, CostUSD: 0.5},
+				{Index: 1, Provider: "openai-codex", OutputTokens: 900, CostUSD: 0.75},
+				{Index: 1, Provider: "anthropic", OutputTokens: 100, CostUSD: 0.1},
+			},
 		}
 		ts.traffic = &fakeTraffic{
 			since: testNow.Add(-72 * time.Hour),

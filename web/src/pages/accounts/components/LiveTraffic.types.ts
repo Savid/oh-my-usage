@@ -1,12 +1,13 @@
 import type { Traffic } from '@/api';
 
-export interface PulseProps {
+export interface LiveTrafficProps {
   /** The traffic through the gateway, as getTraffic answers it. */
   traffic: Traffic;
 
   /**
    * What the priced accounts cost a month together, from their `monthlyUsd`;
-   * without it the third cell shows the cache instead of the value.
+   * with it the week's traffic is weighed against the subscriptions, without
+   * it the cache is shown instead.
    */
   monthlyUsd?: number;
 

@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 
 	defaults := options{
 		listen: "127.0.0.1:8080", logFormat: "text", logLevel: slog.LevelInfo,
-		db: "oh-my-usage.db", pollInterval: time.Minute, trafficInterval: 15 * time.Second,
+		db: "oh-my-usage.db", pollInterval: time.Minute, trafficInterval: 5 * time.Second,
 		retention: 90 * 24 * time.Hour,
 	}
 

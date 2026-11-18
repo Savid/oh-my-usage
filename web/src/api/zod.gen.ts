@@ -193,6 +193,7 @@ export const zTraffic = z.object({
   error: z.optional(z.string()),
   measuredSince: z.optional(z.iso.datetime()),
   windows: z.array(zTrafficWindow),
+  live: zTrafficSeries,
   minutes: zTrafficSeries,
   hours: zTrafficSeries,
   clients: z.array(zTrafficClient),

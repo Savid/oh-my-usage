@@ -15,4 +15,10 @@ export {
 } from './accounts';
 export { configFixture, configHandlers } from './config';
 export { showcaseHandlers } from './showcase';
-export { quietTrafficFixture, staleTrafficFixture, trafficFixture, trafficHandlers } from './traffic';
+export {
+  quietTrafficFixture,
+  staleTrafficFixture,
+  trafficFixture,
+  trafficHandlers,
+  warmingTrafficFixture,
+} from './traffic';

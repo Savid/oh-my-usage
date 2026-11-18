@@ -8,7 +8,7 @@ passing through. One static binary with the UI built in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
-  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a total for each provider, the gateway's pulse, and a band for each account drawn over its last seven days" width="800" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a band with a total for each provider beside the gateway's live traffic, and a band for each account drawn over its last seven days" width="800" />
 </picture>
 
 - **Accounts**: every account the gateway reports, with each usage window,
@@ -16,7 +16,8 @@ passing through. One static binary with the UI built in.
 - **An account's page**: each window's pace and whether it runs out before it
   resets, its saved resets, and any blocks omp has put on it.
 - **Traffic** (needs the broker): requests, tokens and cost at API prices, by
-  provider, by the minute and by the hour.
+  provider: live on the accounts page, the last ten minutes in five-second
+  steps, and on its own page by the minute and by the hour.
 - **Pause** (needs the broker): move omp's traffic off an account and back.
 
 <picture>
@@ -74,7 +75,7 @@ Then open http://127.0.0.1:8080.
 | `-db`                 | `OH_MY_USAGE_DB`            | `oh-my-usage.db` | SQLite file; the image keeps it in `/data`.        |
 | `-prices`             | `OH_MY_USAGE_PRICES`        |                  | What each account costs a month: see below.        |
 | `-poll-interval`      |                             | `1m`             | Gateway polls, at least `30s`.                     |
-| `-traffic-interval`   |                             | `15s`            | Broker traffic readings, at least `5s`.            |
+| `-traffic-interval`   |                             | `5s`             | Broker traffic readings, at least `5s`.            |
 | `-retention`          |                             | `2160h` (90d)    | How long history is kept; `0` is forever.          |
 
 Tokens are never taken as flag values, so they stay out of the process list.
@@ -116,6 +117,11 @@ startup.
   burst as one entry, so earlier history is drawn a burst per hour. From the
   first reading on it is exact. The broker reports by provider and client,
   not by account or model.
+- **Live means within seconds.** The gateway reports what passed to the
+  broker every ten seconds and oh-my-usage reads the broker every five, so
+  the live chart trails the gateway by up to fifteen. It is held in memory and
+  fills again over ten minutes after a restart; until a minute is in, the
+  accounts page shows the last hour by minute.
 - **A paused account is used last, not never.** omp still falls back to it
   when every other account of the provider is blocked or spent. Redeeming a
   saved Codex reset in omp also clears a pause.

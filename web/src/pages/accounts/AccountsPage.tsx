@@ -6,19 +6,19 @@ import { fleetOf, orderAccounts, viewAccount, type AccountOrder } from '@/lib/fl
 import { headlinePools, poolLimits } from '@/lib/pools';
 import { AccountRow } from './components/AccountRow';
 import { AccountsToolbar } from './components/AccountsToolbar';
+import { FleetBand } from './components/FleetBand';
 import { FleetSummary } from './components/FleetSummary';
-import { PoolTile } from './components/PoolTile';
-import { Pulse } from './components/Pulse';
 import { SourceAlerts } from './components/SourceAlerts';
 import { useAccounts } from './hooks/useAccounts';
 import { useCharts } from './hooks/useCharts';
 
 /**
- * The whole fleet on one screen. A line of figures for the fleet; for each
- * provider, how much of its main usage window is used in total and when it
- * resets; with a broker, the gateway's pulse; then every account on a row of
- * its own row, its windows read against their clocks as meters and a
- * runway, riskiest first unless another order is picked.
+ * The whole fleet on one screen. A line of figures for the fleet; a band
+ * with, for each provider, how much of its main usage window is used in
+ * total and when it resets, and with a broker the traffic through the
+ * gateway as it happens; then every account on a row of its own, its windows
+ * read against their clocks as meters and a runway, riskiest first unless
+ * another order is picked.
  */
 export function AccountsPage(): JSX.Element {
   const now = useNow();
@@ -55,26 +55,13 @@ export function AccountsPage(): JSX.Element {
             </p>
           )}
 
-          {pools.length > 0 && (
-            <section aria-label="Totals" className="flex flex-wrap gap-2">
-              {pools.map(pool => (
-                <PoolTile key={pool.provider} pool={pool} now={now} />
-              ))}
-            </section>
-          )}
-
-          {/* Without a broker there is no traffic to read, and nothing is said about it. */}
-          {traffic.isPending ? (
-            <p role="status" className="px-1 text-caption text-muted">
-              Loading the traffic…
-            </p>
-          ) : !traffic.data ? (
-            <p role="alert" className="px-1 text-caption text-danger">
-              Could not load the traffic.
-            </p>
-          ) : (
-            traffic.data.available && <Pulse traffic={traffic.data} monthlyUsd={fleet.monthlyUsd} now={now} />
-          )}
+          <FleetBand
+            pools={pools}
+            traffic={traffic.data}
+            trafficStatus={traffic.isPending ? 'pending' : traffic.data ? 'success' : 'error'}
+            monthlyUsd={fleet.monthlyUsd}
+            now={now}
+          />
 
           {list.accounts.length === 0 ? (
             <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>

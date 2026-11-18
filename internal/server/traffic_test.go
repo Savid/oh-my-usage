@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/savid/oh-my-usage/api/rest"
 )
@@ -61,6 +62,27 @@ func TestGetTraffic(t *testing.T) {
 
 	checkWindows(t, got)
 	checkSeries(t, got)
+	checkLive(t, got)
+}
+
+func checkLive(t *testing.T, got rest.Traffic) {
+	t.Helper()
+
+	live := got.Live
+	if live.StepSeconds != 5 || live.Steps != 3 || !live.Start.Equal(testNow.Add(-20*time.Second)) || len(live.Providers) != 2 {
+		t.Fatalf("live = %+v", live)
+	}
+
+	// Codex cost more over the series, so it comes first.
+	codex, claude := live.Providers[0], live.Providers[1]
+	if codex.Provider != "openai-codex" || !slices.Equal(codex.OutputTokens, []int{0, 900, 0}) {
+		t.Errorf("codex live = %+v", codex)
+	}
+
+	if claude.Provider != "anthropic" || !slices.Equal(claude.OutputTokens, []int{400, 100, 0}) ||
+		!slices.Equal(claude.Requests, []int{1, 0, 0}) {
+		t.Errorf("claude live = %+v", claude)
+	}
 }
 
 func checkWindows(t *testing.T, got rest.Traffic) {
@@ -142,8 +164,8 @@ func TestGetTrafficWithoutBroker(t *testing.T) {
 	}
 
 	// Empty, and still the shape the web client's schema accepts.
-	if got.Minutes.Steps != 60 || got.Hours.Steps != 168 {
-		t.Errorf("series = %+v, %+v", got.Minutes, got.Hours)
+	if got.Minutes.Steps != 60 || got.Hours.Steps != 168 || got.Live.Steps != 1 || got.Live.StepSeconds != 5 {
+		t.Errorf("series = %+v, %+v, %+v", got.Minutes, got.Hours, got.Live)
 	}
 
 	for _, want := range []string{`"windows":[]`, `"clients":[]`, `"providers":[]`} {
@@ -172,6 +194,7 @@ func TestGetTrafficBeforeTheFirstReading(t *testing.T) {
 
 	srv := newTrafficServer(t)
 	srv.collector.status = collectorStatusZero
+	srv.collector.liveStart, srv.collector.liveSteps, srv.collector.live = time.Time{}, 0, nil
 	srv.traffic.since = collectorStatusZero.UpdatedAt
 	srv.traffic.totals, srv.traffic.steps = nil, nil
 
@@ -180,6 +203,11 @@ func TestGetTrafficBeforeTheFirstReading(t *testing.T) {
 	if !got.Available || got.UpdatedAt.Set || got.MeasuredSince.Set || len(got.Windows) != 3 ||
 		got.Windows[0].Total.Requests != 0 {
 		t.Errorf("traffic = %+v", got)
+	}
+
+	// Nothing live yet: one empty step, so the schema still holds.
+	if got.Live.Steps != 1 || len(got.Live.Providers) != 0 {
+		t.Errorf("live before the first reading = %+v", got.Live)
 	}
 
 	if !strings.Contains(body, `"providers":[]`) || !strings.Contains(body, `"clients":[]`) {

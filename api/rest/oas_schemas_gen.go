@@ -1218,8 +1218,13 @@ type Traffic struct {
 	MeasuredSince OptDateTime `json:"measuredSince"`
 	// Totals for the last hour, day and week, in that order.
 	Windows []TrafficWindow `json:"windows"`
-	Minutes TrafficSeries   `json:"minutes"`
-	Hours   TrafficSeries   `json:"hours"`
+	// The last ten minutes by provider in steps of five seconds, up to the last reading, whose step is the
+	// last and still filling. What passed between two readings is shared out over the steps between them.
+	// It is held in memory: after the daemon starts, or after a gap of over a minute between readings, it
+	// begins again at the next reading, and until two readings it is one empty step.
+	Live    TrafficSeries `json:"live"`
+	Minutes TrafficSeries `json:"minutes"`
+	Hours   TrafficSeries `json:"hours"`
 	// The last week by client, application and provider, the costliest first.
 	Clients []TrafficClient `json:"clients"`
 }
@@ -1247,6 +1252,11 @@ func (s *Traffic) GetMeasuredSince() OptDateTime {
 // GetWindows returns the value of Windows.
 func (s *Traffic) GetWindows() []TrafficWindow {
 	return s.Windows
+}
+
+// GetLive returns the value of Live.
+func (s *Traffic) GetLive() TrafficSeries {
+	return s.Live
 }
 
 // GetMinutes returns the value of Minutes.
@@ -1287,6 +1297,11 @@ func (s *Traffic) SetMeasuredSince(val OptDateTime) {
 // SetWindows sets the value of Windows.
 func (s *Traffic) SetWindows(val []TrafficWindow) {
 	s.Windows = val
+}
+
+// SetLive sets the value of Live.
+func (s *Traffic) SetLive(val TrafficSeries) {
+	s.Live = val
 }
 
 // SetMinutes sets the value of Minutes.
