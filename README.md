@@ -17,13 +17,14 @@ passing through. One static binary with the UI built in.
   resets, its saved resets, and any blocks omp has put on it.
 - **Traffic** (needs the broker): requests, tokens and cost at API prices, by
   provider: live on the accounts page, the last ten minutes in five-second
-  steps (tokens out or in, cache share, cost an hour, requests a minute), and
-  on its own page by the minute and by the hour.
+  steps (tokens out or in, cache share, cost an hour, requests a minute); the
+  traffic on the accounts page opens its own page, where the same switch
+  redraws the last hour by minute and the week by hour.
 - **Pause** (needs the broker): move omp's traffic off an account and back.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/traffic-dark.png" />
-  <img src="docs/screenshots/traffic-light.png" alt="The Traffic page: the last hour, day and week by provider, the last hour by minute, the last week by hour, and the clients" width="800" />
+  <img src="docs/screenshots/traffic-light.png" alt="The Traffic page: the live traffic with its switch, the last hour, day and week by provider, the last hour by minute, the last week by hour, and the clients" width="800" />
 </picture>
 
 ## Install

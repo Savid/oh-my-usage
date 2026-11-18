@@ -5,6 +5,7 @@ import { useElementWidth } from '@/hooks/useElementWidth';
 import { providerName } from '@/lib/accounts';
 import { formatClock, formatCount, formatDateTime, formatDay, formatUsd } from '@/lib/format';
 import { providerTone } from '@/lib/providerTones';
+import { amountOf, isShare, metricInfo, sentTokens, type Amounts } from '@/lib/metrics';
 import { niceCeiling, stepMs, TOKEN_KINDS, toSteps, type Step } from '@/lib/traffic';
 import type { TrafficBarsProps } from './TrafficBars.types';
 
@@ -31,13 +32,20 @@ function tick(step: Step, hourly: boolean): string | undefined {
 }
 
 /**
- * Traffic over time as bars, one per minute or hour, each stacked by provider
- * in the provider's colour; its height is the cost at API prices. The line
- * above the plot is the readout and the legend: it gives the latest full
- * step, or the one under the pointer, in total and for each provider; a
- * chart of its own adds that step's tokens by kind.
+ * Traffic over time as bars, one per minute or hour. An amount (the cost at
+ * API prices, tokens out or in, requests) is stacked by provider in the
+ * provider's colour; the share read from a cache is one bar, from nothing to
+ * all of it. The line above the plot is the readout and the legend: it gives
+ * the latest full step, or the one under the pointer, in total and for each
+ * provider; a chart of its own adds that step's tokens by kind.
  */
-export function TrafficBars({ series, label, size = 'panel', measuredSince }: TrafficBarsProps): JSX.Element {
+export function TrafficBars({
+  series,
+  label,
+  size = 'panel',
+  measuredSince,
+  metric = 'cost',
+}: TrafficBarsProps): JSX.Element {
   const [hovered, setHovered] = useState<number>();
   const [frame, width] = useElementWidth<HTMLDivElement>(FALLBACK_WIDTH);
   const { height, className } = SIZES[size];
@@ -49,7 +57,15 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
   const floor = PLOT.top + plotHeight;
   const stepWidth = width / steps.length;
   const gap = stepWidth >= 6 ? 2 : stepWidth >= 3 ? 1 : 0;
-  const top = niceCeiling(Math.max(0, ...steps.map(step => step.costUsd)));
+  const info = metricInfo(metric);
+  const share = isShare(metric);
+  // A share is of everything sent in the step; a step that sent nothing has none.
+  const shareOf = (amounts: Amounts): number => {
+    const sent = sentTokens(amounts);
+    return sent > 0 ? amountOf(amounts, metric) / sent : 0;
+  };
+  const valueOf = (amounts: Amounts): number => (share ? shareOf(amounts) : amountOf(amounts, metric));
+  const top = share ? 1 : niceCeiling(Math.max(0, ...steps.map(valueOf)));
   const quiet = steps.every(step => step.parts.length === 0);
 
   // The last step is still filling, so the readout rests on the one before it.
@@ -77,8 +93,13 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
         <span className="text-micro tracking-caps text-muted uppercase">
           {active === undefined ? 'Latest' : 'At'} {hourly ? formatDateTime(shown.start) : formatClock(shown.start)}
         </span>
-        <span className="font-semibold tabular-nums">{formatUsd(shown.costUsd)}</span>
+        <span className="tabular-nums">
+          <span className="font-semibold">{info.format(valueOf(shown))}</span>{' '}
+          <span className="text-muted">{info.noun}</span>
+        </span>
+        {/* The rest of the step, without saying the figure twice. */}
         <span className="text-muted tabular-nums">
+          {metric !== 'cost' && `${formatUsd(shown.costUsd)} · `}
           {formatCount(shown.requests)} req · {formatCount(shown.tokens)} tok
         </span>
         {estimated(shown) && <span className="text-muted">estimate</span>}
@@ -91,7 +112,7 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
                 <li key={entry.provider} className="flex items-center gap-1.5">
                   <ProviderIcon provider={entry.provider} decorative />
                   <span className="text-muted">{providerName(entry.provider)}</span>
-                  <span className="font-semibold tabular-nums">{formatUsd(part?.costUsd ?? 0)}</span>
+                  <span className="font-semibold tabular-nums">{part ? info.format(valueOf(part)) : '—'}</span>
                 </li>
               );
             })}
@@ -121,7 +142,7 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
           {/* The top of the scale, with its figure; the floor the bars stand on. */}
           <line x1="0" x2={width} y1={PLOT.top} y2={PLOT.top} strokeWidth="1" className="stroke-border" />
           <text x="0" y={PLOT.top - 4} className="fill-muted text-micro">
-            {formatUsd(top)}/{per}
+            {share ? info.format(top) : `${info.format(top)}/${per}`}
           </text>
           <line x1="0" x2={width} y1={floor} y2={floor} strokeWidth="1" className="stroke-border-strong" />
 
@@ -154,10 +175,30 @@ export function TrafficBars({ series, label, size = 'panel', measuredSince }: Tr
           {steps.map((step, index) => {
             let base = floor;
 
+            // A share does not stack: one bar for all providers, in the app's own data colour.
+            if (share) {
+              const tall = step.parts.length > 0 ? Math.max(MIN_BAR, shareOf(step) * plotHeight) : 0;
+              return (
+                <g key={step.start} data-step={index}>
+                  {tall > 0 && (
+                    <rect
+                      x={index * stepWidth + gap / 2}
+                      y={floor - tall}
+                      width={Math.max(1, stepWidth - gap)}
+                      height={tall}
+                      className="fill-meter"
+                    />
+                  )}
+                </g>
+              );
+            }
+
             return (
               <g key={step.start} data-step={index}>
                 {step.parts.map(part => {
-                  const tall = Math.max(MIN_BAR, (part.costUsd / top) * plotHeight);
+                  const value = amountOf(part, metric);
+                  if (value <= 0) return null;
+                  const tall = Math.max(MIN_BAR, (value / top) * plotHeight);
                   base -= tall;
 
                   return (

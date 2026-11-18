@@ -1,5 +1,5 @@
 import { useState, type JSX, type ReactNode } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import type { TrafficWindow } from '@/api';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
@@ -7,10 +7,11 @@ import { RollingNumber } from '@/components/Data/RollingNumber';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { providerName } from '@/lib/accounts';
 import { WEEKS_PER_MONTH } from '@/lib/fleet';
-import { formatCount, formatPercent, formatShort, formatTime, formatUsd } from '@/lib/format';
-import { liveView, shareFloor, type LiveMetric } from '@/lib/live';
+import { formatPercent, formatShort, formatTime, formatUsd } from '@/lib/format';
+import { liveView, shareFloor } from '@/lib/live';
+import { METRICS, type Metric } from '@/lib/metrics';
 import { cacheShare } from '@/lib/traffic';
-import { LiveChart } from './LiveChart';
+import { LiveChart } from '@/components/Data/LiveChart';
 import type { LiveTrafficProps } from './LiveTraffic.types';
 
 /** Traffic older than this is called out: readings come every few seconds. */
@@ -82,39 +83,14 @@ function StatusDot({ pulsing }: { pulsing: boolean }): JSX.Element {
   );
 }
 
-/** How a requests figure reads: to a tenth under ten, whole above. */
-function formatRequests(value: number): string {
-  return value < 10 ? value.toFixed(1) : formatCount(Math.round(value));
-}
-
-/** What the switch offers, in its order: what each is called, how its figure reads, and what it counts. */
-const METRICS: readonly {
-  id: LiveMetric;
-  name: string;
-  format: (value: number) => string;
-  /** What follows the figure on a chip. */
-  suffix: string;
-  /** What follows the big figure. */
-  unit: string;
-}[] = [
-  {
-    id: 'output',
-    name: 'Out',
-    format: value => formatCount(Math.round(value)),
-    suffix: '/s',
-    unit: 'tokens out a second',
+// The band is a cell of the homepage's top band; the page variant opens the Traffic page, taller.
+const variantClasses = {
+  band: { section: 'min-h-72 lg:min-h-36', chart: 'h-32 lg:top-10 lg:h-auto' },
+  page: {
+    section: 'min-h-80 rounded-md border border-border bg-surface lg:min-h-72',
+    chart: 'h-48 lg:top-20 lg:h-auto',
   },
-  {
-    id: 'input',
-    name: 'In',
-    format: value => formatCount(Math.round(value)),
-    suffix: '/s',
-    unit: 'tokens in a second, cache reads included',
-  },
-  { id: 'cache', name: 'Cached', format: formatPercent, suffix: '', unit: 'of input read from a cache' },
-  { id: 'cost', name: 'Cost', format: formatUsd, suffix: '/h', unit: 'an hour at API prices' },
-  { id: 'requests', name: 'Requests', format: formatRequests, suffix: '/min', unit: 'requests a minute' },
-];
+} as const;
 
 /**
  * The gateway's traffic as it happens, drawn edge to edge behind its
@@ -123,12 +99,24 @@ const METRICS: readonly {
  * from a cache, the cost an hour at API prices, or requests a minute, each
  * with its figure now (or at the point the pointer is on). Rates stack by
  * provider in each one's colour; the cache share is one line. Below, what the
- * last hour, day and week came to at API prices.
+ * last hour, day and week came to at API prices. On the homepage it leads to
+ * the Traffic page: its heading and its chart both go there.
  */
-export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX.Element {
-  const [metric, setMetric] = useState<LiveMetric>('output');
+export function LiveTraffic({
+  traffic,
+  monthlyUsd,
+  now,
+  variant = 'band',
+  metric: chosen,
+  onMetric,
+}: LiveTrafficProps): JSX.Element {
+  const [own, setOwn] = useState<Metric>('output');
+  const metric = chosen ?? own;
+  const setMetric = onMetric ?? setOwn;
   const [scrub, setScrub] = useState<number>();
   const still = usePrefersReducedMotion();
+  const navigate = useNavigate();
+  const band = variant === 'band';
 
   const warming = liveView(traffic.live).times.length < LIVE_MIN_POINTS;
   const source = warming ? traffic.minutes : traffic.live;
@@ -161,7 +149,10 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
   const cached = day ? cacheShare(day.total) : undefined;
 
   return (
-    <section aria-labelledby="traffic-heading" className="relative flex min-h-72 min-w-0 flex-1 flex-col lg:min-h-36">
+    <section
+      aria-labelledby="traffic-heading"
+      className={clsx('relative flex min-w-0 flex-1 flex-col overflow-hidden', variantClasses[variant].section)}
+    >
       {/* Before the first reading nothing is known, not even that it is quiet. A new
           metric is a new chart: it is drawn afresh, not glided into from the last. */}
       {traffic.updatedAt !== undefined && (
@@ -171,7 +162,8 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
           span={span}
           scrub={scrub}
           onScrub={setScrub}
-          className="absolute inset-x-0 bottom-0 h-32 lg:top-10 lg:h-auto"
+          onSelect={band ? () => void navigate({ to: '/traffic', search: { metric } }) : undefined}
+          className={clsx('absolute inset-x-0 bottom-0', variantClasses[variant].chart)}
         />
       )}
 
@@ -179,9 +171,20 @@ export function LiveTraffic({ traffic, monthlyUsd, now }: LiveTrafficProps): JSX
       <div className="pointer-events-none relative flex flex-1 flex-col gap-1 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 id="traffic-heading" className="pointer-events-auto text-body font-semibold tracking-caps uppercase">
-            <Link to="/traffic" className="underline-offset-4 hover:underline">
-              Traffic
-            </Link>
+            {band ? (
+              <Link
+                to="/traffic"
+                search={{ metric }}
+                className="group flex items-center gap-1 underline-offset-4 hover:underline"
+              >
+                Traffic
+                <span aria-hidden="true" className="text-muted group-hover:text-foreground">
+                  →
+                </span>
+              </Link>
+            ) : (
+              'Live'
+            )}
           </h2>
 
           {scrubbing ? (

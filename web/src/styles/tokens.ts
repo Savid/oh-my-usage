@@ -126,7 +126,7 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     minimum: 3,
   },
   {
-    name: "The logo's gradient on the top bar and the page",
+    name: "The logo's gradient on the page and on a panel",
     foregrounds: BRAND_COLORS,
     backgrounds: ['surface', 'background'],
     minimum: 3,

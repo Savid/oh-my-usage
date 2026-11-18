@@ -13,9 +13,10 @@ const titles: Record<TrafficWindow['id'], string> = { hour: 'Last hour', day: '2
 const LISTED = 4;
 
 /**
- * One period's traffic: its cost at API prices as the large figure, how many
- * requests and tokens that was, how the cost divides between providers, as a
- * bar in their colours and a line each, and the tokens by kind.
+ * One period's traffic, a column of the Totals band: its cost at API prices
+ * as the large figure, how many requests and tokens that was and how much was
+ * read from a cache, how the cost divides between providers, as a bar in
+ * their colours and a line each, and the tokens by kind.
  */
 export function TrafficWindowTile({ window }: TrafficWindowTileProps): JSX.Element {
   const { total, providers } = window;
@@ -26,21 +27,23 @@ export function TrafficWindowTile({ window }: TrafficWindowTileProps): JSX.Eleme
   let offset = 0;
 
   return (
-    <article
-      aria-label={titles[window.id]}
-      className="flex min-w-72 flex-1 flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3"
-    >
-      <div className="flex items-baseline gap-2">
-        <span className="text-body font-semibold tracking-caps uppercase">{titles[window.id]}</span>
-        <span className="ml-auto text-caption text-muted">at API prices</span>
-      </div>
-
+    <article aria-label={titles[window.id]} className="flex min-w-0 flex-col gap-2 px-4 py-3">
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-display font-semibold tabular-nums">{formatUsd(total.costUsd)}</span>
+        <span className="text-micro font-semibold tracking-caps text-muted uppercase">{titles[window.id]}</span>
         <span className="ml-auto text-caption whitespace-nowrap text-muted tabular-nums">
           {formatCount(total.requests)} req · {formatCount(tokensOf(total))} tok
         </span>
       </div>
+
+      <p className="flex items-baseline gap-2">
+        <span className="text-display font-semibold tabular-nums">{formatUsd(total.costUsd)}</span>
+        <span className="text-caption text-muted">at API prices</span>
+        {cached !== undefined && (
+          <span className="ml-auto text-caption whitespace-nowrap text-muted tabular-nums">
+            <span className="font-semibold text-foreground">{formatPercent(cached)}</span> cached
+          </span>
+        )}
+      </p>
 
       {/* How the cost divides between providers, each in its colour. */}
       <div className="h-1.5 overflow-hidden rounded-sm">
@@ -101,9 +104,6 @@ export function TrafficWindowTile({ window }: TrafficWindowTileProps): JSX.Eleme
           </div>
         ))}
       </dl>
-      {cached !== undefined && (
-        <p className="text-micro text-muted">{formatPercent(cached)} of what was sent was read from a cache.</p>
-      )}
     </article>
   );
 }

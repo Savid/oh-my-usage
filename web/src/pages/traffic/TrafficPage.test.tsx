@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, server, within } from '@/test-utils';
+import { fireEvent, render, screen, server, within } from '@/test-utils';
 import { trafficHandlers } from '@/test-utils/handlers';
 import { NOW_MS } from '@/test-utils/time';
 import { TrafficPage } from './TrafficPage';
@@ -25,19 +25,38 @@ describe('TrafficPage', () => {
       '7 days',
     ]);
 
+    // It opens on the traffic as it happens, framed, with the switch for every chart.
+    expect(screen.getByRole('region', { name: 'Live' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Out/ })).toHaveAttribute('aria-pressed', 'true');
     expect(
       within(screen.getByRole('region', { name: 'Last hour, by minute' })).getByRole('img', {
-        name: 'Cost at API prices by minute, last hour',
+        name: 'Tokens out by minute, last hour',
       })
     ).toBeInTheDocument();
 
     const week = within(screen.getByRole('region', { name: 'Last 7 days, by hour' }));
-    expect(week.getByRole('img', { name: 'Cost at API prices by hour, last 7 days' })).toBeInTheDocument();
+    expect(week.getByRole('img', { name: 'Tokens out by hour, last 7 days' })).toBeInTheDocument();
     // Measuring began three days ago, so the first four days drawn are an estimate.
     expect(week.getByText(/^Measured since 2[34] Sept?, \d{2}:\d{2}\./)).toBeInTheDocument();
 
     expect(within(screen.getByRole('region', { name: 'Clients, last 7 days' })).getByRole('table')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('redraws every chart for the choice, and opens on the one it is given', async () => {
+    const chosen: string[] = [];
+    server.use(trafficHandlers.ok);
+    const { rerender } = render(<TrafficPage metric="cost" onMetric={metric => chosen.push(metric)} />);
+
+    expect(await screen.findByRole('img', { name: 'Cost at API prices by minute, last hour' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Cost at API prices by hour, last 7 days' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Cost/ })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Requests/ }));
+    expect(chosen).toEqual(['requests']);
+
+    rerender(<TrafficPage metric="requests" onMetric={metric => chosen.push(metric)} />);
+    expect(screen.getByRole('img', { name: 'Requests by minute, last hour' })).toBeInTheDocument();
   });
 
   it('says while it is loading', () => {

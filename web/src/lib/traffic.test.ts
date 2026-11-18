@@ -70,7 +70,18 @@ describe('toSteps', () => {
     });
     expect(steps[0]!.parts.map(part => part.provider)).toEqual(['anthropic', 'openai-codex']);
     expect(steps[1]).toMatchObject({ costUsd: 0, requests: 0, tokens: 0, parts: [] });
-    expect(steps[2]!.parts).toEqual([{ provider: 'anthropic', costUsd: 0.25, requests: 2, tokens: 900 }]);
+    expect(steps[2]!.parts).toEqual([
+      {
+        provider: 'anthropic',
+        inputTokens: 0,
+        outputTokens: 900,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0.25,
+        requests: 2,
+        tokens: 900,
+      },
+    ]);
   });
 
   it('reads a provider with too few values as quiet', () => {

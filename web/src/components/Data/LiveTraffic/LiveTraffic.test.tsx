@@ -18,7 +18,8 @@ describe('LiveTraffic', () => {
     const total = Math.round(view.totals.at(-1) ?? 0);
     expect(rate()).toBe(total.toLocaleString('en-US'));
     expect(screen.getByText('tokens out a second')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic');
+    // The heading leads to the Traffic page, and takes the choice along.
+    expect(screen.getByRole('link', { name: 'Traffic' })).toHaveAttribute('href', '/traffic?metric=output');
     expect(screen.getByText('Live')).toHaveAttribute('data-status', 'live');
     expect(screen.getByText(/read 8s ago · last 10 min/)).toBeInTheDocument();
 

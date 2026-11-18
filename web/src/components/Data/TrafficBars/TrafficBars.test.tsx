@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@/test-utils';
 import { quietTrafficFixture, trafficFixture } from '@/test-utils/handlers';
 import { at } from '@/test-utils/time';
+import { formatCount } from '@/lib/format';
 import { TrafficBars } from './TrafficBars';
 
 const HOUR = 3_600_000;
@@ -19,6 +20,33 @@ describe('TrafficBars', () => {
     expect(parts[1]).toHaveClass('fill-openai');
     // Step 0 is quiet for both.
     expect(container.querySelectorAll('[data-step="0"] rect')).toHaveLength(0);
+  });
+
+  it('measures the bars in the metric asked for, and says it', () => {
+    const { container } = render(
+      <TrafficBars series={trafficFixture.minutes} label="Tokens out by minute" metric="output" />
+    );
+
+    const claude = trafficFixture.minutes.providers[0]!;
+    // The readout leads with the step's tokens out, and still gives its cost beside.
+    expect(screen.getByText('tokens out').parentElement).toHaveTextContent(
+      `${formatCount(claude.outputTokens[58]! + trafficFixture.minutes.providers[1]!.outputTokens[58]!)} tokens out`
+    );
+    expect(screen.getByText(/^\$[\d.]+ · \d+ req · /)).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-step="1"] rect')).toHaveLength(2);
+  });
+
+  it('draws the cache share as one bar a step, from nothing to all of it', () => {
+    const { container } = render(
+      <TrafficBars series={trafficFixture.minutes} label="Cache share by minute" metric="cache" />
+    );
+
+    const bars = container.querySelectorAll('[data-step="1"] rect');
+    expect(bars).toHaveLength(1);
+    expect(bars[0]).toHaveClass('fill-meter');
+    // A quiet step sent nothing, so it has no share to draw.
+    expect(container.querySelectorAll('[data-step="0"] rect')).toHaveLength(0);
+    expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
   it('reads out the latest full step, then the one under the pointer', () => {

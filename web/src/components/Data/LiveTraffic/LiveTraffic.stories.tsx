@@ -71,7 +71,7 @@ const many: Traffic = {
 };
 
 const meta = {
-  title: 'Pages/Accounts/Components/LiveTraffic',
+  title: 'Components/Data/LiveTraffic',
   component: LiveTraffic,
   args: { traffic: trafficFixture, monthlyUsd: 780, now: NOW_MS },
   decorators: [

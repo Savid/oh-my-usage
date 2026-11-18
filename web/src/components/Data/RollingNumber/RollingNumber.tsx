@@ -34,16 +34,19 @@ function Digit({ digit }: { digit: string }): JSX.Element {
   const still = usePrefersReducedMotion();
 
   // The class holds the digit in place; the animation only carries it there.
+  // It moves the property the class sets (Tailwind's translate-y sets
+  // `translate`, not `transform`): moving the other would add the two, and
+  // the wheel would roll past its digit and snap back.
   useLayoutEffect(() => {
     const from = shownRef.current;
     shownRef.current = digit;
     const element = columnRef.current;
     if (from === digit || still || !element || typeof element.animate !== 'function') return;
 
-    element.animate(
-      [{ transform: `translateY(${-Number(from) * 10}%)` }, { transform: `translateY(${-Number(digit) * 10}%)` }],
-      { duration: ROLL_MS, easing: ROLL_EASING }
-    );
+    element.animate([{ translate: `0 ${-Number(from) * 10}%` }, { translate: `0 ${-Number(digit) * 10}%` }], {
+      duration: ROLL_MS,
+      easing: ROLL_EASING,
+    });
   }, [digit, still]);
 
   return (

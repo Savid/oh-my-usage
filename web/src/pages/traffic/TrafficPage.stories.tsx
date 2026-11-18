@@ -11,7 +11,7 @@ const meta = {
   tags: ['!autodocs'],
   parameters: { layout: 'fullscreen', msw: { handlers: [configHandlers.ok, trafficHandlers.ok] } },
   decorators: [
-    // The page as the app frames it; a story that draws the top bar brings its own frame.
+    // The page as the app frames it; a story that draws the frame brings its own.
     (Story, { parameters }) =>
       parameters.shell === true ? (
         <Story />
@@ -38,14 +38,14 @@ export const Default: Story = {
 };
 
 /**
- * The page in full use, under the top bar: a week of traffic through the
+ * The page in full use, in the app's frame: a week of traffic through the
  * gateway to Anthropic, OpenAI Codex, xAI, OpenCode Go and OpenRouter,
  * following the working day. Times count from when it opens.
  */
 export const Showcase: Story = {
   parameters: { shell: true, liveClock: true, path: '/traffic', msw: { handlers: showcaseHandlers } },
   render: () => (
-    <AppShell name="oh-my-usage" traffic connection="live">
+    <AppShell name="oh-my-usage" connection="live">
       <TrafficPage />
     </AppShell>
   ),
@@ -53,11 +53,28 @@ export const Showcase: Story = {
     const totals = await canvas.findByRole('region', { name: 'Totals' });
     await expect(within(totals).getByRole('article', { name: '7 days' })).toHaveTextContent('xAI Grok');
     await expect(canvas.getByRole('table')).toBeInTheDocument();
-    // The router stands on this page, so its tab is the current one.
-    await expect(within(canvas.getByRole('navigation')).getByRole('link', { name: 'Traffic' })).toHaveAttribute(
-      'aria-current',
-      'page'
-    );
+    // No bar of pages: the mark and the trail lead back.
+    await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
+    await expect(canvas.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
+  },
+};
+
+/** Opened from the homepage with cost picked: every chart shows the cost. */
+export const Cost: Story = {
+  args: { metric: 'cost' },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole('img', { name: 'Cost at API prices by minute, last hour' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /^Cost/ })).toHaveAttribute('aria-pressed', 'true');
+  },
+};
+
+/** The cache share: one bar a step for all providers, from nothing to all of it. */
+export const Cached: Story = {
+  args: { metric: 'cache' },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole('img', { name: 'Share read from a cache by hour, last 7 days' })
+    ).toBeVisible();
   },
 };
 

@@ -45,7 +45,7 @@ export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.
   }
 
   return (
-    <section aria-label="Fleet" className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-1 text-caption">
+    <section aria-label="Fleet" className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 text-caption">
       <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         {facts.map(fact => (
           // The name is listed first for assistive technology and drawn after the figure.
