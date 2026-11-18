@@ -216,6 +216,19 @@
   /* Letter spacing for small capitals: tracking-caps. */
   --tracking-caps: 0.08em;
 
+  /* A halo of the row's ground around words drawn over a chart, so its line
+   * passes behind them without striking them through: text-shadow-halo. Two
+   * rings of hard shadows make a solid outline, which a blur alone is too
+   * faint to give a thin letter. */
+  --text-shadow-halo:
+    0.0625rem 0 var(--color-surface), -0.0625rem 0 var(--color-surface), 0 0.0625rem var(--color-surface),
+    0 -0.0625rem var(--color-surface), 0.0625rem 0.0625rem var(--color-surface),
+    -0.0625rem -0.0625rem var(--color-surface), 0.0625rem -0.0625rem var(--color-surface),
+    -0.0625rem 0.0625rem var(--color-surface), 0.125rem 0 var(--color-surface), -0.125rem 0 var(--color-surface),
+    0 0.125rem var(--color-surface), 0 -0.125rem var(--color-surface), 0.125rem 0.125rem var(--color-surface),
+    -0.125rem -0.125rem var(--color-surface), 0.125rem -0.125rem var(--color-surface),
+    -0.125rem 0.125rem var(--color-surface), 0 0 0.25rem var(--color-surface);
+
   --radius-sm: 0.1875rem;
   --radius-md: 0.375rem;
 

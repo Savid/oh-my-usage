@@ -57,17 +57,15 @@ describe('AccountRow', () => {
   it('gives the chart the rest of the row on a wide screen, clear of the words', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('lg:top-0', 'lg:left-204', 'lg:h-auto');
+    expect(screen.getByTestId('history')).toHaveClass('lg:left-204');
     // Nothing written is drawn over it: the words end where it starts.
     expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-64');
   });
 
-  it('gives the chart the whole width of a narrow row, in a band under the words', () => {
+  it('runs the chart behind the whole of a narrow row, top to foot and end to end', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('left-0', 'right-3', 'bottom-0', 'h-12');
-    // The words leave the row's foot to it.
-    expect(screen.getByRole('article').lastElementChild).toHaveClass('pb-14', 'lg:pb-3');
+    expect(screen.getByTestId('history')).toHaveClass('inset-y-0', 'left-0', 'right-3');
   });
 
   it('leaves out the list when there are no other windows', () => {
