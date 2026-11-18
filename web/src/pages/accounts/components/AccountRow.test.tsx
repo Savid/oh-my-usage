@@ -37,29 +37,38 @@ describe('AccountRow', () => {
     expect(within(row).queryByText('active')).not.toBeInTheDocument();
   });
 
-  it('lists the other windows as short lines beside the name', () => {
+  it('draws the other windows as rings beside the name, each heard as a sentence', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
     const others = within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem');
-    // The Fable window runs dry before it resets at its pace, and is marked for it.
-    expect(others.map(item => item.textContent)).toEqual([
-      '5 Hournot reported',
-      '7 Day Fable▲ runs dry before it resets, 92%, near its limitin 21h',
+    expect(others.map(item => item.querySelector('.sr-only')?.textContent)).toEqual([
+      '5 Hour: not reported',
+      '7 Day Fable: 92% used, near its limit, runs dry before it resets, resets in 21h',
     ]);
-    // The Fable window is nearly spent, and says so in more than position.
-    expect(within(others[1]!).getByText(/92%/)).toHaveClass('text-warn');
-    // Its bar fills to what is used, in the provider's colour; one not reported has none.
-    expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveAttribute('width', '92');
-    expect(others[1]!.querySelector('svg rect:nth-of-type(2)')).toHaveClass('fill-anthropic');
-    expect(others[0]!.querySelector('svg')).toBeNull();
+    // A short tag under each ring.
+    expect(within(others[1]!).getByText('7d Fable')).toHaveClass('uppercase');
+    // Nearly spent and running dry: said in more than colour.
+    expect(within(others[1]!).getByText('▲')).toHaveClass('text-danger');
+    expect(within(others[1]!).getByText('92%')).toHaveClass('text-warn');
+    // The outer arc is the used share, in the provider's colour; the inner, the share of its time gone.
+    const [used, gone] = others[1]!.querySelectorAll('circle[stroke-dasharray]');
+    expect(used).toHaveAttribute('stroke-dasharray', '92 100');
+    expect(used).toHaveClass('stroke-anthropic');
+    // 21 hours left of a week.
+    expect(gone).toHaveAttribute('stroke-dasharray', '87.5 100');
+    expect(gone).toHaveClass('stroke-muted');
+    expect(others[1]).toHaveAttribute('title', expect.stringMatching(/; 88% of its time gone$/));
+    // A window with nothing reported draws its track alone.
+    expect(others[0]!.querySelectorAll('circle[stroke-dasharray]')).toHaveLength(0);
+    expect(within(others[0]!).getByText('–')).toHaveClass('text-muted');
   });
 
   it('gives the chart the rest of the row on a wide screen, clear of the words', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('lg:left-204');
+    expect(screen.getByTestId('history')).toHaveClass('lg:left-174');
     // Nothing written is drawn over it: the words end where it starts.
-    expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-64');
+    expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-34');
   });
 
   it('runs the chart behind the whole of a narrow row, top to foot and end to end', () => {

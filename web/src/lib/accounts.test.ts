@@ -8,6 +8,7 @@ import {
   KNOWN_PROVIDERS,
   providerName,
   severityOf,
+  limitTag,
   shortLimitLabel,
 } from './accounts';
 
@@ -63,6 +64,19 @@ describe('shortLimitLabel', () => {
     expect(shortLimitLabel({ id: 'b', label: 'Weekly limit' })).toBe('Weekly');
     expect(shortLimitLabel({ id: 'c', label: '7 days' })).toBe('7 days');
     expect(shortLimitLabel({ id: 'd', label: 'Claude' })).toBe('Claude');
+  });
+});
+
+describe('limitTag', () => {
+  it('names a window by how long it lasts and the model it is kept for', () => {
+    expect(limitTag({ id: 'a', label: 'Claude 5 Hour', windowSeconds: 5 * 3600 })).toBe('5h');
+    expect(limitTag({ id: 'b', label: 'Claude 7 Day (Fable)', windowSeconds: 7 * 86_400 })).toBe('7d Fable');
+    expect(limitTag({ id: 'c', label: 'Claude 5 Hour', windowLabel: '5 Hour' })).toBe('5h');
+    expect(limitTag({ id: 'd', label: 'Weekly limit', windowLabel: 'Weekly' })).toBe('7d');
+    expect(limitTag({ id: 'e', label: 'Monthly limit', windowLabel: 'Monthly' })).toBe('1mo');
+    expect(limitTag({ id: 'f', label: 'Burst', windowSeconds: 900 })).toBe('15m');
+    // Nothing to read: the short label.
+    expect(limitTag({ id: 'g', label: 'Claude credits limit' })).toBe('credits');
   });
 });
 

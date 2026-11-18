@@ -151,6 +151,34 @@ export function shortLimitLabel(limit: Limit): string {
   return short || limit.label;
 }
 
+const UNIT_TAGS: Readonly<Record<string, string>> = { hour: 'h', day: 'd', week: 'w', month: 'mo' };
+
+/** How long a window lasts, in a few letters: from its length when given, else from its name. */
+function lengthTag(limit: Limit): string | undefined {
+  const seconds = limit.windowSeconds;
+  if (seconds !== undefined) {
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    return seconds < 86_400 ? `${Math.round(seconds / 3600)}h` : `${Math.round(seconds / 86_400)}d`;
+  }
+  const words = `${limit.windowLabel ?? ''} ${limit.label}`.toLowerCase();
+  const counted = /(\d+)\s*(hour|day|week|month)/.exec(words);
+  if (counted) return `${counted[1]}${UNIT_TAGS[counted[2]!]}`;
+  if (/\bdaily\b/.test(words)) return '1d';
+  if (/\bweekly\b/.test(words)) return '7d';
+  if (/\bmonthly\b/.test(words)) return '1mo';
+  return undefined;
+}
+
+/**
+ * A window's name in a few letters, for a small mark: how long it lasts and
+ * the model it is kept for, if any ("5h", "7d Fable"). Falls back to the
+ * short label when neither can be read.
+ */
+export function limitTag(limit: Limit): string {
+  const model = /\(([^)]+)\)/.exec(limit.label)?.[1]?.trim();
+  return [lengthTag(limit), model].filter(Boolean).join(' ') || shortLimitLabel(limit);
+}
+
 /**
  * Resets this close together end the same window: a provider reports a
  * week's limits a second apart ("04:59:59" and "05:00:00").

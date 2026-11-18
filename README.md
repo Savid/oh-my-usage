@@ -8,7 +8,7 @@ passing through. One static binary with the UI built in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/accounts-dark.png" />
-  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a band with a total for each provider beside the gateway's live traffic, and a band for each account drawn over its last seven days, with its other windows beside the name" width="800" />
+  <img src="docs/screenshots/accounts-light.png" alt="The accounts page: a line of figures for the fleet, a band with a total for each provider beside the gateway's live traffic, and a band for each account drawn over its last seven days, with its other windows as rings beside the name" width="800" />
 </picture>
 
 - **Accounts**: every account the gateway reports, with each usage window,
