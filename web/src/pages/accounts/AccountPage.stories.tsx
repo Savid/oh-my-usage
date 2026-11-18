@@ -38,7 +38,7 @@ export const Default: Story = {
 export const Paused: Story = {
   args: { accountId: pausedSeatFixture.id },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('switch', { name: 'Take traffic', checked: false })).toBeInTheDocument();
+    await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
   },
 };
 

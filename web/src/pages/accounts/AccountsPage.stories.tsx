@@ -43,7 +43,7 @@ export const Default: Story = {
     const totals = await canvas.findByRole('list', { name: 'Totals' });
     await expect(within(totals).getByRole('listitem', { name: 'Anthropic 7 Day' })).toBeInTheDocument();
     await expect(await canvas.findByRole('region', { name: 'Traffic' })).toBeInTheDocument();
-    await expect(await canvas.findByRole('switch', { name: 'Take traffic', checked: false })).toBeInTheDocument();
+    await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
   },
 };
 
@@ -63,7 +63,7 @@ export const Showcase: Story = {
   play: async ({ canvas }) => {
     const every = await canvas.findByRole('region', { name: 'Every account' });
     await expect(within(every).getAllByRole('article')).toHaveLength(7);
-    await expect(await canvas.findByRole('switch', { name: 'Take traffic', checked: false })).toBeInTheDocument();
+    await expect(await canvas.findByRole('button', { name: 'Resume' })).toBeInTheDocument();
     // No bar of pages: the traffic leads to its own page, with what it shows.
     await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
     await expect(await canvas.findByRole('link', { name: 'Traffic' })).toHaveAttribute(
@@ -80,7 +80,7 @@ export const WithoutControls: Story = {
   play: async ({ canvas }) => {
     await expect(await canvas.findByRole('region', { name: 'Every account' })).toBeInTheDocument();
     // The order of the list can still be changed; nothing can be paused.
-    await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
   },
 };
 

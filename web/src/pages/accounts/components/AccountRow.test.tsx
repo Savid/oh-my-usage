@@ -54,16 +54,12 @@ describe('AccountRow', () => {
     expect(others[0]!.querySelector('svg')).toBeNull();
   });
 
-  it('gives the chart the open middle of the row on a wide screen, clear of the words and the switch', () => {
-    const { rerender } = render(<AccountRow {...base} account={seatFixture} />);
+  it('gives the chart the rest of the row on a wide screen, clear of the words', () => {
+    render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('lg:left-204', 'lg:right-19');
+    expect(screen.getByTestId('history')).toHaveClass('lg:left-204', 'lg:right-3');
     // Nothing written is drawn over it: the words end where it starts.
     expect(screen.getByRole('list', { name: 'Other windows' })).toHaveClass('lg:w-64');
-
-    rerender(<AccountRow {...base} account={seatFixture} controls={false} />);
-    // Without a switch it runs to the edge.
-    expect(screen.getByTestId('history')).not.toHaveClass('lg:right-19');
   });
 
   it('leaves out the list when there are no other windows', () => {
@@ -134,11 +130,12 @@ describe('AccountRow', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'two@example.com' })).toBeInTheDocument();
     // Paused wins over omp's own block.
     expect(screen.getByText('paused')).toHaveAttribute('data-tone', 'warn');
-    // A switch for taking traffic, off; pointed at, it names the change it makes.
-    const control = screen.getByRole('switch', { name: 'Take traffic' });
-    expect(control).not.toBeChecked();
+    // A way back, lit so it shows without pointing at the row; it says what it does.
+    const control = screen.getByRole('button', { name: 'Resume' });
     expect(control).toBeEnabled();
-    expect(control).toHaveAttribute('title', 'Resume');
+    expect(control).toHaveClass('text-warn');
+    expect(control).not.toHaveClass('pointer-fine:opacity-0');
+    expect(control).toHaveAttribute('title', 'Resume: let omp send it traffic');
   });
 
   it("names omp's own block when the account is not paused", () => {
@@ -149,13 +146,13 @@ describe('AccountRow', () => {
 
   it('offers no pause without a broker or without a credential', () => {
     const { rerender } = render(<AccountRow {...base} account={seatFixture} controls={false} />);
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
     // A paused account still says so.
     rerender(<AccountRow {...base} account={pausedSeatFixture} controls={false} />);
     expect(screen.getByText('paused')).toBeInTheDocument();
 
     rerender(<AccountRow {...base} account={strayFixture} />);
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
     // A provider that does not say how many resets are usable gets no count.
     expect(screen.getByText('pro · 1 reset')).toBeInTheDocument();
   });
@@ -190,9 +187,10 @@ describe('AccountRow', () => {
     const { client } = render(<AccountRow {...base} account={seatFixture} />);
     client.setQueryData(listAccountsQueryKey(), accountsFixture);
 
-    const control = screen.getByRole('switch', { name: 'Take traffic' });
-    expect(control).toBeChecked();
-    expect(control).toHaveAttribute('title', 'Pause');
+    const control = screen.getByRole('button', { name: 'Pause' });
+    // With a mouse it waits for the row to be pointed at, so the chart runs clear.
+    expect(control).toHaveClass('pointer-fine:opacity-0', 'pointer-fine:group-hover:opacity-100');
+    expect(control).toHaveAttribute('title', "Pause: move omp's traffic off it");
     fireEvent.click(control);
 
     await waitFor(() => {
@@ -205,12 +203,11 @@ describe('AccountRow', () => {
     server.use(pauseHandlers.pending);
     render(<AccountRow {...base} account={seatFixture} />);
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Take traffic' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
 
-    // It moves at once, and the state with it, and holds still until the broker answers.
-    const control = await screen.findByRole('switch', { name: 'Take traffic' });
+    // It turns at once, and the state with it, and holds still until the broker answers.
+    const control = await screen.findByRole('button', { name: 'Resume' });
     expect(control).toBeDisabled();
-    expect(control).not.toBeChecked();
     expect(screen.getByText('paused')).toBeInTheDocument();
   });
 
@@ -218,14 +215,13 @@ describe('AccountRow', () => {
     server.use(pauseHandlers.refused);
     render(<AccountRow {...base} account={seatFixture} />);
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Take traffic' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not pause the account: pause: POST /v1/credential/1/block: HTTP 401: unauthorized'
     );
-    // Refused, it moves back.
-    expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeEnabled();
-    expect(screen.getByRole('switch', { name: 'Take traffic' })).toBeChecked();
+    // Refused, it turns back.
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeEnabled();
     expect(screen.queryByText('paused')).not.toBeInTheDocument();
   });
 });
