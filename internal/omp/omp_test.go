@@ -177,6 +177,36 @@ func TestGatewayUsageToleratesOddMetadata(t *testing.T) {
 	}
 }
 
+func TestGatewayUsageDropsEmptyCaps(t *testing.T) {
+	t.Parallel()
+
+	// A business plan with no credits set up: omp calls its spend cap spent.
+	srv := serve(t, map[string]http.HandlerFunc{"GET /v1/usage": func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"reports":[{"provider":"openai-codex","fetchedAt":0,"limits":[
+			{"id":"openai-codex:primary","label":"7 days","status":"ok",
+			 "window":{"durationMs":604800000,"resetsAt":1795662845000},
+			 "amount":{"used":0,"limit":100,"usedFraction":0,"unit":"percent"}},
+			{"id":"openai-codex:spend-cap","label":"Spend cap","status":"exhausted",
+			 "window":{"resetsAt":1796083200000},
+			 "amount":{"used":0,"limit":0,"remaining":0,"usedFraction":1,"remainingFraction":0,"unit":"credits"}}]}]}`)
+	}})
+
+	gateway, err := omp.NewGateway(srv.URL, token, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reports, err := gateway.Usage(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	limits := reports[0].Limits
+	if len(limits) != 1 || limits[0].ID != "openai-codex:primary" {
+		t.Fatalf("limits = %+v, want only the weekly window", limits)
+	}
+}
+
 func TestGatewayVersion(t *testing.T) {
 	t.Parallel()
 

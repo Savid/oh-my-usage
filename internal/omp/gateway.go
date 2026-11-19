@@ -113,17 +113,22 @@ func (r usageReport) report() accounts.Report {
 	}
 
 	for _, l := range r.Limits {
+		amount := accounts.Amount{
+			Used:              l.Amount.Used,
+			Limit:             l.Amount.Limit,
+			UsedFraction:      l.Amount.UsedFraction,
+			RemainingFraction: l.Amount.RemainingFraction,
+			Unit:              l.Amount.Unit,
+		}
+		if amount.Empty() {
+			continue
+		}
+
 		limit := accounts.Limit{
-			ID:     l.ID,
-			Label:  l.Label,
-			Status: l.Status,
-			UsedFraction: accounts.Amount{
-				Used:              l.Amount.Used,
-				Limit:             l.Amount.Limit,
-				UsedFraction:      l.Amount.UsedFraction,
-				RemainingFraction: l.Amount.RemainingFraction,
-				Unit:              l.Amount.Unit,
-			}.Resolve(),
+			ID:           l.ID,
+			Label:        l.Label,
+			Status:       l.Status,
+			UsedFraction: amount.Resolve(),
 		}
 
 		if l.Window != nil {
