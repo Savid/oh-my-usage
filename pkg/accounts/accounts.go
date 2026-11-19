@@ -145,6 +145,13 @@ type Amount struct {
 	Unit              string
 }
 
+// Empty reports a cap of nothing with nothing spent against it, such as a
+// business plan's spend cap with no credits set up. That is no limit to use
+// up, whatever share or status the provider puts on it: omp calls it spent.
+func (a Amount) Empty() bool {
+	return a.Limit != nil && *a.Limit == 0 && a.Used != nil && *a.Used == 0
+}
+
 // Resolve returns the used share of a limit the way omp's own usage views
 // work it out: explicit fraction, used/limit, percent used, inverted remaining.
 func (a Amount) Resolve() *float64 {

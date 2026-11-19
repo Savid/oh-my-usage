@@ -43,6 +43,31 @@ func TestAmountResolve(t *testing.T) {
 	}
 }
 
+func TestAmountEmpty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		amount accounts.Amount
+		want   bool
+	}{
+		{"no credits set up", accounts.Amount{Used: new(0.0), Limit: new(0.0), UsedFraction: new(1.0), Unit: "credits"}, true},
+		{"spent past a zero cap", accounts.Amount{Used: new(3.0), Limit: new(0.0), Unit: "credits"}, false},
+		{"unused cap", accounts.Amount{Used: new(0.0), Limit: new(50.0), Unit: "credits"}, false},
+		{"no amounts", accounts.Amount{UsedFraction: new(1.0)}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := tc.amount.Empty(); got != tc.want {
+				t.Fatalf("Empty() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func reports() []accounts.Report {
 	return []accounts.Report{
 		{
