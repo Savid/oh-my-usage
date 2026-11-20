@@ -64,7 +64,7 @@ describe('AccountPage', () => {
     renderPage();
 
     const windows = within(await screen.findByRole('region', { name: 'Usage windows' }));
-    expect(await screen.findByText('Could not load the usage history.')).toBeInTheDocument();
+    expect(await screen.findByText('Could not load the usage history')).toBeInTheDocument();
     expect(windows.getAllByText(/the average since the window opened/)).toHaveLength(2);
   });
 
@@ -107,8 +107,8 @@ describe('AccountPage', () => {
 
     await waitFor(() =>
       expect(screen.getAllByRole('alert').map(alert => alert.textContent)).toEqual([
-        'Could not reach oh-my-usage.',
-        'Could not load the usage history.',
+        'Could not reach oh-my-usageThe account shows once it answers.',
+        'Could not load the usage history',
       ])
     );
   });

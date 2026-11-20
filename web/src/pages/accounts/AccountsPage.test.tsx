@@ -152,14 +152,18 @@ describe('AccountsPage', () => {
     server.use(accountsHandlers.down, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage.');
+    expect(await screen.findByText('Could not reach oh-my-usage')).toBeInTheDocument();
+    expect(screen.getByText('Could not reach oh-my-usage').closest('[role="alert"]')).toHaveAttribute(
+      'data-tone',
+      'danger'
+    );
   });
 
   it('keeps the last accounts and says so when the gateway is unreachable', async () => {
     server.use(accountsHandlers.unreachable, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('The gateway cannot be reached');
+    expect(await screen.findByText('The gateway cannot be reached')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Every account' })).getAllByRole('article')).toHaveLength(4);
   });
 
@@ -175,8 +179,8 @@ describe('AccountsPage', () => {
     server.use(accountsHandlers.ok, trendsHandlers.down, trafficHandlers.ok);
     const { container } = renderPage();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Could not load the usage history. The rows show current levels only.'
+    expect((await screen.findByText('Could not load the usage history')).closest('[role="alert"]')).toHaveTextContent(
+      'The rows show current levels only.'
     );
     const every = screen.getByRole('region', { name: 'Every account' });
     expect(every.querySelector('[data-chart="history"]')).not.toBeInTheDocument();

@@ -106,7 +106,7 @@ export const Empty: Story = {
 export const Unreachable: Story = {
   parameters: { msw: { handlers: [configHandlers.ok, accountsHandlers.down, trendsHandlers.ok, trafficHandlers.ok] } },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage.');
+    await expect(await canvas.findByText('Could not reach oh-my-usage')).toBeInTheDocument();
   },
 };
 
@@ -115,7 +115,7 @@ export const GatewayUnreachable: Story = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.unreachable, trendsHandlers.ok, trafficHandlers.ok] },
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('The gateway cannot be reached');
+    await expect(await canvas.findByText('The gateway cannot be reached')).toBeInTheDocument();
     await expect(within(canvas.getByRole('region', { name: 'Every account' })).getAllByRole('article')).toHaveLength(4);
   },
 };

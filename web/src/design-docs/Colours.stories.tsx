@@ -77,6 +77,8 @@ export const Status: Story = {
         danger: 'text-danger: failed',
         info: 'text-info: information, not trouble, such as where the gateway picks an account',
         'info-subtle': 'bg-info-subtle: the tint under information',
+        'warn-subtle': 'bg-warn-subtle: the ground of a warning notice',
+        'danger-subtle': 'bg-danger-subtle: the ground of a danger notice',
       }}
     />
   ),

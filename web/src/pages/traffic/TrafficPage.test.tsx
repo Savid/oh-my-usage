@@ -70,7 +70,7 @@ describe('TrafficPage', () => {
     server.use(trafficHandlers.down);
     render(<TrafficPage />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage');
   });
 
   it('says what is missing when no broker is configured', async () => {

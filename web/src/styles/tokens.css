@@ -52,6 +52,9 @@
   /* Information, not trouble: where the gateway picks an account. info-subtle is its tint. */
   --color-info: light-dark(#1559b0, #7cbcf8);
   --color-info-subtle: light-dark(#e2eefc, #10233a);
+  /* The ground of a notice in each tone: trouble said in full, under its mark. */
+  --color-warn-subtle: light-dark(#fdf3df, #261c08);
+  --color-danger-subtle: light-dark(#fdecec, #2a1214);
   /* Data marks. A provider's usage wears the provider's own colour: its mark,
    * its gauge and the line of an account's chart. The -track step is the empty
    * part of the gauge and the deepest the glow under a chart gets, so text
