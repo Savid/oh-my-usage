@@ -28,96 +28,93 @@ describe('AccountRow', () => {
       '/accounts/00000000000000a1'
     );
     expect(within(row).getByRole('img', { name: 'Anthropic' })).toBeInTheDocument();
-    // Saved resets say when the first that can be spent lapses, quietly: its week resets first.
-    expect(within(row).getByText('One Org · $200/mo')).toBeInTheDocument();
-    // Saved resets are a chip: usable of held, and when the first lapses; the sentence on hover and to a screen reader.
-    const resets = within(row).getByTestId('resets');
-    expect(resets).toHaveTextContent('↻ 1/2 · 28d');
-    expect(resets).toHaveAttribute('title', '2 saved resets, 1 usable now; the first lapses in 28d');
-    expect(resets).toHaveClass('text-muted');
+    // The second look waits on hover over the name: who it is, its saved resets, its pace.
+    expect(within(row).getByRole('link', { name: 'one@example.com' })).toHaveAttribute(
+      'title',
+      'One Org · $200/mo · 2 saved resets, 1 usable now; the first lapses in 28d · +10.7%/day'
+    );
+    // Saved resets that are not about to lapse are not on the row.
+    expect(within(row).queryByTestId('resets')).not.toBeInTheDocument();
     // Both weekly windows reset together; the first listed leads.
     expect(row).toHaveTextContent('76%used');
-    expect(row).toHaveTextContent('7 Day · resets in 21h · +10.7%/day');
+    expect(row).toHaveTextContent(/7 Day · resets in 21h.* · Fable ▲ 92%$/);
     expect(row).toHaveAttribute('data-severity', 'normal');
     expect(row).toHaveAttribute('data-chart', 'history');
     // Taking work is the normal state and says nothing.
     expect(within(row).queryByText('active')).not.toBeInTheDocument();
   });
 
-  it('names the other windows on the chart, a longer one as a line', () => {
+  it('draws the main window alone, and names the others in words under the name, never over the chart', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    const history = screen.getByTestId('history');
-    // Fable lasts as long as the main window: a thin line under it, from the same start.
-    expect(history.querySelector('path[data-window="anthropic:7d:fable"]')?.getAttribute('d')).toMatch(/^M0\.00 /);
-    // Each is named short of the row's end, at its own level, apart from the others.
-    const labels = [...history.querySelectorAll(':scope > span')];
-    expect(labels.map(label => label.textContent)).toEqual(['5h–', 'Fable▲ 92%']);
-    expect(labels[0]).toHaveClass('top-9/10');
-    expect(labels[1]).toHaveClass('top-1/10');
-    // Fable resets with the main window, so its label leaves out when; it is nearly spent.
-    expect(within(labels[1] as HTMLElement).getByText(/92%/)).toHaveClass('text-warn');
+    // Nothing but the main window's line and glow in the chart.
+    expect(screen.getByTestId('history').querySelector('[data-window]')).toBeNull();
+    expect(screen.getByTestId('history').querySelector('span')).toBeNull();
 
-    // On a wide screen the words are for assistive technology, each a sentence.
-    const list = screen.getByRole('list', { name: 'Other windows' });
-    expect(list).toHaveClass('lg:sr-only');
-    expect(
-      within(list)
-        .getAllByRole('listitem')
-        .map(item => item.querySelector('.sr-only')?.textContent)
-    ).toEqual(['5 Hour: not reported', '7 Day Fable: 92% used, near its limit, resets in 21h']);
+    const items = within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem');
+    expect(items.map(item => item.querySelector('.sr-only')?.textContent)).toEqual([
+      '5 Hour: not reported',
+      '7 Day Fable: 92% used, near its limit, resets in 21h',
+    ]);
+    // A window with nothing reported says nothing worth showing; it is still heard.
+    expect(items[0]).toHaveClass('sr-only');
+    // Fable: its share, marked, in the colour of its state; it resets with the main window, so not when.
+    expect(items[1]!.querySelector('.font-semibold')).toHaveTextContent('▲ 92%');
+    expect(items[1]!.querySelector('.font-semibold')).toHaveClass('text-warn');
+    expect(items[1]).toHaveTextContent(/ · Fable ▲ 92%$/);
   });
 
-  it('draws a window short beside the chart as bars of its peaks', () => {
+  it('says when another window resets apart from the main one', () => {
     render(<AccountRow {...base} account={pausedSeatFixture} />);
 
-    const history = screen.getByTestId('history');
-    // Five hours beside a week: a bar a stretch, from the foot, on the chart's own scale.
-    const bars = history.querySelector('path[data-window="anthropic:5h"]');
-    expect(bars).toHaveClass('fill-border');
-    expect(bars?.getAttribute('d')).toMatch(/^M[\d.]+ 40 V[\d.]+ H[\d.]+ V40 Z M/);
-    // It resets apart from the main window, so its label says when.
-    expect(history.querySelector(':scope > span')).toHaveTextContent(/^5h.*in 2h$/);
+    // Heard, and on the account's page; the row keeps to the share.
+    const item = within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem')[0]!;
+    expect(item.querySelector('.sr-only')).toHaveTextContent(/resets in 2h$/);
+    expect(item.querySelector('[aria-hidden]')).not.toHaveTextContent('in 2h');
   });
 
-  it('moves labels that would sit together apart', () => {
-    const quiet = {
+  it('keeps a window with nothing used out of sight', () => {
+    const idle = {
       ...seatFixture,
       limits: seatFixture.limits.map(limit =>
         limit.id === 'anthropic:7d:fable' ? { ...limit, usedFraction: 0 } : limit
       ),
     };
-    render(<AccountRow {...base} account={quiet} />);
+    render(<AccountRow {...base} account={idle} />);
 
-    const labels = [...screen.getByTestId('history').querySelectorAll(':scope > span')];
-    // Both at nothing: one stays near the foot, the other a label's height above it.
-    expect(labels[0]).toHaveClass('top-7/10');
-    expect(labels[1]).toHaveClass('top-9/10');
+    for (const item of within(screen.getByRole('list', { name: 'Other windows' })).getAllByRole('listitem')) {
+      expect(item).toHaveClass('sr-only');
+    }
   });
 
-  it('keeps the words in view when there is no chart to name them on', () => {
+  it('lists the other windows when there is no chart', () => {
     const week = { id: 'codex:7d', label: '7 days', windowSeconds: 7 * 86_400, resetsAt: at(50 * 3_600_000) };
     // No window reports a share, so none leads and there is no chart.
     const session = { id: 'codex:5h', label: '5 hours', windowSeconds: 5 * 3600, resetsAt: at(2 * 3_600_000) };
     render(<AccountRow {...base} account={{ ...strayFixture, limits: [week, session] }} />);
 
     expect(screen.getByRole('article')).toHaveAttribute('data-chart', 'none');
-    expect(screen.getByRole('list', { name: 'Other windows' })).not.toHaveClass('lg:sr-only');
+    expect(screen.getByRole('list', { name: 'Other windows' })).toBeInTheDocument();
   });
 
   it('gives the chart the rest of the row on a wide screen, clear of the words', () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    // It starts where the name's column ends: nothing written sits on it but its own labels.
+    // It runs from where the name's column ends to the row's end: nothing written sits on it.
     expect(screen.getByTestId('history')).toHaveClass('lg:left-134');
   });
 
   it("draws the chart as a strip along a narrow row's foot, and from where the words end on a wide one", () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('inset-x-0', 'bottom-0', 'h-7', 'lg:top-0', 'lg:left-134');
-    // The strip draws the main window's line alone: the others' bars and lines wait for a wide row.
-    expect(screen.getByTestId('history').querySelector('g')).toHaveClass('max-lg:hidden');
+    expect(screen.getByTestId('history')).toHaveClass(
+      'inset-x-0',
+      'bottom-0',
+      'h-7',
+      'lg:top-0',
+      'lg:left-134',
+      'lg:right-3'
+    );
   });
 
   it('leaves out the list when there are no other windows', () => {
@@ -212,8 +209,10 @@ describe('AccountRow', () => {
     rerender(<AccountRow {...base} account={strayFixture} />);
     expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
     // A provider that does not say how many resets are usable gets no count.
-    expect(screen.getByText('pro')).toBeInTheDocument();
-    expect(screen.getByTestId('resets')).toHaveAttribute('title', '1 saved reset; the first lapses in 30d');
+    expect(screen.getByRole('link', { name: 'codex@example.com' })).toHaveAttribute(
+      'title',
+      'pro · 1 saved reset; the first lapses in 30d'
+    );
   });
 
   it('leads with a saved reset that lapses before its window resets, marked', () => {
@@ -227,8 +226,6 @@ describe('AccountRow', () => {
       'title',
       '2 saved resets, 1 usable now: spend one within 12h, before its window resets, or lose it'
     );
-    // First on its line, so the line never cuts it off.
-    expect(alarm.parentElement?.firstElementChild).toBe(alarm);
     // The main window's own state is not changed by it.
     expect(row).toHaveAttribute('data-severity', 'normal');
   });
@@ -273,9 +270,8 @@ describe('AccountRow', () => {
   it('says when the usage it shows is old', () => {
     render(<AccountRow {...base} account={{ ...seatFixture, resets: undefined, fetchedAt: at(-40 * 60_000) }} />);
 
-    expect(screen.getByText('One Org · $200/mo')).toHaveClass('max-lg:hidden');
-    // Old usage says so at every width.
-    expect(screen.getByText('usage 40m old')).not.toHaveClass('max-lg:hidden');
+    // Old usage says so on the row, at every width.
+    expect(screen.getByRole('article')).toHaveTextContent(/ · usage 40m old$/);
   });
 
   it('says when an account reports no usage', () => {
@@ -331,7 +327,7 @@ describe('AccountRow', () => {
 });
 
 describe('AccountRow, looking ahead', () => {
-  it('shows the pace, or idle, and never a forecast', () => {
+  it('keeps the pace to the second look, and never shows a forecast', () => {
     const week = {
       id: 'codex:7d',
       label: '7 days',
@@ -351,12 +347,19 @@ describe('AccountRow, looking ahead', () => {
       <AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[climbing]} />
     );
 
-    // Two points an hour with half left would run out a day before the reset: the row only says the pace.
-    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · +2.0%/h');
+    // Two points an hour with half left would run out a day before the reset: the row says neither.
+    expect(screen.getByRole('article')).toHaveTextContent(/7 days · resets in 2d 2h$/);
     expect(screen.getByRole('article')).not.toHaveTextContent('▲');
+    expect(screen.getByRole('link', { name: 'codex@example.com' })).toHaveAttribute(
+      'title',
+      'pro · 1 saved reset; the first lapses in 30d · +2.0%/h'
+    );
 
     const flat = { ...climbing, points: climbing.points.map(point => ({ ...point, usedFraction: 0.5 })) };
     rerender(<AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[flat]} />);
-    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · idle');
+    expect(screen.getByRole('link', { name: 'codex@example.com' })).toHaveAttribute(
+      'title',
+      'pro · 1 saved reset; the first lapses in 30d'
+    );
   });
 });

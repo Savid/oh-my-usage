@@ -85,7 +85,10 @@ export const WithoutControls: Story = {
 export const NoBrokerCredential: Story = {
   args: { account: strayFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByTestId('resets')).toHaveTextContent('↻ 1 · 30d');
+    await expect(canvas.getByRole('link', { name: 'codex@example.com' })).toHaveAttribute(
+      'title',
+      'pro · 1 saved reset; the first lapses in 30d'
+    );
     await expect(canvas.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
   },
 };
