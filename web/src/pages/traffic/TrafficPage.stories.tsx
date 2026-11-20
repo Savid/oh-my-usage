@@ -95,7 +95,7 @@ export const Empty: Story = {
 export const Unreachable: Story = {
   parameters: { msw: { handlers: [configHandlers.ok, trafficHandlers.down] } },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage.');
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Could not reach oh-my-usage');
   },
 };
 

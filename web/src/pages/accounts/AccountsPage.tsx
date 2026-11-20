@@ -1,4 +1,5 @@
 import { useState, type JSX } from 'react';
+import { Notice } from '@/components/Feedback/Notice';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
@@ -49,16 +50,14 @@ export function AccountsPage(): JSX.Element {
           Loading the accounts…
         </p>
       ) : !list ? (
-        <p role="alert" className="px-1 text-caption text-danger">
-          Could not reach oh-my-usage.
-        </p>
+        <Notice tone="danger" title="Could not reach oh-my-usage">
+          The accounts show once it answers.
+        </Notice>
       ) : (
         <>
           <SourceAlerts list={list} stale={accounts.isError} now={now} />
           {charts.failed && (
-            <p role="alert" className="px-1 text-caption text-danger">
-              Could not load the usage history. The rows show current levels only.
-            </p>
+            <Notice title="Could not load the usage history">The rows show current levels only.</Notice>
           )}
 
           {list.accounts.length === 0 ? (

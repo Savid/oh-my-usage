@@ -16,22 +16,23 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('alert')).toHaveTextContent('The gateway cannot be reached');
-    await expect(canvas.getByRole('alert')).toHaveTextContent('The broker cannot be reached');
+    await expect(canvas.getAllByRole('alert')).toHaveLength(2);
+    await expect(canvas.getByText('The gateway cannot be reached')).toBeInTheDocument();
+    await expect(canvas.getByText('The broker cannot be reached')).toBeInTheDocument();
   },
 };
 
 export const NothingReadYet: Story = {
   args: { list: neverReachedFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('alert')).toHaveTextContent('No usage has been read yet.');
+    await expect(canvas.getByText(/No usage has been read yet\./)).toBeInTheDocument();
   },
 };
 
 export const DaemonGone: Story = {
   args: { list: accountsFixture, stale: true },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('alert')).toHaveTextContent('Lost contact with oh-my-usage.');
+    await expect(canvas.getByText('Lost contact with oh-my-usage')).toBeInTheDocument();
   },
 };
 

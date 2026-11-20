@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router';
 import type { UsageSample } from '@/api';
 import { PageHeader } from '@/components/Layout/PageHeader';
 import { getAccountHistoryOptions } from '@/api/@tanstack/react-query.gen';
+import { Notice } from '@/components/Feedback/Notice';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { providerName } from '@/lib/accounts';
@@ -57,9 +58,9 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
           Loading the account…
         </p>
       ) : !accounts.data ? (
-        <p role="alert" className="text-caption text-danger">
-          Could not reach oh-my-usage.
-        </p>
+        <Notice tone="danger" title="Could not reach oh-my-usage">
+          The account shows once it answers.
+        </Notice>
       ) : (
         <>
           <SourceAlerts list={accounts.data} stale={accounts.isError} now={now} />
@@ -109,15 +110,11 @@ export function AccountPage({ accountId }: AccountPageProps): JSX.Element {
             Loading the usage history…
           </p>
         ) : !history.data ? (
-          <p role="alert" className="text-caption text-danger">
-            Could not load the usage history.
-          </p>
+          <Notice tone="danger" title="Could not load the usage history" />
         ) : (
           <>
             {history.isError && (
-              <p role="alert" className="text-caption text-danger">
-                Could not refresh the usage history. This is the last period that loaded.
-              </p>
+              <Notice title="Could not refresh the usage history">This is the last period that loaded.</Notice>
             )}
             <UsageHistoryChart samples={history.data.samples} />
           </>

@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react';
 import { Link } from '@tanstack/react-router';
 import { TrafficBars } from '@/components/Data/TrafficBars';
 import { PageHeader } from '@/components/Layout/PageHeader';
+import { Notice } from '@/components/Feedback/Notice';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
 import { formatDateTime } from '@/lib/format';
@@ -52,9 +53,9 @@ export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX
             Loading the traffic…
           </p>
         ) : !data ? (
-          <p role="alert" className="px-1 text-caption text-danger">
-            Could not reach oh-my-usage.
-          </p>
+          <Notice tone="danger" title="Could not reach oh-my-usage">
+            The traffic shows once it answers.
+          </Notice>
         ) : (
           <p className="px-1 text-caption text-muted">
             Traffic is read from the omp auth broker, and none is configured. Start oh-my-usage with a broker URL and
@@ -76,11 +77,7 @@ export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX
         <Trail />
       </PageHeader>
 
-      {traffic.isError && (
-        <p role="alert" className="px-1 text-caption text-danger">
-          oh-my-usage is not answering. This is the last traffic it sent.
-        </p>
-      )}
+      {traffic.isError && <Notice title="Lost contact with oh-my-usage">Showing the last traffic it sent.</Notice>}
 
       {/* The live panel says itself when the broker is down. */}
       <LiveTraffic traffic={data} now={now} variant="page" metric={metric} onMetric={setMetric} />

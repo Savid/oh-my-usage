@@ -63,8 +63,8 @@ export const Unreachable: Story = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.down, historyHandlers.down, trendsHandlers.ok] },
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Could not reach oh-my-usage.')).toBeInTheDocument();
-    await expect(await canvas.findByText('Could not load the usage history.')).toBeInTheDocument();
+    await expect(await canvas.findByText('Could not reach oh-my-usage')).toBeInTheDocument();
+    await expect(await canvas.findByText('Could not load the usage history')).toBeInTheDocument();
   },
 };
 

@@ -12,7 +12,7 @@ export const SURFACE_COLORS = ['background', 'surface', 'raised'] as const;
 export const BORDER_COLORS = ['border', 'border-strong'] as const;
 export const TEXT_COLORS = ['foreground', 'muted'] as const;
 export const ACCENT_COLORS = ['accent', 'accent-foreground', 'focus'] as const;
-export const STATUS_COLORS = ['ok', 'warn', 'danger', 'info', 'info-subtle'] as const;
+export const STATUS_COLORS = ['ok', 'warn', 'danger', 'info', 'info-subtle', 'warn-subtle', 'danger-subtle'] as const;
 /** Marks that draw data with no provider's colour: the fallback gauge pair and the chart series. */
 export const DATA_COLORS = ['meter', 'meter-track', 'series-1', 'series-2', 'series-3'] as const;
 /** The providers with a colour of their own; mono is for one whose mark is black and white. */
@@ -106,6 +106,24 @@ export const CONTRAST_RULES: readonly ContrastRule[] = [
     foregrounds: ['info', 'muted'],
     backgrounds: ['info-subtle'],
     minimum: 4.5,
+  },
+  {
+    name: 'A notice: its words on its tint',
+    foregrounds: ['foreground', 'muted'],
+    backgrounds: ['warn-subtle', 'danger-subtle'],
+    minimum: 4.5,
+  },
+  {
+    name: "A notice's mark on its tint",
+    foregrounds: ['warn'],
+    backgrounds: ['warn-subtle'],
+    minimum: 3,
+  },
+  {
+    name: "A danger notice's mark on its tint",
+    foregrounds: ['danger'],
+    backgrounds: ['danger-subtle'],
+    minimum: 3,
   },
   {
     name: 'Control outlines and the focus ring on every surface',
