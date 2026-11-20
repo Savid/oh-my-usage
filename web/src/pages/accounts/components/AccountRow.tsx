@@ -224,7 +224,6 @@ interface OtherWindow {
   tag: string;
   share?: number;
   severity: LimitSeverity;
-  dry: boolean;
   /** When it resets, when that is not when the main window does. */
   reset?: string;
   /** Its line in the chart, when usage was recorded and it lasts long enough to draw as one. */
@@ -239,8 +238,7 @@ interface OtherWindow {
 
 /** The share, marked when it is in trouble, in the colour of its state. */
 function WindowShare({ window: other }: { window: OtherWindow }): JSX.Element {
-  const marked = severityMarks[other.severity];
-  const mark = other.dry ? '▲' : marked?.mark;
+  const mark = severityMarks[other.severity]?.mark;
   return (
     <span
       className={clsx(
@@ -248,7 +246,7 @@ function WindowShare({ window: other }: { window: OtherWindow }): JSX.Element {
         other.share === undefined ? 'text-muted' : figureClasses[other.severity]
       )}
     >
-      {mark && <span className={clsx(other.dry && 'text-danger')}>{mark} </span>}
+      {mark && <span>{mark} </span>}
       {other.share === undefined ? '–' : formatPercent(other.share)}
     </span>
   );
@@ -328,9 +326,8 @@ function PauseButton({
  * windows as short lines. In the open middle (behind it all, on a narrow
  * screen): a chart of what it had used, in its provider's colour, running to
  * the row's end at now. Over that
- * end, with a broker: a small button to pause or resume it. Trouble ahead (a window that runs dry
- * before it resets at its pace) is the only forecast it shows, and its state
- * shows only when it is not taking work.
+ * end, with a broker: a small button to pause or resume it. Its state shows
+ * only when it is not taking work.
  */
 export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
@@ -361,9 +358,8 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const marked = severityMarks[severity];
   const reset = primary ? resetIn(primary, now) : undefined;
   const pausable = controls && account.pausable;
-  // Where each window is heading at its pace: only trouble is called out.
+  // Each window with its pace, and whether the account is idle.
   const view = viewAccount(account, trends, now);
-  const mainDryAt = primary ? view.limits.find(entry => entry.limit === primary)?.forecast.spentAt : undefined;
   const drawn =
     primary && used !== undefined
       ? chart(
@@ -377,10 +373,9 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
   const primaryTag = primary ? limitTag(primary) : undefined;
   const others: OtherWindow[] = view.limits
     .filter(entry => entry.limit !== primary)
-    .map(({ limit, verdict }) => {
+    .map(({ limit }) => {
       const share = limit.usedFraction;
       const severity = limitSeverity(limit);
-      const dry = verdict === 'dry';
       const full = resetIn(limit, now);
       // A window that resets with the main one says nothing new by saying when.
       const together =
@@ -399,7 +394,6 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
         tag: length && tag.startsWith(`${length} `) ? tag.slice(length.length + 1) : tag,
         share,
         severity,
-        dry,
         reset: together ? undefined : full,
         line: charted && !short ? trace(points, share ?? 0, charted.from, now) : undefined,
         bars: charted && short && windowMs ? peaks(points, share ?? 0, windowMs, charted.from, now) : undefined,
@@ -407,7 +401,7 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
         said:
           share === undefined
             ? `${name}: not reported`
-            : `${name}: ${formatPercent(share)} used${severityMarks[severity]?.word ?? ''}${dry ? ', runs dry before it resets' : ''}${full ? `, resets in ${full}` : ''}`,
+            : `${name}: ${formatPercent(share)} used${severityMarks[severity]?.word ?? ''}${full ? `, resets in ${full}` : ''}`,
       };
     });
   const slots = spread(others.map(other => other.y / HEIGHT));
@@ -585,18 +579,10 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
                   <span className="font-semibold text-foreground tabular-nums">{reset}</span>
                 </>
               )}
-              {mainDryAt !== undefined ? (
-                <span className="text-danger">
-                  {' · '}
-                  <span aria-hidden="true">▲ </span>runs dry in{' '}
-                  <span className="font-semibold tabular-nums">{formatShort(mainDryAt - now)}</span>
-                </span>
-              ) : view.idle === true ? (
-                ' · idle'
-              ) : (
-                view.burn !== undefined &&
-                view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>
-              )}
+              {view.idle === true
+                ? ' · idle'
+                : view.burn !== undefined &&
+                  view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>}
             </p>
           )}
           {(meta.alarm || meta.said) && (

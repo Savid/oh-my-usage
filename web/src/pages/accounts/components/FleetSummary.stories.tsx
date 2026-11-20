@@ -13,7 +13,6 @@ const meta = {
       burning: 6,
       idle: 4,
       paused: 1,
-      dry: 2,
       spent: 1,
       monthlyUsd: 780,
       priced: 10,
@@ -42,7 +41,6 @@ export const Calm: Story = {
       burning: 1,
       idle: 3,
       paused: 0,
-      dry: 0,
       spent: 0,
       priced: 0,
       resetsUsable: 0,
@@ -50,7 +48,6 @@ export const Calm: Story = {
     },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.queryByText('running dry')).not.toBeInTheDocument();
     await expect(canvas.queryByText(/lapsing/)).not.toBeInTheDocument();
   },
 };
@@ -62,7 +59,6 @@ export const NotReadYet: Story = {
       burning: 0,
       idle: 0,
       paused: 0,
-      dry: 0,
       spent: 0,
       priced: 0,
       resetsUsable: 0,

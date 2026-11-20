@@ -17,19 +17,19 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// A seat climbing fast enough to run out two days before its week resets.
-const racing: Account = {
+// A seat near the end of its week.
+const nearly: Account = {
   ...strayFixture,
   id: '0000000000000ee1',
-  email: 'racing@example.com',
-  limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 0.5, resetsAt: at(50 * HOUR), windowSeconds: 7 * 86_400 }],
+  email: 'nearly@example.com',
+  limits: [{ id: 'codex:7d', label: '7 days', usedFraction: 0.9, resetsAt: at(50 * HOUR), windowSeconds: 7 * 86_400 }],
 };
-const racingTrend: UsageTrend = {
-  accountId: racing.id,
+const nearlyTrend: UsageTrend = {
+  accountId: nearly.id,
   limitId: 'codex:7d',
   points: [
-    { at: at(-10 * HOUR), usedFraction: 0.3 },
-    { at: at(-HOUR), usedFraction: 0.48 },
+    { at: at(-10 * HOUR), usedFraction: 0.7 },
+    { at: at(-HOUR), usedFraction: 0.88 },
   ],
 };
 
@@ -43,7 +43,7 @@ function Rows({ accounts }: { accounts: Account[] }): JSX.Element {
         <AccountRow
           key={account.id}
           account={account}
-          trends={[...trendsFixture.trends, racingTrend]}
+          trends={[...trendsFixture.trends, nearlyTrend]}
           start={NOW_MS - WEEK}
           now={NOW_MS}
           controls
@@ -56,14 +56,14 @@ function Rows({ accounts }: { accounts: Account[] }): JSX.Element {
 /**
  * Three answers at a glance: how much each account has used (the big figure
  * over its week), whether it can take work now (its state and its session
- * window), and, only when it is coming, trouble.
+ * window), and, only when it is there, trouble.
  */
 export const Glance: Story = {
-  render: () => <Rows accounts={[seatFixture, racing, pausedSeatFixture]} />,
+  render: () => <Rows accounts={[seatFixture, nearly, pausedSeatFixture]} />,
   play: async ({ canvasElement }) => {
     const rows = within(canvasElement).getAllByRole('article');
     await expect(rows).toHaveLength(3);
-    await expect(rows[1]).toHaveTextContent('runs dry in');
+    await expect(rows[1]).toHaveAttribute('data-severity', 'warn');
   },
 };
 

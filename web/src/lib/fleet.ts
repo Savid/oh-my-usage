@@ -28,8 +28,6 @@ export interface AccountView {
   burn?: number;
   /** Whether nothing was used for `IDLE_MS`. Undefined when the record does not reach back that far. */
   idle?: boolean;
-  /** The soonest any window runs out before it resets, at its pace, in milliseconds. */
-  dryAt?: number;
   /**
    * The longest any window would sit spent before it resets, at its pace, in
    * milliseconds: how much the account would miss.
@@ -93,7 +91,6 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
 
   const main = limits[0];
   const pace = primary && main?.forecast.pace;
-  const dry = limits.flatMap(entry => (entry.forecast.spentAt === undefined ? [] : [entry.forecast.spentAt]));
   const gaps = limits.flatMap(({ limit, forecast: view }) =>
     view.spentAt === undefined || limit.resetsAt === undefined ? [] : [Date.parse(limit.resetsAt) - view.spentAt]
   );
@@ -104,7 +101,6 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
     limits,
     burn: pace && pace.basis === 'recent' ? pace.perHour : undefined,
     idle: isIdle(account, trends, now),
-    dryAt: dry.length > 0 ? Math.min(...dry) : undefined,
     dryFor: gaps.length > 0 ? Math.max(...gaps) : undefined,
     resetsLapsing: resetOutlook(account, now).lapsing,
   };
@@ -151,8 +147,6 @@ export interface Fleet {
   burning: number;
   idle: number;
   paused: number;
-  /** Accounts with a window that runs out before it resets, at its pace. */
-  dry: number;
   /** Accounts with a window already spent. */
   spent: number;
   /** What the priced accounts cost a month together; undefined when none is priced. */
@@ -172,7 +166,6 @@ export function fleetOf(views: readonly AccountView[]): Fleet {
     burning: 0,
     idle: 0,
     paused: 0,
-    dry: 0,
     spent: 0,
     priced: 0,
     resetsUsable: 0,
@@ -184,7 +177,6 @@ export function fleetOf(views: readonly AccountView[]): Fleet {
     if (account.paused) fleet.paused += 1;
     if (view.idle === true) fleet.idle += 1;
     if (view.idle === false) fleet.burning += 1;
-    if (view.dryAt !== undefined) fleet.dry += 1;
     if (account.limits.some(limit => limitSeverity(limit) === 'danger')) fleet.spent += 1;
     fleet.resetsUsable += account.resets?.usable ?? 0;
     fleet.resetsLapsing += view.resetsLapsing ?? 0;

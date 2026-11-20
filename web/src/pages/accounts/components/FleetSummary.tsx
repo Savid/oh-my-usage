@@ -16,7 +16,7 @@ const alarmClasses = { warn: 'text-warn', danger: 'text-danger' } as const;
 
 /**
  * The fleet in one line: how many accounts, how many are burning, idle,
- * paused, running dry or spent, what they cost a month, how many saved
+ * paused or spent, what they cost a month, how many saved
  * resets can be spent and how many must be spent soon or lost, and when the
  * gateway was last read. Counts of nothing are left out, except the accounts.
  */
@@ -27,9 +27,6 @@ export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.
   if (fleet.burning > 0) facts.push({ key: 'burning', value: String(fleet.burning), name: 'burning', mark: '▴' });
   if (fleet.idle > 0) facts.push({ key: 'idle', value: String(fleet.idle), name: 'idle', mark: '○' });
   if (fleet.paused > 0) facts.push({ key: 'paused', value: String(fleet.paused), name: 'paused' });
-  if (fleet.dry > 0) {
-    facts.push({ key: 'dry', value: String(fleet.dry), name: 'running dry', mark: '▲', alarm: 'danger' });
-  }
   if (fleet.spent > 0)
     facts.push({ key: 'spent', value: String(fleet.spent), name: 'spent', mark: '■', alarm: 'danger' });
   if (fleet.monthlyUsd !== undefined) {

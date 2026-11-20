@@ -90,7 +90,7 @@ describe('AccountsPage', () => {
     const fleet = await screen.findByRole('region', { name: 'Fleet' });
     // Each name comes before its figure for assistive technology; the figure is drawn first.
     expect(fleet).toHaveTextContent('accounts4');
-    expect(fleet).toHaveTextContent('running dry▲1');
+    expect(fleet).not.toHaveTextContent('dry');
     expect(fleet).toHaveTextContent('for 1 priced$200/mo');
     expect(fleet).toHaveTextContent('gateway read 5s ago');
   });

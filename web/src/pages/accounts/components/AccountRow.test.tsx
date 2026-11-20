@@ -50,8 +50,7 @@ describe('AccountRow', () => {
     expect(labels.map(label => label.textContent)).toEqual(['5h–', 'Fable▲ 92%']);
     expect(labels[0]).toHaveClass('top-9/10');
     expect(labels[1]).toHaveClass('top-1/10');
-    // Fable resets with the main window, so its label leaves out when; it is nearly spent and running dry.
-    expect(within(labels[1] as HTMLElement).getByText('▲')).toHaveClass('text-danger');
+    // Fable resets with the main window, so its label leaves out when; it is nearly spent.
     expect(within(labels[1] as HTMLElement).getByText(/92%/)).toHaveClass('text-warn');
 
     // On a wide screen the words are for assistive technology, each a sentence.
@@ -61,10 +60,7 @@ describe('AccountRow', () => {
       within(list)
         .getAllByRole('listitem')
         .map(item => item.querySelector('.sr-only')?.textContent)
-    ).toEqual([
-      '5 Hour: not reported',
-      '7 Day Fable: 92% used, near its limit, runs dry before it resets, resets in 21h',
-    ]);
+    ).toEqual(['5 Hour: not reported', '7 Day Fable: 92% used, near its limit, resets in 21h']);
   });
 
   it('draws a window short beside the chart as bars of its peaks', () => {
@@ -294,7 +290,7 @@ describe('AccountRow', () => {
 });
 
 describe('AccountRow, looking ahead', () => {
-  it('warns when the main window runs dry before it resets, and says nothing more otherwise', () => {
+  it('shows the pace, or idle, and never a forecast', () => {
     const week = {
       id: 'codex:7d',
       label: '7 days',
@@ -314,12 +310,12 @@ describe('AccountRow, looking ahead', () => {
       <AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[climbing]} />
     );
 
-    // Two points an hour with half left: 25 hours, of 50 to the reset.
-    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · ▲ runs dry in 1d 1h');
+    // Two points an hour with half left would run out a day before the reset: the row only says the pace.
+    expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · +2.0%/h');
+    expect(screen.getByRole('article')).not.toHaveTextContent('▲');
 
     const flat = { ...climbing, points: climbing.points.map(point => ({ ...point, usedFraction: 0.5 })) };
     rerender(<AccountRow {...base} account={{ ...strayFixture, limits: [week] }} trends={[flat]} />);
     expect(screen.getByRole('article')).toHaveTextContent('7 days · resets in 2d 2h · idle');
-    expect(screen.getByRole('article')).not.toHaveTextContent('runs dry');
   });
 });

@@ -9,7 +9,6 @@ const quiet: Fleet = {
   burning: 0,
   idle: 0,
   paused: 0,
-  dry: 0,
   spent: 0,
   priced: 0,
   resetsUsable: 0,
@@ -25,7 +24,6 @@ describe('FleetSummary', () => {
           burning: 6,
           idle: 4,
           paused: 1,
-          dry: 2,
           spent: 1,
           monthlyUsd: 780,
           priced: 10,
@@ -39,9 +37,9 @@ describe('FleetSummary', () => {
 
     const fleet = screen.getByRole('region', { name: 'Fleet' });
     expect(fleet).toHaveTextContent(
-      'accounts10burning▴6idle○4paused1running dry▲2spent■1in all$780/moresets to spend3resets lapsing▲2gateway read 45s ago'
+      'accounts10burning▴6idle○4paused1spent■1in all$780/moresets to spend3resets lapsing▲2gateway read 45s ago'
     );
-    expect(screen.getByText('running dry').parentElement).toHaveClass('text-danger');
+    expect(screen.getByText('spent').parentElement).toHaveClass('text-danger');
     // A reset about to lapse is a warning: it costs nothing yet.
     expect(screen.getByText('resets lapsing').parentElement).toHaveClass('text-warn');
   });
