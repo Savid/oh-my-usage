@@ -89,7 +89,9 @@ export const Loading: Story = {
     msw: { handlers: [configHandlers.ok, accountsHandlers.pending, trendsHandlers.ok, trafficHandlers.ok] },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('status')).toHaveTextContent('Loading the accounts…');
+    // The band is up from the start; only the accounts wait.
+    await expect(canvas.getByText('Loading the accounts…')).toHaveAttribute('role', 'status');
+    await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toBeInTheDocument();
   },
 };
 

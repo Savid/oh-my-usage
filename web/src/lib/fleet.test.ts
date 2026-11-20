@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Account, UsageTrend } from '@/api';
 import { at, NOW_MS } from '@/test-utils/time';
-import { fleetOf, isIdle, orderAccounts, trendSamples, viewAccount, type AccountView } from './fleet';
+import { isIdle, monthlyCost, orderAccounts, trendSamples, viewAccount, type AccountView } from './fleet';
 import type { Priority } from './priority';
 
 const HOUR = 3_600_000;
@@ -146,29 +146,14 @@ describe('orderAccounts', () => {
   });
 });
 
-describe('fleetOf', () => {
-  it('counts the fleet and adds up its prices', () => {
-    const spent = account('spent', 1, { monthlyUsd: 200, resets: { available: 2, usable: 1 } });
-    const fleet = fleetOf([
-      { account: spent, limits: [], idle: false, resetsLapsing: 1 },
-      { account: account('idle', 0.1, { monthlyUsd: 50 }), limits: [], idle: true },
-      { account: account('paused', 0.1, { paused: true }), limits: [] },
-    ]);
-
-    expect(fleet).toEqual({
-      accounts: 3,
-      burning: 1,
-      idle: 1,
-      paused: 1,
-      spent: 1,
-      monthlyUsd: 250,
-      priced: 2,
-      resetsUsable: 1,
-      resetsLapsing: 1,
-    });
+describe('monthlyCost', () => {
+  it('adds up the priced accounts', () => {
+    expect(
+      monthlyCost([account('a', 0.1, { monthlyUsd: 200 }), account('b', 0.1, { monthlyUsd: 50 }), account('c', 0.1)])
+    ).toBe(250);
   });
 
   it('has no price when nothing is priced', () => {
-    expect(fleetOf([{ account: account('a', 0.1), limits: [] }]).monthlyUsd).toBeUndefined();
+    expect(monthlyCost([account('a', 0.1)])).toBeUndefined();
   });
 });

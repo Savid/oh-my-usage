@@ -1,5 +1,5 @@
 import type { Account, Limit, UsageSample, UsageTrend } from '@/api';
-import { limitSeverity, primaryLimit, resetOutlook } from './accounts';
+import { primaryLimit } from './accounts';
 import { forecast, verdictOf, type Forecast, type Verdict } from './forecast';
 import type { Priority } from './priority';
 
@@ -29,8 +29,6 @@ export interface AccountView {
   burn?: number;
   /** Whether nothing was used for `IDLE_MS`. Undefined when the record does not reach back that far. */
   idle?: boolean;
-  /** Saved resets that expire before their window resets: spent in this one or lost (`isLapsing`). */
-  resetsLapsing?: number;
 }
 
 /** One account's recorded usage, as the samples `forecast` reads. */
@@ -94,7 +92,6 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
     limits,
     burn: pace && pace.basis === 'recent' ? pace.perHour : undefined,
     idle: isIdle(account, trends, now),
-    resetsLapsing: resetOutlook(account, now).lapsing,
   };
 }
 
@@ -135,53 +132,10 @@ export function orderAccounts(
   );
 }
 
-/** The whole fleet in figures. */
-export interface Fleet {
-  accounts: number;
-  /** Accounts whose usage rose lately. */
-  burning: number;
-  idle: number;
-  paused: number;
-  /** Accounts with a window already spent. */
-  spent: number;
-  /** What the priced accounts cost a month together; undefined when none is priced. */
-  monthlyUsd?: number;
-  /** How many accounts have a price. */
-  priced: number;
-  /** Saved resets that can be spent now. */
-  resetsUsable: number;
-  /** Saved resets to spend before their window resets, or lose. */
-  resetsLapsing: number;
-}
-
-/** The fleet's figures, from its accounts' views. */
-export function fleetOf(views: readonly AccountView[]): Fleet {
-  const fleet: Fleet = {
-    accounts: views.length,
-    burning: 0,
-    idle: 0,
-    paused: 0,
-    spent: 0,
-    priced: 0,
-    resetsUsable: 0,
-    resetsLapsing: 0,
-  };
-
-  for (const view of views) {
-    const { account } = view;
-    if (account.paused) fleet.paused += 1;
-    if (view.idle === true) fleet.idle += 1;
-    if (view.idle === false) fleet.burning += 1;
-    if (account.limits.some(limit => limitSeverity(limit) === 'danger')) fleet.spent += 1;
-    fleet.resetsUsable += account.resets?.usable ?? 0;
-    fleet.resetsLapsing += view.resetsLapsing ?? 0;
-    if (account.monthlyUsd !== undefined) {
-      fleet.priced += 1;
-      fleet.monthlyUsd = (fleet.monthlyUsd ?? 0) + account.monthlyUsd;
-    }
-  }
-
-  return fleet;
+/** What the priced accounts cost a month together; undefined when none has a price. */
+export function monthlyCost(accounts: readonly Account[]): number | undefined {
+  const priced = accounts.flatMap(account => (account.monthlyUsd === undefined ? [] : [account.monthlyUsd]));
+  return priced.length === 0 ? undefined : priced.reduce((total, price) => total + price, 0);
 }
 
 /** Weeks in a month, on average: what turns a monthly price into a week's. */

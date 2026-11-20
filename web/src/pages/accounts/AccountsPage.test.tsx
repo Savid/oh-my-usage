@@ -81,18 +81,14 @@ describe('AccountsPage', () => {
     expect(traffic.getByText(/the subscriptions/)).toBeInTheDocument();
   });
 
-  it('opens on a line of figures for the fleet', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(NOW_MS);
+  it("opens on the band under the product's name, with no line of fleet totals", async () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    const fleet = await screen.findByRole('region', { name: 'Fleet' });
-    // Each name comes before its figure for assistive technology; the figure is drawn first.
-    expect(fleet).toHaveTextContent('accounts4');
-    expect(fleet).not.toHaveTextContent('dry');
-    expect(fleet).toHaveTextContent('for 1 priced$200/mo');
-    expect(fleet).toHaveTextContent('gateway read 5s ago');
+    expect(await screen.findByRole('list', { name: 'Totals' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('region', { name: 'Fleet' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/gateway read/)).not.toBeInTheDocument();
   });
 
   it('orders the accounts as asked', async () => {
@@ -146,7 +142,9 @@ describe('AccountsPage', () => {
     server.use(accountsHandlers.pending, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
-    expect(screen.getByRole('status')).toHaveTextContent('Loading the accounts…');
+    // The band is there from the start, its traffic loading on its own.
+    expect(screen.getByText('Loading the accounts…')).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toBeInTheDocument();
   });
 
   it('says when the daemon cannot be reached', async () => {
