@@ -7,13 +7,7 @@ const meta = {
   title: 'Components/Layout/PageHeader',
   component: PageHeader,
   parameters: { layout: 'fullscreen' },
-  args: {
-    children: (
-      <span className="text-body">
-        <span className="text-muted">Accounts /</span> Traffic
-      </span>
-    ),
-  },
+  args: { title: 'Traffic' },
   decorators: [
     (Story, { parameters }) => (
       <AppShell name="oh-my-usage" connection={parameters.connection === 'reconnecting' ? 'reconnecting' : 'live'}>
@@ -29,6 +23,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Traffic' })).toBeInTheDocument();
     // A stream that is up is not remarked on.
     await expect(canvas.queryByText('reconnecting')).not.toBeInTheDocument();
   },

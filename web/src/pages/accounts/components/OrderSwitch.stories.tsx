@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent } from 'storybook/test';
-import { AccountsToolbar } from './AccountsToolbar';
+import { OrderSwitch } from './OrderSwitch';
 
 const meta = {
-  title: 'Pages/Accounts/Components/AccountsToolbar',
-  component: AccountsToolbar,
+  title: 'Pages/Accounts/Components/OrderSwitch',
+  component: OrderSwitch,
   parameters: { layout: 'padded' },
-  args: { count: 7, order: 'priority', onOrder: fn() },
+  args: { order: 'priority', onOrder: fn() },
   argTypes: { order: { control: 'inline-radio', options: ['priority', 'used', 'listed'] } },
-} satisfies Meta<typeof AccountsToolbar>;
+} satisfies Meta<typeof OrderSwitch>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

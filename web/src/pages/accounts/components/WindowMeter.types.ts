@@ -1,10 +1,10 @@
 import type { Limit, UsageSample } from '@/api';
 
-export interface LimitCardProps {
+export interface WindowMeterProps {
   /** The usage window to show. */
   limit: Limit;
 
-  /** The account's provider, whose colour the gauge wears. */
+  /** The account's provider, whose colour the meter wears. */
   provider: string;
 
   /** The account's recorded usage, of any limit; the recent pace is read from it. Empty when there is none. */

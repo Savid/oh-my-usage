@@ -31,6 +31,15 @@ describe('PageHeader', () => {
     expect(screen.queryByText('live')).not.toBeInTheDocument();
   });
 
+  it('names the page after the accounts it came from', async () => {
+    const root = createRootRoute({ component: () => <PageHeader title="Traffic" /> });
+    const router = createRouter({ routeTree: root, history: createMemoryHistory({ initialEntries: ['/traffic'] }) });
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Traffic' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Accounts' })).toHaveAttribute('href', '/');
+  });
+
   it('says when the stream is down', async () => {
     renderHeader('reconnecting');
 

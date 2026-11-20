@@ -22,9 +22,14 @@ export interface Charts {
 
 const NO_TRENDS: readonly UsageTrend[] = [];
 
+/** Where the charts start: seven days before `now`, held to a five-minute step, in milliseconds. */
+export function chartsSince(now: number): number {
+  return Math.floor(now / STEP_MS) * STEP_MS - HISTORY_MS;
+}
+
 /** The recorded usage the charts draw, over the last seven days. */
 export function useCharts(now: number): Charts {
-  const since = Math.floor(now / STEP_MS) * STEP_MS - HISTORY_MS;
+  const since = chartsSince(now);
   const query = useQuery({
     ...listUsageTrendsOptions({ query: { since: new Date(since).toISOString() } }),
     placeholderData: keepPreviousData,

@@ -1,4 +1,4 @@
-import { useState, type JSX, type PointerEvent } from 'react';
+import { useId, useState, type JSX, type PointerEvent } from 'react';
 import clsx from 'clsx';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
 import { useElementWidth } from '@/hooks/useElementWidth';
@@ -20,6 +20,13 @@ const PLOT = { top: 14, bottom: 18 };
 
 /** The smallest bar that still reads as one: traffic is never drawn as nothing. */
 const MIN_BAR = 1.5;
+
+/**
+ * A bar is drawn as the homepage's charts are, a glow under a line: a solid
+ * edge in its colour at its top over a body that fades from it towards the
+ * floor. The step under the pointer is drawn solid.
+ */
+const GLOW = { top: 0.7, foot: 0.12 };
 
 /** How close to the right edge a tick label may start before it is left out. */
 const LABEL_ROOM = 44;
@@ -48,6 +55,7 @@ export function TrafficBars({
 }: TrafficBarsProps): JSX.Element {
   const [hovered, setHovered] = useState<number>();
   const [frame, width] = useElementWidth<HTMLDivElement>(FALLBACK_WIDTH);
+  const glowId = useId();
   const { height, className } = SIZES[size];
 
   const steps = toSteps(series);
@@ -59,6 +67,14 @@ export function TrafficBars({
   const gap = stepWidth >= 6 ? 2 : stepWidth >= 3 ? 1 : 0;
   const info = metricInfo(metric);
   const share = isShare(metric);
+  // One glow per colour drawn, each bar fading over its own height.
+  const glows = share
+    ? [{ key: 'share', className: 'text-meter' }]
+    : [...new Set(series.providers.map(entry => entry.provider))].map(provider => ({
+        key: provider,
+        className: providerTone(provider).icon,
+      }));
+  const glowOf = (key: string): string => `url(#${glowId}-${key})`;
   // A share is of everything sent in the step; a step that sent nothing has none.
   const shareOf = (amounts: Amounts): number => {
     const sent = sentTokens(amounts);
@@ -139,6 +155,22 @@ export function TrafficBars({
           viewBox={`0 0 ${width} ${height}`}
           className={clsx('block w-full', className)}
         >
+          <defs>
+            {glows.map(glow => (
+              <linearGradient
+                key={glow.key}
+                id={`${glowId}-${glow.key}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+                className={glow.className}
+              >
+                <stop offset="0" stopColor="currentColor" stopOpacity={GLOW.top} />
+                <stop offset="1" stopColor="currentColor" stopOpacity={GLOW.foot} />
+              </linearGradient>
+            ))}
+          </defs>
           {/* The top of the scale, with its figure; the floor the bars stand on. */}
           <line x1="0" x2={width} y1={PLOT.top} y2={PLOT.top} strokeWidth="1" className="stroke-border" />
           <text x="0" y={PLOT.top - 4} className="fill-muted text-micro">
@@ -181,13 +213,24 @@ export function TrafficBars({
               return (
                 <g key={step.start} data-step={index}>
                   {tall > 0 && (
-                    <rect
-                      x={index * stepWidth + gap / 2}
-                      y={floor - tall}
-                      width={Math.max(1, stepWidth - gap)}
-                      height={tall}
-                      className="fill-meter"
-                    />
+                    <>
+                      <rect
+                        x={index * stepWidth + gap / 2}
+                        y={floor - tall}
+                        width={Math.max(1, stepWidth - gap)}
+                        height={tall}
+                        fill={glowOf('share')}
+                        className={clsx(index === active && 'fill-meter')}
+                      />
+                      <line
+                        x1={index * stepWidth + gap / 2}
+                        x2={index * stepWidth + gap / 2 + Math.max(1, stepWidth - gap)}
+                        y1={floor - tall + 1}
+                        y2={floor - tall + 1}
+                        strokeWidth="2"
+                        className="stroke-meter"
+                      />
+                    </>
                   )}
                 </g>
               );
@@ -201,16 +244,27 @@ export function TrafficBars({
                   const tall = Math.max(MIN_BAR, (value / top) * plotHeight);
                   base -= tall;
 
+                  const tone = providerTone(part.provider);
                   return (
-                    <rect
-                      key={part.provider}
-                      x={index * stepWidth + gap / 2}
-                      y={base}
-                      width={Math.max(1, stepWidth - gap)}
-                      // A sliver of the surface between two providers' parts.
-                      height={tall > 3 ? tall - 1 : tall}
-                      className={providerTone(part.provider).fill}
-                    />
+                    <g key={part.provider}>
+                      <rect
+                        x={index * stepWidth + gap / 2}
+                        y={base}
+                        width={Math.max(1, stepWidth - gap)}
+                        // A sliver of the surface between two providers' parts.
+                        height={tall > 3 ? tall - 1 : tall}
+                        fill={glowOf(part.provider)}
+                        className={clsx(index === active && tone.fill)}
+                      />
+                      <line
+                        x1={index * stepWidth + gap / 2}
+                        x2={index * stepWidth + gap / 2 + Math.max(1, stepWidth - gap)}
+                        y1={base + 1}
+                        y2={base + 1}
+                        strokeWidth="2"
+                        className={tone.line}
+                      />
+                    </g>
                   );
                 })}
               </g>

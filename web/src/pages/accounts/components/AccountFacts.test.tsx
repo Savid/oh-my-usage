@@ -12,30 +12,26 @@ function facts(): string[] {
 }
 
 describe('AccountFacts', () => {
-  it('says an account is taking traffic and what it is', () => {
+  it('says what an account is', () => {
     render(<AccountFacts account={seatFixture} now={NOW_MS} />);
 
-    expect(screen.getByRole('region', { name: 'Status' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Details' })).toBeInTheDocument();
     expect(facts()).toEqual([
-      'Traffic: activeomp may send it traffic.',
       'Provider: Anthropic',
       'Login: OAuth login',
       'Organisation: One Org',
       'Price: $200 a month',
       'Usage read: 12s ago',
     ]);
-    expect(screen.getByText('active')).toHaveAttribute('data-tone', 'ok');
   });
 
-  it("puts a pause before omp's own blocks, and lists those", () => {
+  it("lists omp's own blocks first", () => {
     render(<AccountFacts account={pausedSeatFixture} now={NOW_MS} />);
 
-    expect(screen.getByText('paused')).toHaveAttribute('data-tone', 'warn');
-    expect(facts()[0]).toBe('Traffic: pausedomp uses it last, when every other account is blocked or spent.');
-    expect(facts()[1]).toMatch(/^Blocks: anthropic:5h until \d{2}:\d{2}, in 2h$/);
+    expect(facts()[0]).toMatch(/^Blocks: anthropic:5h until \d{2}:\d{2}, in 2h$/);
   });
 
-  it('says an account is blocked, naming a block on everything, and drops blocks that have ended', () => {
+  it('names a block on everything, and drops blocks that have ended', () => {
     const blocked = {
       ...seatFixture,
       blocks: [
@@ -46,7 +42,6 @@ describe('AccountFacts', () => {
     };
     render(<AccountFacts account={blocked} now={NOW_MS} />);
 
-    expect(screen.getByText('blocked')).toHaveAttribute('data-tone', 'danger');
     const blocks = within(screen.getByRole('list')).getAllByRole('listitem');
     expect(blocks).toHaveLength(2);
     expect(blocks[0]).toHaveTextContent(/^everything until \d{2}:\d{2}, in 3h$/);
@@ -57,7 +52,6 @@ describe('AccountFacts', () => {
     render(<AccountFacts account={strayFixture} now={NOW_MS} />);
 
     expect(facts()).toEqual([
-      'Traffic: activeomp may send it traffic.',
       'Provider: OpenAI Codex',
       'Login: Not held by the broker, so it cannot be paused.',
       'Plan: pro',

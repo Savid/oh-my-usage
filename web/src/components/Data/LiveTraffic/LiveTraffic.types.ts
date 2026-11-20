@@ -17,7 +17,7 @@ export interface LiveTrafficProps {
 
   /**
    * `band` is a cell of the homepage's top band, leading to the Traffic page;
-   * `page` opens the Traffic page, taller and framed.
+   * `page` fills the Traffic page's band under its first line, taller, its heading only heard.
    * @default 'band'
    */
   variant?: 'band' | 'page';

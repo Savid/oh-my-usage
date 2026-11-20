@@ -22,9 +22,7 @@ const meta = {
     start: NOW_MS - 7 * 24 * 3_600_000,
     now: NOW_MS,
     controls: true,
-    headingLevel: 3,
   },
-  argTypes: { headingLevel: { control: 'inline-radio', options: [2, 3] } },
   decorators: [
     Story => (
       <div className="overflow-hidden rounded-md border border-border bg-surface">

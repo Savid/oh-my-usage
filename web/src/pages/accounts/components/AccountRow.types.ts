@@ -19,10 +19,4 @@ export interface AccountRowProps {
 
   /** Where the gateway would pick it, and why; absent for an account it does not pick. */
   priority?: Priority;
-
-  /**
-   * The level of the row's heading, to fit the page's outline.
-   * @default 3
-   */
-  headingLevel?: 2 | 3;
 }

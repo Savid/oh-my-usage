@@ -16,11 +16,12 @@ const connections: Record<StreamConnection, { label: string; tone: StatusTone } 
 };
 
 /**
- * A page's first line: the product's mark, which leads home, then the page's
- * own line beside it, and a warning when the stream is down. On the homepage
- * it heads the band. There is no bar of pages: the homepage leads to the rest.
+ * A page's first line, at the top of the band it opens on: the product's
+ * mark, which leads home, then where the page sits (`Accounts / Traffic`),
+ * and a warning when the stream is down. There is no bar of pages: the
+ * homepage leads to the rest.
  */
-export function PageHeader({ children }: PageHeaderProps): JSX.Element {
+export function PageHeader({ title, children }: PageHeaderProps): JSX.Element {
   const { name, connection } = use(ShellContext);
   const lost = connections[connection];
 
@@ -30,7 +31,20 @@ export function PageHeader({ children }: PageHeaderProps): JSX.Element {
       <Link to="/" aria-label={name ?? 'Home'} className="flex shrink-0 items-center">
         <Logo />
       </Link>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">
+        {title !== undefined && (
+          <div className="flex min-w-0 items-baseline gap-2">
+            <Link to="/" className="text-body text-muted underline-offset-4 hover:text-foreground hover:underline">
+              Accounts
+            </Link>
+            <span aria-hidden="true" className="text-body text-muted">
+              /
+            </span>
+            <h1 className="truncate text-body font-semibold">{title}</h1>
+          </div>
+        )}
+        {children}
+      </div>
       {lost && <StatusBadge tone={lost.tone}>{lost.label}</StatusBadge>}
     </header>
   );

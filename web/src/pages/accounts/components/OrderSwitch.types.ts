@@ -1,9 +1,6 @@
 import type { AccountOrder } from '@/lib/fleet';
 
-export interface AccountsToolbarProps {
-  /** How many accounts are listed. */
-  count: number;
-
+export interface OrderSwitchProps {
   /** The order the accounts are in. */
   order: AccountOrder;
 

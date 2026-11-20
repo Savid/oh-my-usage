@@ -44,17 +44,20 @@ describe('AccountPage', () => {
     server.use(accountsHandlers.ok, historyHandlers.ok, trendsHandlers.ok);
     renderPage();
 
-    const windows = within(await screen.findByRole('region', { name: 'Usage windows' }));
-    expect(windows.getAllByRole('article').map(card => card.getAttribute('aria-label'))).toEqual([
-      'Claude 5 Hour',
+    // The main window first.
+    const windows = within(await screen.findByRole('list', { name: 'Usage windows' }));
+    expect(windows.getAllByRole('listitem').map(meter => meter.getAttribute('aria-label'))).toEqual([
       'Claude 7 Day',
+      'Claude 5 Hour',
       'Claude 7 Day (Fable)',
     ]);
     // Once the history loads, the pace is read from it.
-    expect(await windows.findAllByText(/over the last 1d/)).toHaveLength(2);
+    expect(await windows.findAllByTitle(/over the last 1d/)).toHaveLength(2);
 
-    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('2 held, 1 usable now');
-    expect(within(screen.getByRole('region', { name: 'Status' })).getByText('active')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('Saved resets21 usable now');
+    expect(screen.getByText('active')).toHaveAttribute('data-tone', 'ok');
+    expect(screen.getByTestId('priority')).toHaveTextContent('1st');
+    expect(screen.getByRole('region', { name: 'Details' })).toHaveTextContent('One Org');
   });
 
   it('judges each window by its own average while the history cannot be read', async () => {
@@ -63,9 +66,9 @@ describe('AccountPage', () => {
     server.use(accountsHandlers.ok, historyHandlers.down, trendsHandlers.ok);
     renderPage();
 
-    const windows = within(await screen.findByRole('region', { name: 'Usage windows' }));
-    expect(await screen.findByText('Could not load the usage history')).toBeInTheDocument();
-    expect(windows.getAllByText(/the average since the window opened/)).toHaveLength(2);
+    const windows = within(await screen.findByRole('list', { name: 'Usage windows' }));
+    expect(await screen.findByText('Could not load the usage history.')).toBeInTheDocument();
+    expect(windows.getAllByTitle(/the average since the window opened/)).toHaveLength(2);
   });
 
   it('asks for the last seven days', async () => {
@@ -107,8 +110,8 @@ describe('AccountPage', () => {
 
     await waitFor(() =>
       expect(screen.getAllByRole('alert').map(alert => alert.textContent)).toEqual([
+        'Could not load the usage history.',
         'Could not reach oh-my-usageThe account shows once it answers.',
-        'Could not load the usage history',
       ])
     );
   });

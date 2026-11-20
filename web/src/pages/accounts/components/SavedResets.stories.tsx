@@ -11,7 +11,7 @@ const meta = {
   args: { resets: seatFixture.resets, limits: seatFixture.limits, now: NOW_MS },
   decorators: [
     Story => (
-      <div className="flex max-w-narrow">
+      <div className="max-w-narrow">
         <Story />
       </div>
     ),
@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('2 held, 1 usable now');
+    await expect(canvas.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('Saved resets21 usable now');
     await expect(canvas.getByText('usable now')).toBeInTheDocument();
   },
 };

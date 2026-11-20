@@ -1,5 +1,6 @@
 import { useState, type JSX } from 'react';
 import { Notice } from '@/components/Feedback/Notice';
+import { Panel } from '@/components/Layout/Panel';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
@@ -7,8 +8,8 @@ import { monthlyCost, orderAccounts, viewAccount, type AccountOrder } from '@/li
 import { gatewayPriority, type Priority } from '@/lib/priority';
 import { headlinePools, poolLimits } from '@/lib/pools';
 import { AccountRow } from './components/AccountRow';
-import { AccountsToolbar } from './components/AccountsToolbar';
 import { FleetBand } from './components/FleetBand';
+import { OrderSwitch } from './components/OrderSwitch';
 import { SourceAlerts } from './components/SourceAlerts';
 import { useAccounts } from './hooks/useAccounts';
 import { useCharts } from './hooks/useCharts';
@@ -63,16 +64,12 @@ export function AccountsPage(): JSX.Element {
           {list.accounts.length === 0 ? (
             <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>
           ) : (
-            <section
-              aria-label="Every account"
-              className="flex flex-col overflow-hidden rounded-md border border-border bg-surface"
+            <Panel
+              title="Accounts"
+              label="Every account"
+              count={views.length}
+              aside={<OrderSwitch order={order} onOrder={setOrder} />}
             >
-              {/* The band's hairline, quieter: this card sits under it. */}
-              <div
-                aria-hidden="true"
-                className="h-px bg-linear-to-r from-mark-magenta via-mark-iris to-mark-cyan opacity-60"
-              />
-              <AccountsToolbar count={views.length} order={order} onOrder={setOrder} />
               <div className="divide-y divide-border">
                 {orderAccounts(views, order, priorities).map(view => (
                   <AccountRow
@@ -83,11 +80,10 @@ export function AccountsPage(): JSX.Element {
                     now={now}
                     controls={controls}
                     priority={priorities.get(view.account.id)}
-                    headingLevel={3}
                   />
                 ))}
               </div>
-            </section>
+            </Panel>
           )}
         </>
       )}

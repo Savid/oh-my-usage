@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { UsageSample } from '@/api';
 import { fireEvent, render, screen, within } from '@/test-utils';
-import { historyFixture } from '@/test-utils/handlers';
+import { historyFixture, seatFixture } from '@/test-utils/handlers';
 import { at } from '@/test-utils/time';
 import { UsageHistoryChart } from './UsageHistoryChart';
 
@@ -26,6 +26,28 @@ describe('UsageHistoryChart', () => {
     expect(legend.getByText('92%')).toBeInTheDocument();
   });
 
+  it("draws the main window first in its provider's colour, with a glow, each line named shortly", () => {
+    const { container } = render(
+      <UsageHistoryChart
+        samples={historyFixture.samples}
+        provider={seatFixture.provider}
+        limits={seatFixture.limits}
+        heading={<h2>Quota used</h2>}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'Quota used' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list'))
+        .getAllByRole('listitem')
+        .map(item => item.textContent)
+    ).toEqual(['7 Day76%', '7 Day Fable92%']);
+    // A glow and a line for the main window, a line for the other.
+    expect(container.querySelectorAll('path')).toHaveLength(3);
+    expect(container.querySelector('path.stroke-anthropic')).toBeInTheDocument();
+    expect(container.querySelector('path.stroke-series-2')).toBeInTheDocument();
+  });
+
   it('reads out the values under the pointer and goes back to the latest', () => {
     render(<UsageHistoryChart samples={[sample('7d', -4, 0.1), sample('7d', -2, 0.3), sample('7d', 0, 0.5)]} />);
 
@@ -38,6 +60,7 @@ describe('UsageHistoryChart', () => {
     expect(screen.getByText(/^At /)).toBeInTheDocument();
     expect(within(screen.getByRole('list')).getByText('30%')).toBeInTheDocument();
     expect(screen.getByTestId('crosshair')).toBeInTheDocument();
+    expect(screen.getAllByTestId('hover-dot')).toHaveLength(1);
 
     fireEvent.pointerLeave(plot);
 

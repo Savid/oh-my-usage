@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import type { UsageSample } from '@/api';
-import { historyFixture } from '@/test-utils/handlers';
+import { historyFixture, seatFixture } from '@/test-utils/handlers';
 import { at } from '@/test-utils/time';
 import { UsageHistoryChart } from './UsageHistoryChart';
 
@@ -23,7 +23,7 @@ const meta = {
   args: { samples: historyFixture.samples },
   decorators: [
     Story => (
-      <div className="max-w-page rounded-md border border-border bg-surface p-5">
+      <div className="flex max-w-page rounded-md border border-border bg-surface py-3">
         <Story />
       </div>
     ),
@@ -38,6 +38,20 @@ export const Default: Story = {
     await expect(canvas.getByRole('img', { name: 'Used share of each limit over time' })).toBeInTheDocument();
     // The readout above the plot; the table repeats the values.
     await expect(within(canvas.getByRole('list')).getByText('76%')).toBeInTheDocument();
+  },
+};
+
+/** On the account's page: the main window first, in its provider's colour with a glow, each line named shortly. */
+export const OnItsPage: Story = {
+  args: {
+    provider: seatFixture.provider,
+    limits: seatFixture.limits,
+    heading: <h2 className="text-body font-semibold tracking-caps uppercase">Quota used</h2>,
+  },
+  play: async ({ canvas }) => {
+    const legend = within(canvas.getByRole('list'));
+    await expect(legend.getByText('7 Day')).toBeInTheDocument();
+    await expect(legend.getByText('7 Day Fable')).toBeInTheDocument();
   },
 };
 

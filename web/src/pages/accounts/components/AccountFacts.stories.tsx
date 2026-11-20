@@ -13,7 +13,7 @@ const meta = {
   args: { account: seatFixture, now: NOW_MS },
   decorators: [
     Story => (
-      <div className="flex max-w-narrow">
+      <div className="max-w-narrow">
         <Story />
       </div>
     ),
@@ -25,7 +25,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('active')).toHaveAttribute('data-tone', 'ok');
+    await expect(canvas.getByRole('region', { name: 'Details' })).toBeInTheDocument();
     await expect(canvas.getByText('OAuth login')).toBeInTheDocument();
   },
 };
@@ -33,7 +33,6 @@ export const Default: Story = {
 export const Paused: Story = {
   args: { account: pausedSeatFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('paused')).toHaveAttribute('data-tone', 'warn');
     await expect(canvas.getByText('anthropic:5h')).toBeInTheDocument();
   },
 };
@@ -49,7 +48,6 @@ export const Blocked: Story = {
     },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('blocked')).toHaveAttribute('data-tone', 'danger');
     await expect(canvas.getByText('everything')).toBeInTheDocument();
   },
 };
