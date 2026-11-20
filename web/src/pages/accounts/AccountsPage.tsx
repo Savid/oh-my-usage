@@ -1,24 +1,22 @@
 import { useState, type JSX } from 'react';
-import { PageHeader } from '@/components/Layout/PageHeader';
 import { useConfig } from '@/hooks/useConfig';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
-import { fleetOf, orderAccounts, viewAccount, type AccountOrder } from '@/lib/fleet';
+import { monthlyCost, orderAccounts, viewAccount, type AccountOrder } from '@/lib/fleet';
 import { gatewayPriority, type Priority } from '@/lib/priority';
 import { headlinePools, poolLimits } from '@/lib/pools';
 import { AccountRow } from './components/AccountRow';
 import { AccountsToolbar } from './components/AccountsToolbar';
 import { FleetBand } from './components/FleetBand';
-import { FleetSummary } from './components/FleetSummary';
 import { SourceAlerts } from './components/SourceAlerts';
 import { useAccounts } from './hooks/useAccounts';
 import { useCharts } from './hooks/useCharts';
 
 /**
- * The whole fleet on one screen. A line of figures for the fleet; a band
- * with, for each provider, how much of its main usage window is used in
- * total and when it resets, and with a broker the traffic through the
- * gateway as it happens; then every account on a row of its own, its windows
+ * The whole fleet on one screen. A band under the product's mark with, for
+ * each provider, how much of its main usage window is used in total and when
+ * it resets, and with a broker the traffic through the gateway as it happens;
+ * then every account on a row of its own, its windows
  * read against their clocks as meters and a runway, in the order the gateway
  * picks them unless another order is picked.
  */
@@ -33,13 +31,18 @@ export function AccountsPage(): JSX.Element {
   const [order, setOrder] = useState<AccountOrder>('priority');
   const pools = list ? headlinePools(poolLimits(list.accounts, now)) : [];
   const views = list ? list.accounts.map(account => viewAccount(account, charts.trends, now)) : [];
-  const fleet = fleetOf(views);
   const priorities = list ? gatewayPriority(list.accounts, now) : new Map<string, Priority>();
 
   return (
     <section className="flex flex-col gap-2">
       <h1 className="sr-only">Accounts</h1>
-      <PageHeader>{list && <FleetSummary fleet={fleet} updatedAt={list.gateway.updatedAt} now={now} />}</PageHeader>
+      <FleetBand
+        pools={pools}
+        traffic={traffic.data}
+        trafficStatus={traffic.isPending ? 'pending' : traffic.data ? 'success' : 'error'}
+        monthlyUsd={list ? monthlyCost(list.accounts) : undefined}
+        now={now}
+      />
 
       {accounts.isPending ? (
         <p role="status" className="px-1 text-caption text-muted">
@@ -57,14 +60,6 @@ export function AccountsPage(): JSX.Element {
               Could not load the usage history. The rows show current levels only.
             </p>
           )}
-
-          <FleetBand
-            pools={pools}
-            traffic={traffic.data}
-            trafficStatus={traffic.isPending ? 'pending' : traffic.data ? 'success' : 'error'}
-            monthlyUsd={fleet.monthlyUsd}
-            now={now}
-          />
 
           {list.accounts.length === 0 ? (
             <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>

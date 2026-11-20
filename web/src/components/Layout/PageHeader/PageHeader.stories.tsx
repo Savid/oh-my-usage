@@ -7,7 +7,14 @@ const meta = {
   title: 'Components/Layout/PageHeader',
   component: PageHeader,
   parameters: { layout: 'fullscreen' },
-  args: { children: <span className="text-caption text-muted">12 accounts · 6 burning · 5 idle</span> },
+  args: {
+    children: (
+      <span className="text-body">
+        <span className="text-muted">Accounts /</span> Traffic
+      </span>
+    ),
+  },
+  argTypes: { named: { control: 'boolean' } },
   decorators: [
     (Story, { parameters }) => (
       <AppShell name="oh-my-usage" connection={parameters.connection === 'reconnecting' ? 'reconnecting' : 'live'}>
@@ -28,14 +35,11 @@ export const Default: Story = {
   },
 };
 
-/** Where a page sits, as the Traffic page and an account's page say it. */
-export const Trail: Story = {
-  args: {
-    children: (
-      <span className="text-body">
-        <span className="text-muted">Accounts /</span> Traffic
-      </span>
-    ),
+/** The homepage's band heading: the name written beside the mark. */
+export const Named: Story = {
+  args: { named: true, children: undefined },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toHaveTextContent('oh-my-usage');
   },
 };
 

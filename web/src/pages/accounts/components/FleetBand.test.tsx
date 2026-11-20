@@ -49,11 +49,12 @@ describe('FleetBand', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load the traffic.');
   });
 
-  it('draws nothing with no totals and no broker', () => {
-    const { container } = render(
+  it("opens under the product's mark and name, which lead home, even with nothing else to show", () => {
+    render(
       <FleetBand pools={[]} traffic={{ ...trafficFixture, available: false }} trafficStatus="success" now={NOW_MS} />
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('list', { name: 'Totals' })).not.toBeInTheDocument();
   });
 });
