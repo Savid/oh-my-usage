@@ -6,8 +6,8 @@ import { PoolMeter } from './PoolMeter';
 import type { FleetBandProps } from './FleetBand.types';
 
 /**
- * The top of the page in one band. On the left, under the product's mark and
- * name, how much of each provider's main window is used across its accounts;
+ * The top of the page in one band. On the left, under the product's mark,
+ * how much of each provider's main window is used across its accounts;
  * on the right, with a broker, the traffic through the gateway as it happens.
  * Without a broker the left has the band to itself. A hairline in the mark's
  * gradient runs along its top.
@@ -26,7 +26,7 @@ export function FleetBand({ pools, traffic, trafficStatus, monthlyUsd, now }: Fl
             hasTraffic ? 'border-b border-border lg:w-120 lg:shrink-0 lg:border-r lg:border-b-0' : 'flex-1'
           )}
         >
-          <PageHeader named />
+          <PageHeader />
           {pools.length > 0 && (
             <ul
               aria-label="Totals"

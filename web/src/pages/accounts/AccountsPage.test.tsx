@@ -81,12 +81,13 @@ describe('AccountsPage', () => {
     expect(traffic.getByText(/the subscriptions/)).toBeInTheDocument();
   });
 
-  it("opens on the band under the product's name, with no line of fleet totals", async () => {
+  it("opens on the band under the product's mark, with no line of fleet totals", async () => {
     server.use(accountsHandlers.ok, trendsHandlers.ok, trafficHandlers.ok);
     renderPage();
 
     expect(await screen.findByRole('list', { name: 'Totals' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
+    // Outside the frame the daemon's name is not known, so the mark's link is plainly named.
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
     expect(screen.queryByRole('region', { name: 'Fleet' })).not.toBeInTheDocument();
     expect(screen.queryByText(/gateway read/)).not.toBeInTheDocument();
   });
@@ -144,7 +145,7 @@ describe('AccountsPage', () => {
 
     // The band is there from the start, its traffic loading on its own.
     expect(screen.getByText('Loading the accounts…')).toHaveAttribute('role', 'status');
-    expect(screen.getByRole('link', { name: 'oh-my-usage' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
   });
 
   it('says when the daemon cannot be reached', async () => {

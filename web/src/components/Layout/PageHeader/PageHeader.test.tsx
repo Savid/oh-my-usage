@@ -4,11 +4,11 @@ import { render, screen } from '@/test-utils';
 import { AppShell } from '@/components/Layout/AppShell';
 import { PageHeader } from './PageHeader';
 
-function renderHeader(connection: 'live' | 'reconnecting' = 'live', named = false): void {
+function renderHeader(connection: 'live' | 'reconnecting' = 'live'): void {
   const root = createRootRoute({
     component: () => (
       <AppShell name="oh-my-usage" connection={connection}>
-        <PageHeader named={named}>
+        <PageHeader>
           <p>first line</p>
         </PageHeader>
       </AppShell>
@@ -29,14 +29,6 @@ describe('PageHeader', () => {
     // There is no bar of pages.
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
     expect(screen.queryByText('live')).not.toBeInTheDocument();
-  });
-
-  it('writes the name beside the mark when named, the two leading home', async () => {
-    renderHeader('live', true);
-
-    const link = await screen.findByRole('link', { name: 'oh-my-usage' });
-    expect(link).toHaveAttribute('href', '/');
-    expect(link).toHaveTextContent('oh-my-usage');
   });
 
   it('says when the stream is down', async () => {

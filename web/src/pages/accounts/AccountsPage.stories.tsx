@@ -91,7 +91,8 @@ export const Loading: Story = {
   play: async ({ canvas }) => {
     // The band is up from the start; only the accounts wait.
     await expect(canvas.getByText('Loading the accounts…')).toHaveAttribute('role', 'status');
-    await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toBeInTheDocument();
+    // Without the app's frame the mark's link is plainly named.
+    await expect(canvas.getByRole('link', { name: 'Home' })).toBeInTheDocument();
   },
 };
 
