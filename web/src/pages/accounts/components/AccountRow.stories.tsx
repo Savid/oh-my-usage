@@ -46,6 +46,20 @@ export const Default: Story = {
   },
 };
 
+export const Priority: Story = {
+  args: { priority: { standing: 'ranked', rank: 1, reason: 'reset lapses in 2d', position: 0 } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId('priority')).toHaveTextContent('1st · reset lapses in 2d');
+  },
+};
+
+export const HeldBack: Story = {
+  args: { priority: { standing: 'later', reason: '5h nearly full', position: 4 } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByTestId('priority')).toHaveTextContent('later · 5h nearly full');
+  },
+};
+
 export const Paused: Story = {
   args: { account: pausedSeatFixture },
   play: async ({ canvas }) => {

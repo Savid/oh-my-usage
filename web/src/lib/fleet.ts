@@ -1,6 +1,7 @@
 import type { Account, Limit, UsageSample, UsageTrend } from '@/api';
 import { limitSeverity, primaryLimit, resetOutlook } from './accounts';
 import { forecast, verdictOf, type Forecast, type Verdict } from './forecast';
+import type { Priority } from './priority';
 
 const HOUR = 3_600_000;
 
@@ -28,11 +29,6 @@ export interface AccountView {
   burn?: number;
   /** Whether nothing was used for `IDLE_MS`. Undefined when the record does not reach back that far. */
   idle?: boolean;
-  /**
-   * The longest any window would sit spent before it resets, at its pace, in
-   * milliseconds: how much the account would miss.
-   */
-  dryFor?: number;
   /** Saved resets that expire before their window resets: spent in this one or lost (`isLapsing`). */
   resetsLapsing?: number;
 }
@@ -91,9 +87,6 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
 
   const main = limits[0];
   const pace = primary && main?.forecast.pace;
-  const gaps = limits.flatMap(({ limit, forecast: view }) =>
-    view.spentAt === undefined || limit.resetsAt === undefined ? [] : [Date.parse(limit.resetsAt) - view.spentAt]
-  );
 
   return {
     account,
@@ -101,17 +94,16 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
     limits,
     burn: pace && pace.basis === 'recent' ? pace.perHour : undefined,
     idle: isIdle(account, trends, now),
-    dryFor: gaps.length > 0 ? Math.max(...gaps) : undefined,
     resetsLapsing: resetOutlook(account, now).lapsing,
   };
 }
 
 /** How the list of accounts is ordered. */
-export type AccountOrder = 'risk' | 'used' | 'listed';
+export type AccountOrder = 'priority' | 'used' | 'listed';
 
 /** The orders on offer, with what each is called. */
 export const ACCOUNT_ORDERS: readonly { id: AccountOrder; name: string }[] = [
-  { id: 'risk', name: 'Risk' },
+  { id: 'priority', name: 'Priority' },
   { id: 'used', name: 'Used' },
   { id: 'listed', name: 'Listed' },
 ];
@@ -121,23 +113,26 @@ function usedOf(view: AccountView): number {
 }
 
 /**
- * The accounts in an order. `risk`: those that would sit spent before they
- * reset, the longest first, then the most used; `used`: the most used first;
- * `listed`: as the server sent them. Paused accounts go last in `risk`, since
- * they take no traffic. Ties keep the server's order.
+ * The accounts in an order. `priority`: by provider, each in the order the
+ * gateway picks them (`gatewayPriority`), then those it does not pick;
+ * `used`: the most used first; `listed`: as the server sent them. Ties keep
+ * the server's order.
  */
-export function orderAccounts(views: readonly AccountView[], order: AccountOrder): AccountView[] {
+export function orderAccounts(
+  views: readonly AccountView[],
+  order: AccountOrder,
+  priorities: ReadonlyMap<string, Priority>
+): AccountView[] {
   const sorted = [...views];
   if (order === 'used') return sorted.sort((a, b) => usedOf(b) - usedOf(a));
   if (order === 'listed') return sorted;
 
-  return sorted.sort((a, b) => {
-    if (a.account.paused !== b.account.paused) return a.account.paused ? 1 : -1;
-    const dryA = a.dryFor ?? -1;
-    const dryB = b.dryFor ?? -1;
-    if (dryA !== dryB) return dryB - dryA;
-    return usedOf(b) - usedOf(a);
-  });
+  const providers = [...new Set(views.map(view => view.account.provider))];
+  // Accounts the gateway does not pick come after those it does, in the server's order.
+  const place = (view: AccountView): number => priorities.get(view.account.id)?.position ?? Number.MAX_SAFE_INTEGER;
+  return sorted.sort(
+    (a, b) => providers.indexOf(a.account.provider) - providers.indexOf(b.account.provider) || place(a) - place(b)
+  );
 }
 
 /** The whole fleet in figures. */

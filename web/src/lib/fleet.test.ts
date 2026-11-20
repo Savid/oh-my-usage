@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Account, UsageTrend } from '@/api';
 import { at, NOW_MS } from '@/test-utils/time';
 import { fleetOf, isIdle, orderAccounts, trendSamples, viewAccount, type AccountView } from './fleet';
+import type { Priority } from './priority';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -82,7 +83,6 @@ describe('viewAccount', () => {
     expect(view.idle).toBe(false);
     // Five points an hour for three more days runs dry long before the reset.
     expect(view.limits[0]?.verdict).toBe('dry');
-    expect(view.dryFor).toBe(3 * DAY - 10 * HOUR);
   });
 
   it('has no pace or verdict without usage', () => {
@@ -97,20 +97,52 @@ describe('viewAccount', () => {
 describe('orderAccounts', () => {
   const views: AccountView[] = [
     { account: account('quiet', 0.2), primary: account('quiet', 0.2).limits[0], limits: [] },
-    { account: account('busy', 0.9), primary: account('busy', 0.9).limits[0], limits: [], dryFor: HOUR },
-    { account: account('worst', 0.6), primary: account('worst', 0.6).limits[0], limits: [], dryFor: DAY },
+    { account: account('busy', 0.9), primary: account('busy', 0.9).limits[0], limits: [] },
+    { account: account('worst', 0.6), primary: account('worst', 0.6).limits[0], limits: [] },
+    { account: account('codex', 0.1, { provider: 'openai-codex' }), limits: [] },
     { account: account('paused', 0.95, { paused: true }), primary: account('paused', 0.95).limits[0], limits: [] },
     { account: account('none', undefined), limits: [] },
   ];
   const ids = (list: AccountView[]): string[] => list.map(view => view.account.id);
 
-  it('puts the longest dry spell first, then the most used, and paused accounts last', () => {
-    expect(ids(orderAccounts(views, 'risk'))).toEqual(['worst', 'busy', 'quiet', 'none', 'paused']);
+  const priority = (position: number): Priority => ({ standing: 'ranked', rank: position + 1, reason: '', position });
+  // The gateway's picks within each provider; 'none' is not one it picks.
+  const priorities = new Map([
+    ['worst', priority(0)],
+    ['quiet', priority(1)],
+    ['busy', priority(2)],
+    ['paused', priority(3)],
+    ['codex', priority(0)],
+  ]);
+
+  it("groups by provider in the order they first appear, each in the gateway's order, unpicked last", () => {
+    expect(ids(orderAccounts(views, 'priority', priorities))).toEqual([
+      'worst',
+      'quiet',
+      'busy',
+      'paused',
+      'none',
+      'codex',
+    ]);
   });
 
   it('orders by the main window used, or as listed', () => {
-    expect(ids(orderAccounts(views, 'used'))).toEqual(['paused', 'busy', 'worst', 'quiet', 'none']);
-    expect(ids(orderAccounts(views, 'listed'))).toEqual(['quiet', 'busy', 'worst', 'paused', 'none']);
+    expect(ids(orderAccounts(views, 'used', priorities))).toEqual([
+      'paused',
+      'busy',
+      'worst',
+      'quiet',
+      'codex',
+      'none',
+    ]);
+    expect(ids(orderAccounts(views, 'listed', priorities))).toEqual([
+      'quiet',
+      'busy',
+      'worst',
+      'codex',
+      'paused',
+      'none',
+    ]);
   });
 });
 
