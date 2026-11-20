@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { Account } from '@/api';
+import type { Account, Limit, SavedReset } from '@/api';
+import { at, NOW_MS } from '@/test-utils/time';
 import {
   accountTitle,
   groupByProvider,
+  isLapsing,
   primaryLimit,
+  resetOutlook,
+  resetWindow,
   limitSeverity,
   KNOWN_PROVIDERS,
   providerName,
@@ -179,5 +183,85 @@ describe('limitSeverity', () => {
     expect(limitSeverity({ ...limit, usedFraction: 0.2, status: 'warning' })).toBe('warn');
     expect(limitSeverity({ ...limit, usedFraction: 1 })).toBe('danger');
     expect(limitSeverity({ ...limit, usedFraction: 0.5, status: 'exhausted' })).toBe('danger');
+  });
+});
+
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
+
+/** A Claude seat's week, resetting in two days, its session in three hours. */
+const seat: Limit[] = [
+  { id: '5h', label: '5 Hour', usedFraction: 0.2, resetsAt: at(3 * HOUR), windowSeconds: 5 * 3600 },
+  { id: '7d', label: '7 Day', usedFraction: 0.6, resetsAt: at(2 * DAY), windowSeconds: WEEK / 1000 },
+];
+
+describe('resetWindow', () => {
+  it("is the longest window the reset clears, or the account's own when it does not say", () => {
+    expect(resetWindow({ clears: ['5h', '7d'] }, seat)?.id).toBe('7d');
+    expect(resetWindow({ clears: ['5h'] }, seat)?.id).toBe('5h');
+    expect(resetWindow({ clears: [] }, seat)?.id).toBe('7d');
+    expect(resetWindow({ clears: [] }, [])).toBeUndefined();
+  });
+});
+
+describe('isLapsing', () => {
+  const reset = (expiresIn: number, more: Partial<SavedReset> = {}): SavedReset => ({
+    clears: ['7d'],
+    expiresAt: at(expiresIn),
+    ...more,
+  });
+
+  it('is when the reset expires before its window resets on its own', () => {
+    expect(isLapsing(reset(DAY), seat, NOW_MS)).toBe(true);
+    // Its window resets first, so there is a later one to spend it in.
+    expect(isLapsing(reset(3 * DAY), seat, NOW_MS)).toBe(false);
+    // A reset for the session alone has a session after this one.
+    expect(isLapsing(reset(DAY, { clears: ['5h'] }), seat, NOW_MS)).toBe(false);
+    // One that does not say what it clears is read against the account's own window.
+    expect(isLapsing(reset(DAY, { clears: [] }), seat, NOW_MS)).toBe(true);
+  });
+
+  it('leaves out a reset that cannot be spent, never expires or has expired', () => {
+    expect(isLapsing(reset(DAY, { usable: false }), seat, NOW_MS)).toBe(false);
+    expect(isLapsing(reset(DAY, { usable: true }), seat, NOW_MS)).toBe(true);
+    expect(isLapsing({ clears: ['7d'] }, seat, NOW_MS)).toBe(false);
+    expect(isLapsing(reset(-HOUR), seat, NOW_MS)).toBe(false);
+  });
+
+  it('calls one lapsing in its last day when its window gives no reset time', () => {
+    const untimed: Limit[] = [{ id: '7d', label: '7 Day', usedFraction: 0.6 }];
+    expect(isLapsing(reset(2 * DAY), untimed, NOW_MS)).toBe(false);
+    expect(isLapsing(reset(DAY), untimed, NOW_MS)).toBe(true);
+    expect(isLapsing(reset(DAY), [], NOW_MS)).toBe(true);
+  });
+});
+
+describe('resetOutlook', () => {
+  it('says when the first spendable reset expires and how many are lapsing', () => {
+    const account: Account = {
+      ...base,
+      limits: seat,
+      resets: {
+        available: 4,
+        saved: [
+          { clears: ['7d'], expiresAt: at(3 * DAY) },
+          { clears: ['7d'], usable: false, expiresAt: at(HOUR) },
+          { clears: ['7d'], expiresAt: at(DAY) },
+          { clears: ['7d'], expiresAt: at(2 * HOUR) },
+          { clears: ['7d'] },
+        ],
+      },
+    };
+    expect(resetOutlook(account, NOW_MS)).toEqual({
+      nextAt: NOW_MS + 2 * HOUR,
+      lapsing: 2,
+      lapsingAt: NOW_MS + 2 * HOUR,
+    });
+  });
+
+  it('has nothing to say without resets', () => {
+    expect(resetOutlook(base, NOW_MS)).toEqual({ lapsing: 0 });
+    expect(resetOutlook({ ...base, resets: { available: 2, usable: 0 } }, NOW_MS)).toEqual({ lapsing: 0 });
   });
 });

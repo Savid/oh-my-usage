@@ -12,6 +12,7 @@ import {
   limitSeverity,
   limitTag,
   primaryLimit,
+  resetOutlook,
   shortLimitLabel,
   type LimitSeverity,
 } from '@/lib/accounts';
@@ -51,8 +52,34 @@ function state(account: Account, now: number): { tone: StatusTone; label: string
   return { tone: 'ok', label: 'active' };
 }
 
-/** What follows the name: organisation, plan, price, saved resets, and how old the usage is when it is old. */
-function about(account: Account, now: number): string {
+/**
+ * The saved resets in a few words: how many, how many can be spent, and when
+ * the first that can be spent expires. When one has to be spent before its
+ * window resets or be lost, the words say so, and the account is in trouble.
+ */
+function savedResets(account: Account, now: number): { said: string; lapsing: boolean } | undefined {
+  const resets = account.resets;
+  if (!resets || resets.available === 0) return undefined;
+
+  const held = `${resets.available} ${resets.available === 1 ? 'reset' : 'resets'}`;
+  const usable = resets.usable === undefined ? '' : `, ${resets.usable} usable`;
+  const outlook = resetOutlook(account, now);
+  if (outlook.lapsingAt !== undefined) {
+    const which = outlook.lapsing === 1 ? 'one' : String(outlook.lapsing);
+    return { said: `${held}${usable}, spend ${which} within ${formatShort(outlook.lapsingAt - now)}`, lapsing: true };
+  }
+
+  const one = resets.available === 1 ? '' : ' one';
+  const lapses = outlook.nextAt === undefined ? '' : `,${one} lapses in ${formatShort(outlook.nextAt - now)}`;
+  return { said: `${held}${usable}${lapses}`, lapsing: false };
+}
+
+/**
+ * What follows the name: organisation, plan, price, saved resets, and how old
+ * the usage is when it is old. Resets about to lapse lead, apart, so the line
+ * never cuts them off.
+ */
+function about(account: Account, now: number): { alarm?: string; said: string } {
   const parts: string[] = [];
   // A personal organisation is named after its owner's email, which the row already shows.
   if (account.orgName && !(account.email && account.orgName.startsWith(account.email))) parts.push(account.orgName);
@@ -61,17 +88,14 @@ function about(account: Account, now: number): string {
   if (account.kind === 'api_key' && account.email) parts.push('API key');
   if (account.monthlyUsd !== undefined) parts.push(`${formatPrice(account.monthlyUsd)}/mo`);
 
-  const resets = account.resets;
-  if (resets && resets.available > 0) {
-    const usable = resets.usable === undefined ? '' : `, ${resets.usable} usable`;
-    parts.push(`${resets.available} ${resets.available === 1 ? 'reset' : 'resets'}${usable}`);
-  }
+  const resets = savedResets(account, now);
+  if (resets && !resets.lapsing) parts.push(resets.said);
 
   if (account.fetchedAt && now - Date.parse(account.fetchedAt) > STALE_MS) {
     parts.push(`usage ${formatShort(now - Date.parse(account.fetchedAt))} old`);
   }
 
-  return parts.join(' · ');
+  return { alarm: resets?.lapsing ? resets.said : undefined, said: parts.join(' · ') };
 }
 
 /**
@@ -575,7 +599,18 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
               )}
             </p>
           )}
-          {meta && <p className="truncate text-micro text-muted">{meta}</p>}
+          {(meta.alarm || meta.said) && (
+            <p className="truncate text-micro text-muted">
+              {meta.alarm && (
+                <span className="text-warn">
+                  <span aria-hidden="true">▲ </span>
+                  {meta.alarm}
+                </span>
+              )}
+              {meta.alarm && meta.said && ' · '}
+              {meta.said}
+            </p>
+          )}
         </div>
 
         {/* A line of their own under a narrow row. On a wide one the chart names them, so

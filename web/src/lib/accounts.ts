@@ -1,4 +1,4 @@
-import type { Account, Limit } from '@/api';
+import type { Account, Limit, SavedReset } from '@/api';
 
 // Every provider omp (v18.19.0) can hold a credential for, by its ID. The
 // names are omp's own, shortened where omp adds what the login is for.
@@ -239,4 +239,59 @@ export function limitSeverity(limit: Limit): LimitSeverity {
   if (limit.status === 'exhausted' || fromShare === 'danger') return 'danger';
   if (limit.status === 'warning' || fromShare === 'warn') return 'warn';
   return 'normal';
+}
+
+/** With no window to judge it by, a saved reset is called lapsing in its last day. */
+const LAST_DAY_MS = 24 * 3_600_000;
+
+/**
+ * The window a saved reset is for: the budget among those it clears
+ * (`primaryLimit`), or the account's own when it does not say what it clears.
+ */
+export function resetWindow(reset: SavedReset, limits: readonly Limit[]): Limit | undefined {
+  return primaryLimit(limits.filter(limit => reset.clears.includes(limit.id))) ?? primaryLimit(limits);
+}
+
+/**
+ * Whether a saved reset has to be spent in the window it is in or be lost: it
+ * can be spent, or may be, and it expires before its window
+ * (`resetWindow`) resets on its own, so there is no later window to spend it
+ * in. When that window gives no reset time, a reset is lapsing in its last
+ * day.
+ */
+export function isLapsing(reset: SavedReset, limits: readonly Limit[], now: number): boolean {
+  if (reset.usable === false || reset.expiresAt === undefined) return false;
+  const expires = Date.parse(reset.expiresAt);
+  if (!(expires > now)) return false;
+
+  const resetsAt = resetWindow(reset, limits)?.resetsAt;
+  if (resetsAt === undefined) return expires - now <= LAST_DAY_MS;
+  return Date.parse(resetsAt) >= expires;
+}
+
+/** When an account's saved resets lapse, and which of them must be spent first. */
+export interface ResetOutlook {
+  /** When the first that can be spent, or may be, expires; undefined when none does. */
+  nextAt?: number;
+  /** How many are lapsing (`isLapsing`). */
+  lapsing: number;
+  /** When the first of those expires. */
+  lapsingAt?: number;
+}
+
+/** An account's saved resets read against its windows' clocks. */
+export function resetOutlook(account: Account, now: number): ResetOutlook {
+  const outlook: ResetOutlook = { lapsing: 0 };
+  for (const reset of account.resets?.saved ?? []) {
+    if (reset.usable === false || reset.expiresAt === undefined) continue;
+    const expires = Date.parse(reset.expiresAt);
+    if (!(expires > now)) continue;
+
+    outlook.nextAt = Math.min(outlook.nextAt ?? Infinity, expires);
+    if (isLapsing(reset, account.limits, now)) {
+      outlook.lapsing += 1;
+      outlook.lapsingAt = Math.min(outlook.lapsingAt ?? Infinity, expires);
+    }
+  }
+  return outlook;
 }

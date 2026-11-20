@@ -119,7 +119,7 @@ describe('fleetOf', () => {
   it('counts the fleet and adds up its prices', () => {
     const spent = account('spent', 1, { monthlyUsd: 200, resets: { available: 2, usable: 1 } });
     const fleet = fleetOf([
-      { account: spent, limits: [], idle: false, dryAt: NOW_MS },
+      { account: spent, limits: [], idle: false, dryAt: NOW_MS, resetsLapsing: 1 },
       { account: account('idle', 0.1, { monthlyUsd: 50 }), limits: [], idle: true },
       { account: account('paused', 0.1, { paused: true }), limits: [] },
     ]);
@@ -134,6 +134,7 @@ describe('fleetOf', () => {
       monthlyUsd: 250,
       priced: 2,
       resetsUsable: 1,
+      resetsLapsing: 1,
     });
   });
 

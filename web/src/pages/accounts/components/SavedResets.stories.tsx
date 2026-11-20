@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
-import { seatFixture, strayFixture } from '@/test-utils/handlers';
+import { lapsingSeatFixture, seatFixture, strayFixture } from '@/test-utils/handlers';
 import { NOW_MS } from '@/test-utils/time';
 import { SavedResets } from './SavedResets';
 
@@ -25,6 +25,13 @@ export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('2 held, 1 usable now');
     await expect(canvas.getByText('usable now')).toBeInTheDocument();
+  },
+};
+
+export const Lapsing: Story = {
+  args: { resets: lapsingSeatFixture.resets, limits: lapsingSeatFixture.limits },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/before 7 Day resets: spend it or lose it/)).toHaveClass('text-warn');
   },
 };
 

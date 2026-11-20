@@ -4,6 +4,7 @@ export {
   historyFixture,
   historyHandlers,
   keyFixture,
+  lapsingSeatFixture,
   neverReachedFixture,
   pausedSeatFixture,
   pauseHandlers,
