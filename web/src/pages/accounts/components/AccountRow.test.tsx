@@ -180,9 +180,9 @@ describe('AccountRow', () => {
   });
 
   it('marks a paused account and offers to resume it', () => {
-    render(<AccountRow {...base} account={pausedSeatFixture} headingLevel={2} />);
+    render(<AccountRow {...base} account={pausedSeatFixture} />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'two@example.com' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'two@example.com' })).toBeInTheDocument();
     // Paused wins over omp's own block.
     expect(screen.getByText('paused')).toHaveAttribute('data-tone', 'warn');
     // A way back, lit so it shows without pointing at the row; it says what it does.

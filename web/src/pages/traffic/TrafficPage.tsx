@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
-import { Link } from '@tanstack/react-router';
 import { TrafficBars } from '@/components/Data/TrafficBars';
 import { PageHeader } from '@/components/Layout/PageHeader';
+import { Panel } from '@/components/Layout/Panel';
 import { Notice } from '@/components/Feedback/Notice';
 import { useNow } from '@/hooks/useNow';
 import { useTraffic } from '@/hooks/useTraffic';
@@ -12,27 +12,13 @@ import { TrafficClients } from './components/TrafficClients';
 import { TrafficWindowTile } from './components/TrafficWindowTile';
 import type { TrafficPageProps } from './TrafficPage.types';
 
-/** Where the page sits, beside the mark: the accounts it came from, then itself. */
-function Trail(): JSX.Element {
-  return (
-    <div className="flex items-baseline gap-2">
-      <Link to="/" className="text-body text-muted underline-offset-4 hover:text-foreground hover:underline">
-        Accounts
-      </Link>
-      <span aria-hidden="true" className="text-body text-muted">
-        /
-      </span>
-      <h1 className="text-body font-semibold">Traffic</h1>
-    </div>
-  );
-}
-
 /**
- * What is passing through the gateway. It opens on the traffic as it
- * happens, large, with the switch that picks what every chart on the page
- * shows: tokens out or in, the share read from a cache, the cost at API
- * prices or requests. Then the last hour, day and week in one band, the
- * last hour by minute and the week by hour, and who sent it.
+ * What is passing through the gateway. It opens on a band, as the homepage
+ * does: under the mark, the traffic as it happens, large, with the switch that
+ * picks what every chart on the page shows: tokens out or in, the share read
+ * from a cache, the cost at API prices or requests. Then, each on a panel, the
+ * last hour, day and week, the last hour by minute and the week by hour, and
+ * who sent it.
  */
 export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX.Element {
   const now = useNow();
@@ -45,22 +31,27 @@ export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX
   if (traffic.isPending || !data || !data.available) {
     return (
       <section className="flex flex-col gap-2">
-        <PageHeader>
-          <Trail />
-        </PageHeader>
-        {traffic.isPending ? (
-          <p role="status" className="px-1 text-caption text-muted">
-            Loading the traffic…
-          </p>
-        ) : !data ? (
+        <Panel hairline="strong">
+          <div className="flex flex-col gap-3 px-4 pt-1.5 pb-4">
+            <PageHeader title="Traffic" />
+            {traffic.isPending ? (
+              <p role="status" className="text-caption text-muted">
+                Loading the traffic…
+              </p>
+            ) : (
+              data && (
+                <p className="text-caption text-muted">
+                  Traffic is read from the omp auth broker, and none is configured. Start oh-my-usage with a broker URL
+                  and token to see it.
+                </p>
+              )
+            )}
+          </div>
+        </Panel>
+        {!traffic.isPending && !data && (
           <Notice tone="danger" title="Could not reach oh-my-usage">
             The traffic shows once it answers.
           </Notice>
-        ) : (
-          <p className="px-1 text-caption text-muted">
-            Traffic is read from the omp auth broker, and none is configured. Start oh-my-usage with a broker URL and
-            token to see it.
-          </p>
         )}
       </section>
     );
@@ -73,42 +64,32 @@ export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX
 
   return (
     <section className="flex flex-col gap-2">
-      <PageHeader>
-        <Trail />
-      </PageHeader>
+      <Panel hairline="strong">
+        <div className="px-4 pt-1.5">
+          <PageHeader title="Traffic" />
+        </div>
+        {/* The live panel says itself when the broker is down. */}
+        <LiveTraffic traffic={data} now={now} variant="page" metric={metric} onMetric={setMetric} />
+      </Panel>
 
       {traffic.isError && <Notice title="Lost contact with oh-my-usage">Showing the last traffic it sent.</Notice>}
 
-      {/* The live panel says itself when the broker is down. */}
-      <LiveTraffic traffic={data} now={now} variant="page" metric={metric} onMetric={setMetric} />
+      <Panel title="Totals">
+        <div className="grid divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+          {data.windows.map(window => (
+            <TrafficWindowTile key={window.id} window={window} />
+          ))}
+        </div>
+      </Panel>
 
-      <section
-        aria-label="Totals"
-        className="grid divide-y divide-border overflow-hidden rounded-md border border-border bg-surface lg:grid-cols-3 lg:divide-x lg:divide-y-0"
-      >
-        {data.windows.map(window => (
-          <TrafficWindowTile key={window.id} window={window} />
-        ))}
-      </section>
-
-      <div className="flex flex-col gap-2">
-        <section
-          aria-labelledby="minutes-heading"
-          className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-surface p-3"
-        >
-          <h2 id="minutes-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-            Last hour, by minute
-          </h2>
+      <Panel title="By minute" aside="last hour" label="Last hour, by minute">
+        <div className="px-4 py-3">
           <TrafficBars series={data.minutes} metric={metric} label={`${title} by minute, last hour`} />
-        </section>
+        </div>
+      </Panel>
 
-        <section
-          aria-labelledby="hours-heading"
-          className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-surface p-3"
-        >
-          <h2 id="hours-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-            Last 7 days, by hour
-          </h2>
+      <Panel title="By hour" aside="last 7 days" label="Last 7 days, by hour">
+        <div className="flex flex-col gap-2 px-4 py-3">
           <TrafficBars
             series={data.hours}
             metric={metric}
@@ -121,18 +102,14 @@ export function TrafficPage({ metric: chosen, onMetric }: TrafficPageProps): JSX
               one entry, so a burst is drawn in the hour it ended.
             </p>
           )}
-        </section>
-      </div>
+        </div>
+      </Panel>
 
-      <section
-        aria-labelledby="clients-heading"
-        className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3"
-      >
-        <h2 id="clients-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-          Clients, last 7 days
-        </h2>
-        <TrafficClients clients={data.clients} />
-      </section>
+      <Panel title="Clients" count={data.clients.length} aside="last 7 days" label="Clients, last 7 days">
+        <div className="px-4 py-3">
+          <TrafficClients clients={data.clients} />
+        </div>
+      </Panel>
     </section>
   );
 }

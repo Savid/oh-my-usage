@@ -64,7 +64,7 @@ export const Unreachable: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('Could not reach oh-my-usage')).toBeInTheDocument();
-    await expect(await canvas.findByText('Could not load the usage history')).toBeInTheDocument();
+    await expect(await canvas.findByText('Could not load the usage history.')).toBeInTheDocument();
   },
 };
 

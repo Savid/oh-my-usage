@@ -1,9 +1,7 @@
 import { useId, type JSX } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import clsx from 'clsx';
-import type { Account, AccountList, Limit, TrendPoint } from '@/api';
-import { listAccountsQueryKey, setAccountPausedMutation } from '@/api/@tanstack/react-query.gen';
+import type { Account, Limit, TrendPoint } from '@/api';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
 import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
 import { ProviderIcon } from '@/components/Data/ProviderIcon';
@@ -18,11 +16,11 @@ import {
 } from '@/lib/accounts';
 import { viewAccount } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
-import { ordinal, type Priority } from '@/lib/priority';
-import { problemDetail } from '@/lib/problem';
 import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
+import { usePause } from '@/pages/accounts/hooks/usePause';
 import type { AccountRowProps } from './AccountRow.types';
+import { PriorityPill } from './PriorityPill';
 
 /** Usage older than this is called out: the provider has not answered for a while. */
 const STALE_MS = 15 * 60_000;
@@ -42,13 +40,6 @@ const severityMarks: Record<LimitSeverity, { mark: string; word: string } | unde
   normal: undefined,
   warn: { mark: '▲', word: ', near its limit' },
   danger: { mark: '■', word: ', spent' },
-};
-
-// Information, not trouble: blue for an account the gateway picks, grey for one it holds back.
-const priorityClasses: Record<Priority['standing'], string> = {
-  ranked: 'bg-info-subtle text-info',
-  later: 'bg-raised text-muted',
-  last: 'bg-raised text-muted',
 };
 
 /** The account's state in a word: paused wins, then omp's own block. */
@@ -265,32 +256,11 @@ function PauseButton({
  * end, with a broker: a small button to pause or resume it. Its state shows
  * only when it is not taking work.
  */
-export function AccountRow({
-  account,
-  trends,
-  start,
-  now,
-  controls,
-  priority,
-  headingLevel = 3,
-}: AccountRowProps): JSX.Element {
-  const queryClient = useQueryClient();
+export function AccountRow({ account, trends, start, now, controls, priority }: AccountRowProps): JSX.Element {
   const glowId = useId();
-  const pause = useMutation({
-    ...setAccountPausedMutation(),
-    // The answer is the account as the broker now reports it; the event
-    // stream sends the same after its next poll.
-    onSuccess: updated => {
-      queryClient.setQueryData(listAccountsQueryKey(), (list: AccountList | undefined) =>
-        list ? { ...list, accounts: list.accounts.map(entry => (entry.id === updated.id ? updated : entry)) } : list
-      );
-    },
-  });
-
-  const Heading = headingLevel === 2 ? 'h2' : 'h3';
+  const pause = usePause(account);
   const headingId = `account-${account.id}`;
-  // The button shows the change as soon as it is pressed, and back if the broker refuses.
-  const paused = pause.isPending ? pause.variables.body.paused : account.paused;
+  const { paused } = pause;
   const { tone: stateTone, label } = state({ ...account, paused }, now);
   // The chart wears the provider's colour; the figure carries the state.
   const tone = providerTone(account.provider);
@@ -452,7 +422,7 @@ export function AccountRow({
           {/* On a narrow row the button sits at the end of this line, so only the name gives way to it. */}
           <div className={clsx('flex items-center gap-2 text-muted', pausable && 'pr-8 lg:pr-0')}>
             <ProviderIcon provider={account.provider} size="md" />
-            <Heading id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
+            <h3 id={headingId} className="min-w-0 truncate text-title font-semibold text-foreground">
               <Link
                 to="/accounts/$accountId"
                 params={{ accountId: account.id }}
@@ -461,32 +431,20 @@ export function AccountRow({
               >
                 {accountTitle(account)}
               </Link>
-            </Heading>
+            </h3>
             {/* Taking work is the normal state and says nothing; anything else is named. */}
             {stateTone !== 'ok' && (
               <span className="shrink-0">
                 <StatusBadge tone={stateTone}>{label}</StatusBadge>
               </span>
             )}
+            {/* A badge already says why an account is held back. On a narrow row only the place
+                shows, so the name keeps its room; the reason is still heard. */}
             {priority && (
-              <span
-                data-testid="priority"
-                data-standing={priority.standing}
-                className={clsx(
-                  'shrink-0 rounded-sm px-1.5 text-micro whitespace-nowrap',
-                  priorityClasses[priority.standing]
-                )}
-              >
-                <span className="sr-only">Gateway pick: </span>
-                <span className="font-semibold">
-                  {priority.rank === undefined ? priority.standing : ordinal(priority.rank)}
-                </span>
-                {/* A badge already says why an account is held back. On a narrow row only the
-                    place shows, so the name keeps its room; the reason is still heard. */}
-                {!(priority.standing === 'last' && stateTone !== 'ok') && (
-                  <span className="sr-only lg:not-sr-only"> · {priority.reason}</span>
-                )}
-              </span>
+              <PriorityPill
+                priority={priority}
+                reason={priority.standing === 'last' && stateTone !== 'ok' ? 'never' : 'wide'}
+              />
             )}
           </div>
           {/* One line under the name: the main window and when it resets, the other windows in
@@ -524,21 +482,14 @@ export function AccountRow({
 
         {pausable && (
           <div className="absolute top-2.5 right-3 flex lg:static lg:ml-auto">
-            <PauseButton
-              paused={paused}
-              pending={pause.isPending}
-              onToggle={() => pause.mutate({ path: { accountId: account.id }, body: { paused: !paused } })}
-            />
+            <PauseButton paused={paused} pending={pause.pending} onToggle={pause.toggle} />
           </div>
         )}
 
-        {pause.isError && (
+        {pause.error && (
           // A line of its own under the row, on solid ground.
           <p role="alert" className="order-last basis-full text-caption text-danger lg:text-right">
-            <span className="rounded-sm bg-surface px-1">
-              {account.paused ? 'Could not resume the account' : 'Could not pause the account'}:{' '}
-              {problemDetail(pause.error, 'the server did not answer')}
-            </span>
+            <span className="rounded-sm bg-surface px-1">{pause.error}</span>
           </p>
         )}
       </div>

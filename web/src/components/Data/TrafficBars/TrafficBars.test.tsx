@@ -14,10 +14,14 @@ describe('TrafficBars', () => {
     expect(screen.getByRole('img', { name: 'Traffic by minute' })).toBeInTheDocument();
     expect(container.querySelectorAll('[data-step]')).toHaveLength(60);
     // Step 1 has both providers: Anthropic at the foot, Codex on top of it.
+    // Each part a glow in its colour under a solid edge.
     const parts = container.querySelectorAll('[data-step="1"] rect');
     expect(parts).toHaveLength(2);
-    expect(parts[0]).toHaveClass('fill-anthropic');
-    expect(parts[1]).toHaveClass('fill-openai');
+    expect(parts[0]?.getAttribute('fill')).toMatch(/-anthropic\)$/);
+    expect(parts[1]?.getAttribute('fill')).toMatch(/-openai-codex\)$/);
+    const edges = container.querySelectorAll('[data-step="1"] line');
+    expect(edges[0]).toHaveClass('stroke-anthropic');
+    expect(edges[1]).toHaveClass('stroke-openai');
     // Step 0 is quiet for both.
     expect(container.querySelectorAll('[data-step="0"] rect')).toHaveLength(0);
   });
@@ -43,7 +47,7 @@ describe('TrafficBars', () => {
 
     const bars = container.querySelectorAll('[data-step="1"] rect');
     expect(bars).toHaveLength(1);
-    expect(bars[0]).toHaveClass('fill-meter');
+    expect(container.querySelector('[data-step="1"] line')).toHaveClass('stroke-meter');
     // A quiet step sent nothing, so it has no share to draw.
     expect(container.querySelectorAll('[data-step="0"] rect')).toHaveLength(0);
     expect(screen.getByText('100%')).toBeInTheDocument();

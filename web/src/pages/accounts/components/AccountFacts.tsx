@@ -1,6 +1,5 @@
 import type { JSX, ReactNode } from 'react';
-import { StatusBadge } from '@/components/Feedback/StatusBadge';
-import type { StatusTone } from '@/components/Feedback/StatusBadge/StatusBadge.types';
+import { Panel } from '@/components/Layout/Panel';
 import { providerName } from '@/lib/accounts';
 import { formatClock, formatPrice, formatShort } from '@/lib/format';
 import type { AccountFactsProps } from './AccountFacts.types';
@@ -12,7 +11,7 @@ const kinds: Record<string, string> = { oauth: 'OAuth login', api_key: 'API key'
 
 function Fact({ name, children }: { name: string; children: ReactNode }): JSX.Element {
   return (
-    <div className="flex items-baseline gap-3 py-1 first:pt-0 last:pb-0">
+    <div className="flex items-baseline gap-3 px-4 py-2">
       <dt className="w-28 shrink-0 text-micro tracking-caps text-muted uppercase">{name}</dt>
       <dd className="min-w-0 flex-1 text-caption">{children}</dd>
     </div>
@@ -20,42 +19,17 @@ function Fact({ name, children }: { name: string; children: ReactNode }): JSX.El
 }
 
 /**
- * Whether an account is taking traffic and why not, then what it is: the
- * blocks omp has on it, how it is logged in, whose it is, and how old its
- * usage figures are.
+ * What an account is, beyond its name: the blocks omp has on it, its
+ * provider, how it is logged in, whose it is, what it costs and how old its
+ * usage figures are. Whether it takes traffic is said at the top of the page.
  */
 export function AccountFacts({ account, now }: AccountFactsProps): JSX.Element {
   const blocks = account.blocks.filter(block => Date.parse(block.until) > now);
   const reported = account.fetchedAt === undefined ? undefined : now - Date.parse(account.fetchedAt);
 
-  let state: { tone: StatusTone; label: string; detail: string };
-  if (account.paused) {
-    state = {
-      tone: 'warn',
-      label: 'paused',
-      detail: 'omp uses it last, when every other account is blocked or spent.',
-    };
-  } else if (blocks.length > 0) {
-    state = { tone: 'danger', label: 'blocked', detail: 'omp sends it nothing in the scopes below until they clear.' };
-  } else {
-    state = { tone: 'ok', label: 'active', detail: 'omp may send it traffic.' };
-  }
-
   return (
-    <section
-      aria-labelledby="facts-heading"
-      className="flex min-w-0 flex-1 flex-col gap-2 rounded-md border border-border bg-surface p-3"
-    >
-      <h2 id="facts-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-        Status
-      </h2>
-
+    <Panel title="Details">
       <dl className="flex flex-col divide-y divide-border">
-        <Fact name="Traffic">
-          <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
-          <span className="ml-2 text-muted">{state.detail}</span>
-        </Fact>
-
         {blocks.length > 0 && (
           <Fact name="Blocks">
             <ul className="flex flex-col">
@@ -93,6 +67,6 @@ export function AccountFacts({ account, now }: AccountFactsProps): JSX.Element {
           )}
         </Fact>
       </dl>
-    </section>
+    </Panel>
   );
 }

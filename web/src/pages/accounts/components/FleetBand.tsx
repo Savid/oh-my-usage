@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import clsx from 'clsx';
 import { LiveTraffic } from '@/components/Data/LiveTraffic';
 import { PageHeader } from '@/components/Layout/PageHeader';
+import { Panel } from '@/components/Layout/Panel';
 import { PoolMeter } from './PoolMeter';
 import type { FleetBandProps } from './FleetBand.types';
 
@@ -17,8 +18,7 @@ export function FleetBand({ pools, traffic, trafficStatus, monthlyUsd, now }: Fl
   const hasTraffic = trafficStatus !== 'success' || traffic?.available === true;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-md border border-border bg-surface">
-      <div aria-hidden="true" className="h-0.5 bg-linear-to-r from-mark-magenta via-mark-iris to-mark-cyan" />
+    <Panel hairline="strong">
       <div className="flex flex-col lg:flex-row">
         <div
           className={clsx(
@@ -54,6 +54,6 @@ export function FleetBand({ pools, traffic, trafficStatus, monthlyUsd, now }: Fl
           traffic?.available && <LiveTraffic traffic={traffic} monthlyUsd={monthlyUsd} now={now} />
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

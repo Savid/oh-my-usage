@@ -83,14 +83,12 @@ function StatusDot({ pulsing }: { pulsing: boolean }): JSX.Element {
   );
 }
 
-// The band is a cell of the homepage's top band; the page variant opens the Traffic page, taller.
+// The band is a cell of the homepage's top band; the page variant fills the Traffic page's band, taller.
 const variantClasses = {
   // On a narrow band the chart fills it behind the figures, under the heading and the switch.
   band: { section: 'min-h-48 lg:min-h-36', chart: 'top-18 lg:top-10' },
-  page: {
-    section: 'min-h-80 rounded-md border border-border bg-surface lg:min-h-72',
-    chart: 'h-48 lg:top-20 lg:h-auto',
-  },
+  // Under the page's first line in its band, which names the page: the panel's own heading is only heard.
+  page: { section: 'min-h-72 lg:min-h-64', chart: 'h-48 lg:top-16 lg:h-auto' },
 } as const;
 
 /**
@@ -171,7 +169,10 @@ export function LiveTraffic({
       {/* The figures sit over the chart and let the pointer through to it, all but the controls. */}
       <div className="pointer-events-none relative flex flex-1 flex-col gap-1 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 id="traffic-heading" className="pointer-events-auto text-body font-semibold tracking-caps uppercase">
+          <h2
+            id="traffic-heading"
+            className={clsx('pointer-events-auto text-body font-semibold tracking-caps uppercase', !band && 'sr-only')}
+          >
             {band ? (
               <Link
                 to="/traffic"

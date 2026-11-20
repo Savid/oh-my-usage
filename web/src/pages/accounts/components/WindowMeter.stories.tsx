@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import type { UsageSample } from '@/api';
 import { at, NOW_MS } from '@/test-utils/time';
-import { LimitCard } from './LimitCard';
+import { WindowMeter } from './WindowMeter';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -12,8 +12,8 @@ function sample(hours: number, usedFraction: number): UsageSample {
 }
 
 const meta = {
-  title: 'Pages/Accounts/Components/LimitCard',
-  component: LimitCard,
+  title: 'Pages/Accounts/Components/WindowMeter',
+  component: WindowMeter,
   args: {
     limit: {
       id: 'anthropic:7d',
@@ -30,48 +30,48 @@ const meta = {
   },
   decorators: [
     Story => (
-      <div className="flex w-104">
+      <ul className="flex w-120 flex-col rounded-md border border-border bg-surface px-4 py-3">
         <Story />
-      </div>
+      </ul>
     ),
   ],
-} satisfies Meta<typeof LimitCard>;
+} satisfies Meta<typeof WindowMeter>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article', { name: 'Claude 7 Day' })).toHaveTextContent('50%');
-    await expect(canvas.getByText('At this pace it ends the window at 98%.')).toBeInTheDocument();
+    await expect(canvas.getByRole('listitem', { name: 'Claude 7 Day' })).toHaveTextContent('50%');
+    await expect(canvas.getByText('Ends the window near 98%')).toBeInTheDocument();
   },
 };
 
 export const RunsOutEarly: Story = {
   args: { samples: [sample(-10, 0.3), sample(0, 0.5)] },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(/At this pace it runs out in 1d 1h/)).toBeInTheDocument();
+    await expect(canvas.getByText(/Out in 1d 1h/)).toBeInTheDocument();
   },
 };
 
 export const NearLimit: Story = {
   args: { limit: { ...meta.args.limit, usedFraction: 0.92, status: 'warning' }, samples: [] },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('article')).toHaveAttribute('data-severity', 'warn');
+    await expect(canvas.getByRole('listitem')).toHaveAttribute('data-severity', 'warn');
   },
 };
 
 export const Spent: Story = {
   args: { limit: { ...meta.args.limit, usedFraction: 1, status: 'exhausted' }, samples: [] },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('Spent. Nothing more until it resets.')).toBeInTheDocument();
+    await expect(canvas.getByTitle('Spent. Nothing more until it resets.')).toBeInTheDocument();
   },
 };
 
 export const NoHistory: Story = {
   args: { limit: { ...meta.args.limit, windowSeconds: undefined }, samples: [] },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('Not enough history yet to say where it is heading.')).toBeInTheDocument();
+    await expect(canvas.getByText('No pace yet')).toBeInTheDocument();
   },
 };
 

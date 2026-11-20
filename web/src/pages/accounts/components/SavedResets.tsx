@@ -1,5 +1,7 @@
 import type { JSX } from 'react';
+import clsx from 'clsx';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
+import { Panel } from '@/components/Layout/Panel';
 import { isLapsing, resetWindow, shortLimitLabel } from '@/lib/accounts';
 import { formatShort } from '@/lib/format';
 import type { SavedResetsProps } from './SavedResets.types';
@@ -26,31 +28,22 @@ export function SavedResets({ resets, limits, now }: SavedResetsProps): JSX.Elem
     return limit ? shortLimitLabel(limit) : id;
   };
 
-  return (
-    <section
-      aria-labelledby="resets-heading"
-      className="flex min-w-0 flex-1 flex-col gap-2 rounded-md border border-border bg-surface p-3"
-    >
-      <div className="flex items-baseline gap-2">
-        <h2 id="resets-heading" className="text-micro font-semibold tracking-caps text-muted uppercase">
-          Saved resets
-        </h2>
-        {resets && resets.available > 0 && (
-          <span className="ml-auto text-caption text-muted tabular-nums">
-            {resets.available} held
-            {resets.usable !== undefined && `, ${resets.usable} usable now`}
-          </span>
-        )}
-      </div>
+  const held = resets?.available ?? 0;
 
-      {!resets || resets.available === 0 ? (
-        <p className="text-caption text-muted">This account holds no saved resets.</p>
+  return (
+    <Panel
+      title="Saved resets"
+      count={held > 0 ? held : undefined}
+      aside={held > 0 && resets?.usable !== undefined ? `${resets.usable} usable now` : undefined}
+    >
+      {held === 0 ? (
+        <p className="px-4 py-3 text-caption text-muted">This account holds no saved resets.</p>
       ) : (
         <>
           {saved.length > 0 && (
             <ul className="flex flex-col divide-y divide-border">
               {saved.map(reset => (
-                <li key={reset.key} className="flex flex-col gap-0.5 py-1.5 first:pt-0 last:pb-0">
+                <li key={reset.key} className="flex flex-col gap-0.5 px-4 py-2.5">
                   <div className="flex items-baseline gap-2">
                     <span className="min-w-0 truncate text-body font-medium" title={reset.title}>
                       {reset.title ?? 'A limit reset'}
@@ -95,12 +88,12 @@ export function SavedResets({ resets, limits, now }: SavedResetsProps): JSX.Elem
             </ul>
           )}
           {undescribed > 0 && (
-            <p className="text-caption text-muted">
+            <p className={clsx('px-4 py-2.5 text-caption text-muted', saved.length > 0 && 'border-t border-border')}>
               {saved.length > 0 ? `And ${undescribed} more` : `${undescribed}`} the provider did not describe.
             </p>
           )}
         </>
       )}
-    </section>
+    </Panel>
   );
 }

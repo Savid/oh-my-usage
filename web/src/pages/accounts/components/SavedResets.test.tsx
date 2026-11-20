@@ -11,7 +11,7 @@ describe('SavedResets', () => {
     render(<SavedResets resets={seatFixture.resets} limits={seatFixture.limits} now={NOW_MS} />);
 
     const panel = screen.getByRole('region', { name: 'Saved resets' });
-    expect(panel).toHaveTextContent('2 held, 1 usable now');
+    expect(panel).toHaveTextContent('Saved resets21 usable now');
 
     const resets = within(panel).getAllByRole('listitem');
     expect(resets).toHaveLength(2);
@@ -42,7 +42,7 @@ describe('SavedResets', () => {
   it('shows a reset the provider says little about', () => {
     render(<SavedResets resets={strayFixture.resets} limits={strayFixture.limits} now={NOW_MS} />);
 
-    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('1 held');
+    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent(/^Saved resets1A limit reset/);
     // Codex does not say whether it can be spent, so no word on that.
     expect(screen.getByRole('listitem')).toHaveTextContent('A limit resetWhat it clears is not said · expires in 30d');
     expect(screen.queryByText(/usable now/)).not.toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('SavedResets', () => {
   it('says how many are held when none is described', () => {
     render(<SavedResets resets={{ available: 3, usable: 0, soonestExpiresAt: at(DAY) }} limits={[]} now={NOW_MS} />);
 
-    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('3 held, 0 usable now');
+    expect(screen.getByRole('region', { name: 'Saved resets' })).toHaveTextContent('Saved resets30 usable now');
     expect(screen.getByText('3 the provider did not describe.')).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
@@ -79,6 +79,6 @@ describe('SavedResets', () => {
     rerender(<SavedResets resets={{ available: 0 }} limits={[]} now={NOW_MS} />);
 
     expect(screen.getByText('This account holds no saved resets.')).toBeInTheDocument();
-    expect(screen.queryByText(/held/)).not.toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 });
