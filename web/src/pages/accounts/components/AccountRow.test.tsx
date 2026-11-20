@@ -29,7 +29,12 @@ describe('AccountRow', () => {
     );
     expect(within(row).getByRole('img', { name: 'Anthropic' })).toBeInTheDocument();
     // Saved resets say when the first that can be spent lapses, quietly: its week resets first.
-    expect(within(row).getByText('One Org · $200/mo · 2 resets, 1 usable, one lapses in 28d')).toBeInTheDocument();
+    expect(within(row).getByText('One Org · $200/mo')).toBeInTheDocument();
+    // Saved resets are a chip: usable of held, and when the first lapses; the sentence on hover and to a screen reader.
+    const resets = within(row).getByTestId('resets');
+    expect(resets).toHaveTextContent('↻ 1/2 · 28d');
+    expect(resets).toHaveAttribute('title', '2 saved resets, 1 usable now; the first lapses in 28d');
+    expect(resets).toHaveClass('text-muted');
     // Both weekly windows reset together; the first listed leads.
     expect(row).toHaveTextContent('76%used');
     expect(row).toHaveTextContent('7 Day · resets in 21h · +10.7%/day');
@@ -205,17 +210,23 @@ describe('AccountRow', () => {
     rerender(<AccountRow {...base} account={strayFixture} />);
     expect(screen.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
     // A provider that does not say how many resets are usable gets no count.
-    expect(screen.getByText('pro · 1 reset, lapses in 30d')).toBeInTheDocument();
+    expect(screen.getByText('pro')).toBeInTheDocument();
+    expect(screen.getByTestId('resets')).toHaveAttribute('title', '1 saved reset; the first lapses in 30d');
   });
 
   it('leads with a saved reset that lapses before its window resets, marked', () => {
     render(<AccountRow {...base} account={lapsingSeatFixture} />);
 
     const row = screen.getByRole('article', { name: 'one@example.com' });
-    const alarm = within(row).getByText('2 resets, 1 usable, spend one within 12h');
+    const alarm = within(row).getByTestId('resets');
     expect(alarm).toHaveClass('text-warn');
-    expect(alarm).toHaveTextContent(/^▲ /);
-    expect(alarm.parentElement).toHaveTextContent(/^▲ 2 resets, 1 usable, spend one within 12h · One Org · \$200\/mo$/);
+    expect(alarm.querySelector('[aria-hidden]')).toHaveTextContent('▲ spend 1 in 12h');
+    expect(alarm).toHaveAttribute(
+      'title',
+      '2 saved resets, 1 usable now: spend one within 12h, before its window resets, or lose it'
+    );
+    // First on its line, so the line never cuts it off.
+    expect(alarm.parentElement?.firstElementChild).toBe(alarm);
     // The main window's own state is not changed by it.
     expect(row).toHaveAttribute('data-severity', 'normal');
   });
