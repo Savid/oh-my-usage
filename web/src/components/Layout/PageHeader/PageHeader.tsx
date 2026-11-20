@@ -1,6 +1,5 @@
 import { use, type JSX } from 'react';
 import { Link } from '@tanstack/react-router';
-import clsx from 'clsx';
 import { Logo } from '@/components/Brand/Logo';
 import { ShellContext } from '@/components/Layout/AppShell/shell';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
@@ -18,27 +17,19 @@ const connections: Record<StreamConnection, { label: string; tone: StatusTone } 
 
 /**
  * A page's first line: the product's mark, which leads home, then the page's
- * own line beside it, and a warning when the stream is down. Named, it writes
- * the product's name beside the mark: the heading of the homepage's band.
- * There is no bar of pages: the homepage leads to the rest.
+ * own line beside it, and a warning when the stream is down. On the homepage
+ * it heads the band. There is no bar of pages: the homepage leads to the rest.
  */
-export function PageHeader({ children, named = false }: PageHeaderProps): JSX.Element {
+export function PageHeader({ children }: PageHeaderProps): JSX.Element {
   const { name, connection } = use(ShellContext);
   const lost = connections[connection];
 
   return (
-    <header className={clsx('flex min-h-8 items-center gap-3', !named && 'px-1')}>
-      {named ? (
-        <Link to="/" className="flex shrink-0 items-center gap-2.5">
-          <Logo />
-          <span className="text-body font-semibold tracking-caps uppercase">{name ?? 'oh-my-usage'}</span>
-        </Link>
-      ) : (
-        // The mark stands for the name, so the link is named by it.
-        <Link to="/" aria-label={name ?? 'Home'} className="flex shrink-0 items-center">
-          <Logo />
-        </Link>
-      )}
+    <header className="flex min-h-8 items-center gap-3 px-1">
+      {/* The mark stands for the name, so the link is named by it. */}
+      <Link to="/" aria-label={name ?? 'Home'} className="flex shrink-0 items-center">
+        <Logo />
+      </Link>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1">{children}</div>
       {lost && <StatusBadge tone={lost.tone}>{lost.label}</StatusBadge>}
     </header>

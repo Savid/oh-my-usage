@@ -14,7 +14,6 @@ const meta = {
       </span>
     ),
   },
-  argTypes: { named: { control: 'boolean' } },
   decorators: [
     (Story, { parameters }) => (
       <AppShell name="oh-my-usage" connection={parameters.connection === 'reconnecting' ? 'reconnecting' : 'live'}>
@@ -32,14 +31,6 @@ export const Default: Story = {
     await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toHaveAttribute('href', '/');
     // A stream that is up is not remarked on.
     await expect(canvas.queryByText('reconnecting')).not.toBeInTheDocument();
-  },
-};
-
-/** The homepage's band heading: the name written beside the mark. */
-export const Named: Story = {
-  args: { named: true, children: undefined },
-  play: async ({ canvas }) => {
-    await expect(canvas.getByRole('link', { name: 'oh-my-usage' })).toHaveTextContent('oh-my-usage');
   },
 };
 

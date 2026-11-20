@@ -64,9 +64,17 @@ export function AccountsPage(): JSX.Element {
           {list.accounts.length === 0 ? (
             <p className="px-1 text-caption text-muted">The gateway reports no accounts.</p>
           ) : (
-            <section aria-label="Every account" className="flex flex-col gap-2">
+            <section
+              aria-label="Every account"
+              className="flex flex-col overflow-hidden rounded-md border border-border bg-surface"
+            >
+              {/* The band's hairline, quieter: this card sits under it. */}
+              <div
+                aria-hidden="true"
+                className="h-px bg-linear-to-r from-mark-magenta via-mark-iris to-mark-cyan opacity-60"
+              />
               <AccountsToolbar count={views.length} order={order} onOrder={setOrder} />
-              <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface">
+              <div className="divide-y divide-border">
                 {orderAccounts(views, order, priorities).map(view => (
                   <AccountRow
                     key={view.account.id}
