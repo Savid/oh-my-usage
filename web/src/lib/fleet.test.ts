@@ -82,7 +82,6 @@ describe('viewAccount', () => {
     expect(view.idle).toBe(false);
     // Five points an hour for three more days runs dry long before the reset.
     expect(view.limits[0]?.verdict).toBe('dry');
-    expect(view.dryAt).toBe(NOW_MS + 10 * HOUR);
     expect(view.dryFor).toBe(3 * DAY - 10 * HOUR);
   });
 
@@ -119,7 +118,7 @@ describe('fleetOf', () => {
   it('counts the fleet and adds up its prices', () => {
     const spent = account('spent', 1, { monthlyUsd: 200, resets: { available: 2, usable: 1 } });
     const fleet = fleetOf([
-      { account: spent, limits: [], idle: false, dryAt: NOW_MS, resetsLapsing: 1 },
+      { account: spent, limits: [], idle: false, resetsLapsing: 1 },
       { account: account('idle', 0.1, { monthlyUsd: 50 }), limits: [], idle: true },
       { account: account('paused', 0.1, { paused: true }), limits: [] },
     ]);
@@ -129,7 +128,6 @@ describe('fleetOf', () => {
       burning: 1,
       idle: 1,
       paused: 1,
-      dry: 1,
       spent: 1,
       monthlyUsd: 250,
       priced: 2,
