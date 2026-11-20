@@ -60,34 +60,55 @@ function state(account: Account, now: number): { tone: StatusTone; label: string
   return { tone: 'ok', label: 'active' };
 }
 
-/**
- * The saved resets in a few words: how many, how many can be spent, and when
- * the first that can be spent expires. When one has to be spent before its
- * window resets or be lost, the words say so, and the account is in trouble.
- */
-function savedResets(account: Account, now: number): { said: string; lapsing: boolean } | undefined {
-  const resets = account.resets;
-  if (!resets || resets.available === 0) return undefined;
+/** A wait for a chip: whole days once it is two or more, which is close enough at a glance. */
+function roughly(ms: number): string {
+  const days = Math.floor(ms / 86_400_000);
+  return days >= 2 ? `${days}d` : formatShort(ms);
+}
 
-  const held = `${resets.available} ${resets.available === 1 ? 'reset' : 'resets'}`;
-  const usable = resets.usable === undefined ? '' : `, ${resets.usable} usable`;
-  const outlook = resetOutlook(account, now);
-  if (outlook.lapsingAt !== undefined) {
-    const which = outlook.lapsing === 1 ? 'one' : String(outlook.lapsing);
-    return { said: `${held}${usable}, spend ${which} within ${formatShort(outlook.lapsingAt - now)}`, lapsing: true };
-  }
-
-  const one = resets.available === 1 ? '' : ' one';
-  const lapses = outlook.nextAt === undefined ? '' : `,${one} lapses in ${formatShort(outlook.nextAt - now)}`;
-  return { said: `${held}${usable}${lapses}`, lapsing: false };
+/** The saved resets as a chip: short on the row, the whole sentence on hover and to a screen reader. */
+interface ResetsChip {
+  short: string;
+  full: string;
+  /** One must be spent before its window resets, or be lost. */
+  lapsing: boolean;
 }
 
 /**
- * What follows the name: organisation, plan, price, saved resets, and how old
- * the usage is when it is old. Resets about to lapse lead, apart, so the line
- * never cuts them off.
+ * The saved resets in a chip: how many can be spent of how many are held, and
+ * when the first that can be spent lapses (`↻ 1/3 · 109d`). One that has to be
+ * spent before its window resets, or be lost, is trouble: `▲ spend 1 in 12h`.
  */
-function about(account: Account, now: number): { alarm?: string; said: string } {
+function savedResets(account: Account, now: number): ResetsChip | undefined {
+  const resets = account.resets;
+  if (!resets || resets.available === 0) return undefined;
+
+  const held = `${resets.available} saved ${resets.available === 1 ? 'reset' : 'resets'}`;
+  const usable = resets.usable === undefined ? '' : `, ${resets.usable} usable now`;
+  const outlook = resetOutlook(account, now);
+  if (outlook.lapsingAt !== undefined) {
+    const within = formatShort(outlook.lapsingAt - now);
+    return {
+      short: `spend ${outlook.lapsing} in ${roughly(outlook.lapsingAt - now)}`,
+      full: `${held}${usable}: spend ${outlook.lapsing === 1 ? 'one' : outlook.lapsing} within ${within}, before its window resets, or lose it`,
+      lapsing: true,
+    };
+  }
+
+  const count = resets.usable === undefined ? `${resets.available}` : `${resets.usable}/${resets.available}`;
+  const lapses = outlook.nextAt === undefined ? undefined : formatShort(outlook.nextAt - now);
+  return {
+    short: outlook.nextAt === undefined ? count : `${count} · ${roughly(outlook.nextAt - now)}`,
+    full: `${held}${usable}${lapses === undefined ? '' : `; the first lapses in ${lapses}`}`,
+    lapsing: false,
+  };
+}
+
+/**
+ * What follows the name: organisation, plan, price, and how old the usage is
+ * when it is old.
+ */
+function about(account: Account, now: number): string {
   const parts: string[] = [];
   // A personal organisation is named after its owner's email, which the row already shows.
   if (account.orgName && !(account.email && account.orgName.startsWith(account.email))) parts.push(account.orgName);
@@ -95,15 +116,10 @@ function about(account: Account, now: number): { alarm?: string; said: string } 
   if (account.plan && !accountTitle(account).includes(account.plan)) parts.push(account.plan);
   if (account.kind === 'api_key' && account.email) parts.push('API key');
   if (account.monthlyUsd !== undefined) parts.push(`${formatPrice(account.monthlyUsd)}/mo`);
-
-  const resets = savedResets(account, now);
-  if (resets && !resets.lapsing) parts.push(resets.said);
-
   if (account.fetchedAt && now - Date.parse(account.fetchedAt) > STALE_MS) {
     parts.push(`usage ${formatShort(now - Date.parse(account.fetchedAt))} old`);
   }
-
-  return { alarm: resets?.lapsing ? resets.said : undefined, said: parts.join(' · ') };
+  return parts.join(' · ');
 }
 
 /**
@@ -367,6 +383,7 @@ export function AccountRow({
   // The chart wears the provider's colour; the figure carries the state.
   const tone = providerTone(account.provider);
   const meta = about(account, now);
+  const resets = savedResets(account, now);
 
   const primary = primaryLimit(account.limits);
   const used = primary?.usedFraction;
@@ -621,16 +638,25 @@ export function AccountRow({
                   view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>}
             </p>
           )}
-          {(meta.alarm || meta.said) && (
-            <p className="truncate text-micro text-muted">
-              {meta.alarm && (
-                <span className="text-warn">
-                  <span aria-hidden="true">▲ </span>
-                  {meta.alarm}
+          {(resets || meta) && (
+            <p className="flex min-w-0 items-center gap-1.5 text-micro text-muted">
+              {/* First, so the line never cuts it off. */}
+              {resets && (
+                <span
+                  title={resets.full}
+                  data-testid="resets"
+                  className={clsx(
+                    'shrink-0 rounded-sm bg-raised px-1 whitespace-nowrap',
+                    resets.lapsing ? 'text-warn' : 'text-muted'
+                  )}
+                >
+                  <span aria-hidden="true">
+                    {resets.lapsing ? '▲' : '↻'} {resets.short}
+                  </span>
+                  <span className="sr-only">{resets.full}</span>
                 </span>
               )}
-              {meta.alarm && meta.said && ' · '}
-              {meta.said}
+              {meta && <span className="truncate">{meta}</span>}
             </p>
           )}
         </div>
