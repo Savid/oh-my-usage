@@ -85,7 +85,8 @@ function StatusDot({ pulsing }: { pulsing: boolean }): JSX.Element {
 
 // The band is a cell of the homepage's top band; the page variant opens the Traffic page, taller.
 const variantClasses = {
-  band: { section: 'min-h-72 lg:min-h-36', chart: 'h-32 lg:top-10 lg:h-auto' },
+  // On a narrow band the chart fills it behind the figures, under the heading and the switch.
+  band: { section: 'min-h-48 lg:min-h-36', chart: 'top-18 lg:top-10' },
   page: {
     section: 'min-h-80 rounded-md border border-border bg-surface lg:min-h-72',
     chart: 'h-48 lg:top-20 lg:h-auto',
@@ -210,27 +211,39 @@ export function LiveTraffic({
             </span>
           )}
 
-          <div role="group" aria-label="Show" className="pointer-events-auto ml-auto flex flex-wrap items-center gap-1">
-            {metrics.map(entry => (
-              <button
-                key={entry.id}
-                type="button"
-                aria-pressed={entry.id === metric}
-                onClick={() => setMetric(entry.id)}
-                className={clsx(
-                  'flex h-6 items-center gap-1.5 rounded-sm border bg-surface px-2 text-micro whitespace-nowrap tabular-nums',
-                  entry.id === metric
-                    ? 'border-accent text-foreground'
-                    : 'border-border text-muted hover:border-border-strong hover:text-foreground'
-                )}
-              >
-                <span className="tracking-caps uppercase">{entry.name}</span>
-                <span className="font-semibold text-foreground">
-                  {entry.format(entry.view.totals[shown] ?? 0)}
-                  {entry.suffix}
-                </span>
-              </button>
-            ))}
+          {/* On a narrow band the switch is one line that scrolls sideways, fading at its end. Its
+              scrollbar falls in padding that the line's own height clips away. */}
+          <div className="pointer-events-auto relative -mx-4 h-6 basis-full overflow-hidden lg:mx-0 lg:ml-auto lg:h-auto lg:basis-auto lg:overflow-visible">
+            <div
+              role="group"
+              aria-label="Show"
+              className="flex items-center gap-1 overflow-x-auto px-4 pb-4 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+            >
+              {metrics.map(entry => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-pressed={entry.id === metric}
+                  onClick={() => setMetric(entry.id)}
+                  className={clsx(
+                    'flex h-6 shrink-0 items-center gap-1.5 rounded-sm border bg-surface px-2 text-micro whitespace-nowrap tabular-nums',
+                    entry.id === metric
+                      ? 'border-accent text-foreground'
+                      : 'border-border text-muted hover:border-border-strong hover:text-foreground'
+                  )}
+                >
+                  <span className="tracking-caps uppercase">{entry.name}</span>
+                  <span className="font-semibold text-foreground">
+                    {entry.format(entry.view.totals[shown] ?? 0)}
+                    {entry.suffix}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-surface lg:hidden"
+            />
           </div>
         </div>
 
