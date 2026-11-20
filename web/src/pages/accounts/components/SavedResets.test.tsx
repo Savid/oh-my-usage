@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@/test-utils';
-import { seatFixture, strayFixture } from '@/test-utils/handlers';
+import { lapsingSeatFixture, seatFixture, strayFixture } from '@/test-utils/handlers';
 import { at, NOW_MS } from '@/test-utils/time';
 import { SavedResets } from './SavedResets';
 
@@ -24,6 +24,19 @@ describe('SavedResets', () => {
       'New model launch: one Fable resetnot usable nowClears 7 Day Fable · expires in 117d'
     );
     expect(within(resets[1]!).getByText('not usable now')).toHaveAttribute('data-tone', 'neutral');
+  });
+
+  it('marks a reset that lapses before its window resets', () => {
+    render(<SavedResets resets={lapsingSeatFixture.resets} limits={lapsingSeatFixture.limits} now={NOW_MS} />);
+
+    const [first, second] = screen.getAllByRole('listitem');
+    expect(first).toHaveTextContent(
+      'Clears 7 Day, 7 Day Fable · ▲ expires in 12h, before 7 Day resets: spend it or lose it'
+    );
+    expect(within(first!).getByText(/before 7 Day resets/)).toHaveClass('text-warn');
+    // One that cannot be spent is not lapsing: there is nothing to do about it.
+    expect(second).toHaveTextContent('Clears 7 Day Fable · expires in 117d');
+    expect(within(second!).queryByText('▲')).not.toBeInTheDocument();
   });
 
   it('shows a reset the provider says little about', () => {

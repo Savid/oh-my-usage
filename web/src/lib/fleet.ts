@@ -1,5 +1,5 @@
 import type { Account, Limit, UsageSample, UsageTrend } from '@/api';
-import { limitSeverity, primaryLimit } from './accounts';
+import { limitSeverity, primaryLimit, resetOutlook } from './accounts';
 import { forecast, verdictOf, type Forecast, type Verdict } from './forecast';
 
 const HOUR = 3_600_000;
@@ -35,6 +35,8 @@ export interface AccountView {
    * milliseconds: how much the account would miss.
    */
   dryFor?: number;
+  /** Saved resets that expire before their window resets: spent in this one or lost (`isLapsing`). */
+  resetsLapsing?: number;
 }
 
 /** One account's recorded usage, as the samples `forecast` reads. */
@@ -104,6 +106,7 @@ export function viewAccount(account: Account, trends: readonly UsageTrend[], now
     idle: isIdle(account, trends, now),
     dryAt: dry.length > 0 ? Math.min(...dry) : undefined,
     dryFor: gaps.length > 0 ? Math.max(...gaps) : undefined,
+    resetsLapsing: resetOutlook(account, now).lapsing,
   };
 }
 
@@ -158,6 +161,8 @@ export interface Fleet {
   priced: number;
   /** Saved resets that can be spent now. */
   resetsUsable: number;
+  /** Saved resets to spend before their window resets, or lose. */
+  resetsLapsing: number;
 }
 
 /** The fleet's figures, from its accounts' views. */
@@ -171,6 +176,7 @@ export function fleetOf(views: readonly AccountView[]): Fleet {
     spent: 0,
     priced: 0,
     resetsUsable: 0,
+    resetsLapsing: 0,
   };
 
   for (const view of views) {
@@ -181,6 +187,7 @@ export function fleetOf(views: readonly AccountView[]): Fleet {
     if (view.dryAt !== undefined) fleet.dry += 1;
     if (account.limits.some(limit => limitSeverity(limit) === 'danger')) fleet.spent += 1;
     fleet.resetsUsable += account.resets?.usable ?? 0;
+    fleet.resetsLapsing += view.resetsLapsing ?? 0;
     if (account.monthlyUsd !== undefined) {
       fleet.priced += 1;
       fleet.monthlyUsd = (fleet.monthlyUsd ?? 0) + account.monthlyUsd;

@@ -9,14 +9,16 @@ interface Fact {
   name: string;
   /** A mark that goes with an alarming fact, so it does not rest on colour. */
   mark?: string;
-  alarm?: boolean;
+  alarm?: 'warn' | 'danger';
 }
+
+const alarmClasses = { warn: 'text-warn', danger: 'text-danger' } as const;
 
 /**
  * The fleet in one line: how many accounts, how many are burning, idle,
- * paused, running dry or spent, what they cost a month and how many saved
- * resets can be spent, and when the gateway was last read. Counts of nothing
- * are left out, except the accounts.
+ * paused, running dry or spent, what they cost a month, how many saved
+ * resets can be spent and how many must be spent soon or lost, and when the
+ * gateway was last read. Counts of nothing are left out, except the accounts.
  */
 export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.Element {
   const facts: Fact[] = [
@@ -26,9 +28,10 @@ export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.
   if (fleet.idle > 0) facts.push({ key: 'idle', value: String(fleet.idle), name: 'idle', mark: '○' });
   if (fleet.paused > 0) facts.push({ key: 'paused', value: String(fleet.paused), name: 'paused' });
   if (fleet.dry > 0) {
-    facts.push({ key: 'dry', value: String(fleet.dry), name: 'running dry', mark: '▲', alarm: true });
+    facts.push({ key: 'dry', value: String(fleet.dry), name: 'running dry', mark: '▲', alarm: 'danger' });
   }
-  if (fleet.spent > 0) facts.push({ key: 'spent', value: String(fleet.spent), name: 'spent', mark: '■', alarm: true });
+  if (fleet.spent > 0)
+    facts.push({ key: 'spent', value: String(fleet.spent), name: 'spent', mark: '■', alarm: 'danger' });
   if (fleet.monthlyUsd !== undefined) {
     facts.push({
       key: 'cost',
@@ -43,6 +46,15 @@ export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.
       name: fleet.resetsUsable === 1 ? 'reset to spend' : 'resets to spend',
     });
   }
+  if (fleet.resetsLapsing > 0) {
+    facts.push({
+      key: 'lapsing',
+      value: String(fleet.resetsLapsing),
+      name: fleet.resetsLapsing === 1 ? 'reset lapsing' : 'resets lapsing',
+      mark: '▲',
+      alarm: 'warn',
+    });
+  }
 
   return (
     <section aria-label="Fleet" className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-4 gap-y-1 text-caption">
@@ -53,7 +65,7 @@ export function FleetSummary({ fleet, updatedAt, now }: FleetSummaryProps): JSX.
             key={fact.key}
             className={clsx(
               'flex flex-row-reverse items-baseline justify-end gap-1',
-              fact.alarm ? 'text-danger' : 'text-muted'
+              fact.alarm ? alarmClasses[fact.alarm] : 'text-muted'
             )}
           >
             <dt>{fact.name}</dt>

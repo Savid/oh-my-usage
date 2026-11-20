@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent } from 'storybook/test';
 import {
   keyFixture,
+  lapsingSeatFixture,
   pausedSeatFixture,
   pauseHandlers,
   seatFixture,
@@ -70,8 +71,15 @@ export const WithoutControls: Story = {
 export const NoBrokerCredential: Story = {
   args: { account: strayFixture },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText('pro · 1 reset')).toBeInTheDocument();
+    await expect(canvas.getByText('pro · 1 reset, lapses in 30d')).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: /^(Pause|Resume)$/ })).not.toBeInTheDocument();
+  },
+};
+
+export const ResetLapsing: Story = {
+  args: { account: lapsingSeatFixture },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText('2 resets, 1 usable, spend one within 12h')).toHaveClass('text-warn');
   },
 };
 

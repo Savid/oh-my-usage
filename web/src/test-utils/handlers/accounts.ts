@@ -59,6 +59,21 @@ export const seatFixture: Account = {
   fetchedAt: at(-12_000),
 };
 
+/**
+ * The seat with its full reset expiring in 12 hours, before its week resets
+ * in 21: spent in this week or lost.
+ */
+export const lapsingSeatFixture: Account = {
+  ...seatFixture,
+  resets: {
+    ...seatFixture.resets!,
+    soonestExpiresAt: at(12 * HOUR),
+    saved: seatFixture.resets!.saved!.map((reset, index) =>
+      index === 0 ? { ...reset, expiresAt: at(12 * HOUR) } : reset
+    ),
+  },
+};
+
 /** A second seat, paused, with its 5-hour window spent. */
 export const pausedSeatFixture: Account = {
   id: '00000000000000a2',

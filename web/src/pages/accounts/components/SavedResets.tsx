@@ -1,13 +1,14 @@
 import type { JSX } from 'react';
 import { StatusBadge } from '@/components/Feedback/StatusBadge';
-import { shortLimitLabel } from '@/lib/accounts';
+import { isLapsing, resetWindow, shortLimitLabel } from '@/lib/accounts';
 import { formatShort } from '@/lib/format';
 import type { SavedResetsProps } from './SavedResets.types';
 
 /**
  * The limit resets an account holds and has not spent: what each is, which
  * windows spending it would clear, whether it can be spent now, and when it
- * lapses. Spending one is done in omp, not here.
+ * lapses, marked when that is before its window resets and it must be spent
+ * in this one or lost. Spending one is done in omp, not here.
  */
 export function SavedResets({ resets, limits, now }: SavedResetsProps): JSX.Element {
   // The provider gives a reset no ID: its key is what it says, numbered where two say the same.
@@ -16,7 +17,8 @@ export function SavedResets({ resets, limits, now }: SavedResetsProps): JSX.Elem
     const said = `${reset.title ?? ''}|${reset.clears.join(',')}|${reset.expiresAt ?? ''}`;
     const nth = seen.get(said) ?? 0;
     seen.set(said, nth + 1);
-    return { ...reset, key: `${said}#${nth}` };
+    const lapsing = isLapsing(reset, limits, now);
+    return { ...reset, key: `${said}#${nth}`, lapsing, budget: lapsing ? resetWindow(reset, limits) : undefined };
   });
   const undescribed = Math.max(0, (resets?.available ?? 0) - saved.length);
   const nameOf = (id: string): string => {
@@ -68,6 +70,17 @@ export function SavedResets({ resets, limits, now }: SavedResetsProps): JSX.Elem
                     {' · '}
                     {reset.expiresAt === undefined ? (
                       'does not expire'
+                    ) : reset.lapsing ? (
+                      <span className="text-warn">
+                        <span aria-hidden="true">▲ </span>
+                        expires in{' '}
+                        <span className="font-semibold tabular-nums">
+                          {formatShort(Date.parse(reset.expiresAt) - now)}
+                        </span>
+                        {reset.budget
+                          ? `, before ${shortLimitLabel(reset.budget)} resets: spend it or lose it`
+                          : ': spend it or lose it'}
+                      </span>
                     ) : (
                       <>
                         expires in{' '}

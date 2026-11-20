@@ -50,6 +50,11 @@ the broker refuses. Taking work is the normal state and says nothing; paused or 
 **Alarm only on trouble.** Colour and marks (`▲` near or running dry, `■` spent) appear only when something needs a
 person. A calm fleet looks calm.
 
+**A saved reset is spent or lost.** Beside the price, the resets an account holds say when the first that can be spent
+expires (`2 resets, 1 usable, one lapses in 20d`). One that expires before the window it clears resets on its own has
+no later window to be spent in: that is trouble, so it leads the line in the warning colour, `▲ spend one within 2d`,
+and the band counts it. Until then it is quiet, since spending a reset early gives back only what the window has used.
+
 <Story of={Stories.Calm} />
 
 **Say how old it is.** Data that is old says so; a value is never shown as current when it is not.

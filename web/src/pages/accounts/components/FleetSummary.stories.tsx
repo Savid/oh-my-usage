@@ -18,6 +18,7 @@ const meta = {
       monthlyUsd: 780,
       priced: 10,
       resetsUsable: 3,
+      resetsLapsing: 1,
     },
     updatedAt: at(-45_000),
     now: NOW_MS,
@@ -30,21 +31,43 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('region', { name: 'Fleet' })).toHaveTextContent('$780/mo');
+    await expect(canvas.getByText('reset lapsing')).toBeVisible();
   },
 };
 
 export const Calm: Story = {
   args: {
-    fleet: { accounts: 4, burning: 1, idle: 3, paused: 0, dry: 0, spent: 0, priced: 0, resetsUsable: 0 },
+    fleet: {
+      accounts: 4,
+      burning: 1,
+      idle: 3,
+      paused: 0,
+      dry: 0,
+      spent: 0,
+      priced: 0,
+      resetsUsable: 0,
+      resetsLapsing: 0,
+    },
   },
   play: async ({ canvas }) => {
     await expect(canvas.queryByText('running dry')).not.toBeInTheDocument();
+    await expect(canvas.queryByText(/lapsing/)).not.toBeInTheDocument();
   },
 };
 
 export const NotReadYet: Story = {
   args: {
-    fleet: { accounts: 0, burning: 0, idle: 0, paused: 0, dry: 0, spent: 0, priced: 0, resetsUsable: 0 },
+    fleet: {
+      accounts: 0,
+      burning: 0,
+      idle: 0,
+      paused: 0,
+      dry: 0,
+      spent: 0,
+      priced: 0,
+      resetsUsable: 0,
+      resetsLapsing: 0,
+    },
     updatedAt: undefined,
   },
   play: async ({ canvas }) => {
