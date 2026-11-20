@@ -229,6 +229,8 @@ describe('AccountRow', () => {
       />
     );
     expect(screen.getByTestId('priority')).toHaveTextContent('Gateway pick: 1st · reset lapses in 2d');
+    // Information, in blue, for an account the gateway picks; grey for one it holds back.
+    expect(screen.getByTestId('priority')).toHaveClass('bg-info-subtle', 'text-info');
 
     rerender(
       <AccountRow
@@ -238,6 +240,7 @@ describe('AccountRow', () => {
       />
     );
     expect(screen.getByTestId('priority')).toHaveTextContent(/^Gateway pick: last$/);
+    expect(screen.getByTestId('priority')).toHaveClass('bg-raised', 'text-muted');
 
     rerender(<AccountRow {...base} account={keyFixture} />);
     expect(screen.queryByTestId('priority')).not.toBeInTheDocument();

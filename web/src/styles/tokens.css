@@ -31,7 +31,7 @@
    * Dark is the theme the app is drawn for. The greys are neutral with a trace
    * of blue; colour is kept for data and state: each provider's own colour for
    * its usage, amber on a figure near its limit, red on one that is spent,
-   * green for what is live. */
+   * green for what is live, blue for information. */
   --color-background: light-dark(#f3f4f7, #090a0c);
   --color-surface: light-dark(#ffffff, #111214);
   /* A step above the surface: a cell, a hovered row, a pressed control. */
@@ -49,6 +49,9 @@
   --color-ok: light-dark(#007742, #45e58f);
   --color-warn: light-dark(#905100, #fbbb2d);
   --color-danger: light-dark(#c21725, #ff7076);
+  /* Information, not trouble: where the gateway picks an account. info-subtle is its tint. */
+  --color-info: light-dark(#1559b0, #7cbcf8);
+  --color-info-subtle: light-dark(#e2eefc, #10233a);
   /* Data marks. A provider's usage wears the provider's own colour: its mark,
    * its gauge and the line of an account's chart. The -track step is the empty
    * part of the gauge and the deepest the glow under a chart gets, so text

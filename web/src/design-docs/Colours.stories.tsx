@@ -75,6 +75,8 @@ export const Status: Story = {
         ok: 'text-ok: healthy, done',
         warn: 'text-warn: degraded, needs attention',
         danger: 'text-danger: failed',
+        info: 'text-info: information, not trouble, such as where the gateway picks an account',
+        'info-subtle': 'bg-info-subtle: the tint under information',
       }}
     />
   ),

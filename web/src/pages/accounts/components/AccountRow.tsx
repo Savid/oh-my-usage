@@ -18,7 +18,7 @@ import {
 } from '@/lib/accounts';
 import { viewAccount } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
-import { ordinal } from '@/lib/priority';
+import { ordinal, type Priority } from '@/lib/priority';
 import { problemDetail } from '@/lib/problem';
 import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
@@ -42,6 +42,13 @@ const severityMarks: Record<LimitSeverity, { mark: string; word: string } | unde
   normal: undefined,
   warn: { mark: '▲', word: ', near its limit' },
   danger: { mark: '■', word: ', spent' },
+};
+
+// Information, not trouble: blue for an account the gateway picks, grey for one it holds back.
+const priorityClasses: Record<Priority['standing'], string> = {
+  ranked: 'bg-info-subtle text-info',
+  later: 'bg-raised text-muted',
+  last: 'bg-raised text-muted',
 };
 
 /** The account's state in a word: paused wins, then omp's own block. */
@@ -579,9 +586,16 @@ export function AccountRow({
               </span>
             )}
             {priority && (
-              <span data-testid="priority" className="shrink-0 text-micro whitespace-nowrap">
+              <span
+                data-testid="priority"
+                data-standing={priority.standing}
+                className={clsx(
+                  'shrink-0 rounded-sm px-1.5 text-micro whitespace-nowrap',
+                  priorityClasses[priority.standing]
+                )}
+              >
                 <span className="sr-only">Gateway pick: </span>
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold">
                   {priority.rank === undefined ? priority.standing : ordinal(priority.rank)}
                 </span>
                 {/* A badge already says why an account is held back. On a narrow row only the
