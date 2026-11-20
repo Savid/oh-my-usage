@@ -112,10 +112,12 @@ describe('AccountRow', () => {
     expect(screen.getByTestId('history')).toHaveClass('lg:left-134');
   });
 
-  it('runs the chart behind the whole of a narrow row, top to foot and end to end', () => {
+  it("draws the chart as a strip along a narrow row's foot, and from where the words end on a wide one", () => {
     render(<AccountRow {...base} account={seatFixture} />);
 
-    expect(screen.getByTestId('history')).toHaveClass('inset-y-0', 'left-0', 'right-3');
+    expect(screen.getByTestId('history')).toHaveClass('inset-x-0', 'bottom-0', 'h-7', 'lg:top-0', 'lg:left-134');
+    // The strip draws the main window's line alone: the others' bars and lines wait for a wide row.
+    expect(screen.getByTestId('history').querySelector('g')).toHaveClass('max-lg:hidden');
   });
 
   it('leaves out the list when there are no other windows', () => {
@@ -271,7 +273,9 @@ describe('AccountRow', () => {
   it('says when the usage it shows is old', () => {
     render(<AccountRow {...base} account={{ ...seatFixture, resets: undefined, fetchedAt: at(-40 * 60_000) }} />);
 
-    expect(screen.getByText('One Org · $200/mo · usage 40m old')).toBeInTheDocument();
+    expect(screen.getByText('One Org · $200/mo')).toHaveClass('max-lg:hidden');
+    // Old usage says so at every width.
+    expect(screen.getByText('usage 40m old')).not.toHaveClass('max-lg:hidden');
   });
 
   it('says when an account reports no usage', () => {

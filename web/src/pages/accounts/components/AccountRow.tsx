@@ -104,11 +104,8 @@ function savedResets(account: Account, now: number): ResetsChip | undefined {
   };
 }
 
-/**
- * What follows the name: organisation, plan, price, and how old the usage is
- * when it is old.
- */
-function about(account: Account, now: number): string {
+/** Who the account is beyond its name: organisation, plan and price. */
+function about(account: Account): string {
   const parts: string[] = [];
   // A personal organisation is named after its owner's email, which the row already shows.
   if (account.orgName && !(account.email && account.orgName.startsWith(account.email))) parts.push(account.orgName);
@@ -116,10 +113,13 @@ function about(account: Account, now: number): string {
   if (account.plan && !accountTitle(account).includes(account.plan)) parts.push(account.plan);
   if (account.kind === 'api_key' && account.email) parts.push('API key');
   if (account.monthlyUsd !== undefined) parts.push(`${formatPrice(account.monthlyUsd)}/mo`);
-  if (account.fetchedAt && now - Date.parse(account.fetchedAt) > STALE_MS) {
-    parts.push(`usage ${formatShort(now - Date.parse(account.fetchedAt))} old`);
-  }
   return parts.join(' · ');
+}
+
+/** How old the usage is, when it is old; undefined while it is current. */
+function staleness(account: Account, now: number): string | undefined {
+  if (!account.fetchedAt || now - Date.parse(account.fetchedAt) <= STALE_MS) return undefined;
+  return `usage ${formatShort(now - Date.parse(account.fetchedAt))} old`;
 }
 
 /**
@@ -382,7 +382,8 @@ export function AccountRow({
   const { tone: stateTone, label } = state({ ...account, paused }, now);
   // The chart wears the provider's colour; the figure carries the state.
   const tone = providerTone(account.provider);
-  const meta = about(account, now);
+  const meta = about(account);
+  const old = staleness(account, now);
   const resets = savedResets(account, now);
 
   const primary = primaryLimit(account.limits);
@@ -451,8 +452,13 @@ export function AccountRow({
           {/* A glow under a line, deepest under the line and fading towards the foot of
               the row. Its stops take the text colour, which is how a gradient wears a token.
               On a wide screen it starts where the words end and runs to the row's end; on a
-              narrow one it runs behind the whole row, the words over it. */}
-          <div data-testid="history" aria-hidden="true" className="absolute inset-y-0 right-3 left-0 lg:left-134">
+              narrow one it is a strip along the row's foot, under the words, the main window's
+              line alone. */}
+          <div
+            data-testid="history"
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-7 lg:top-0 lg:right-3 lg:left-134 lg:h-auto"
+          >
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               preserveAspectRatio="none"
@@ -469,12 +475,17 @@ export function AccountRow({
               {others.map(
                 other =>
                   other.bars && (
-                    <path key={other.limit.id} data-window={other.limit.id} d={other.bars} className="fill-border" />
+                    <path
+                      key={other.limit.id}
+                      data-window={other.limit.id}
+                      d={other.bars}
+                      className="fill-border max-lg:hidden"
+                    />
                   )
               )}
               <path d={drawn.area} fill={`url(#${glowId})`} />
               {/* The longer ones: thin and quiet lines under the main one, each ending in a small dot. */}
-              <g fill="none" className="stroke-muted">
+              <g fill="none" className="stroke-muted max-lg:hidden">
                 {others.map(
                   (other, index) =>
                     other.line && (
@@ -548,21 +559,24 @@ export function AccountRow({
           {/* The chart fades in from the ground at its start. */}
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent lg:left-134"
+            className="absolute inset-y-0 left-0 w-16 bg-linear-to-r from-surface to-transparent max-lg:hidden lg:left-134"
           />
         </>
       )}
 
       <div
         className={clsx(
-          // On a narrow row the words sit over the chart, haloed in the ground so its line never strikes them.
-          'relative flex flex-wrap items-start gap-x-4 gap-y-2 px-4 py-3 text-shadow-halo lg:items-center lg:gap-x-6',
-          drawn ? 'min-h-20' : 'min-h-14'
+          // Haloed in the ground, so a chart's line never strikes the words; on a narrow row they
+          // leave the foot to the chart's strip.
+          'relative flex flex-wrap items-start gap-x-3 gap-y-2 px-4 pt-3 text-shadow-halo lg:items-center lg:gap-x-6 lg:pb-3',
+          drawn ? 'pb-9 lg:min-h-20' : 'min-h-14 pb-3'
         )}
       >
         {primary && used !== undefined ? (
-          <p className="w-24 shrink-0 lg:text-right">
-            <span className={clsx('block text-display font-semibold tabular-nums', figureClasses[severity])}>
+          <p className="w-16 shrink-0 lg:w-24 lg:text-right">
+            <span
+              className={clsx('block text-heading font-semibold tabular-nums lg:text-display', figureClasses[severity])}
+            >
               {marked && (
                 <span aria-hidden="true" className="mr-1 text-body">
                   {marked.mark}
@@ -580,7 +594,7 @@ export function AccountRow({
             </span>
           </p>
         ) : (
-          <p className="w-24 shrink-0 text-micro text-muted lg:text-right">no usage reported</p>
+          <p className="w-16 shrink-0 text-micro text-muted lg:w-24 lg:text-right">no usage reported</p>
         )}
 
         <div className="flex min-w-0 flex-1 flex-col lg:w-96 lg:flex-none">
@@ -635,11 +649,14 @@ export function AccountRow({
               {view.idle === true
                 ? ' · idle'
                 : view.burn !== undefined &&
-                  view.burn > 0 && <span className="tabular-nums"> · +{formatPace(view.burn)}</span>}
+                  view.burn > 0 && (
+                    // A second look: a narrow row leaves it out.
+                    <span className="tabular-nums max-lg:hidden"> · +{formatPace(view.burn)}</span>
+                  )}
             </p>
           )}
-          {(resets || meta) && (
-            <p className="flex min-w-0 items-center gap-1.5 text-micro text-muted">
+          {(resets || meta || old || others.length > 0) && (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 text-micro text-muted">
               {/* First, so the line never cuts it off. */}
               {resets && (
                 <span
@@ -656,23 +673,22 @@ export function AccountRow({
                   <span className="sr-only">{resets.full}</span>
                 </span>
               )}
-              {meta && <span className="truncate">{meta}</span>}
-            </p>
+              {/* On a wide row the chart names them, so the list is only heard, unless there is
+                  no chart to name them on; on a narrow one they sit on this line. */}
+              {others.length > 0 && (
+                <ul aria-label="Other windows" className={clsx('flex flex-wrap gap-x-3', drawn && 'lg:sr-only')}>
+                  {others.map(other => (
+                    <WindowLine key={other.limit.id} window={other} />
+                  ))}
+                </ul>
+              )}
+              {/* Who it is beyond its name: a second look, which a narrow row leaves out. Old usage
+                  says so at every width. */}
+              {meta && <span className="min-w-0 truncate max-lg:hidden">{meta}</span>}
+              {old && <span className="shrink-0">{old}</span>}
+            </div>
           )}
         </div>
-
-        {/* A line of their own under a narrow row. On a wide one the chart names them, so
-            the list is only heard, unless there is no chart to name them on. */}
-        {others.length > 0 && (
-          <ul
-            aria-label="Other windows"
-            className={clsx('order-last flex basis-full flex-wrap gap-x-4 gap-y-1', drawn && 'lg:sr-only')}
-          >
-            {others.map(other => (
-              <WindowLine key={other.limit.id} window={other} />
-            ))}
-          </ul>
-        )}
 
         {pausable && (
           <div className="absolute top-2.5 right-3 flex lg:static lg:ml-auto">
