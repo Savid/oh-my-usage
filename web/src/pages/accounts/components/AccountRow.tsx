@@ -18,6 +18,7 @@ import {
 } from '@/lib/accounts';
 import { viewAccount } from '@/lib/fleet';
 import { formatPace, formatPercent, formatPrice, formatShort } from '@/lib/format';
+import { ordinal } from '@/lib/priority';
 import { problemDetail } from '@/lib/problem';
 import { providerTone } from '@/lib/providerTones';
 import { sparkPaths, type SparkPaths, type SparkPoint } from '@/lib/sparkline';
@@ -329,7 +330,15 @@ function PauseButton({
  * end, with a broker: a small button to pause or resume it. Its state shows
  * only when it is not taking work.
  */
-export function AccountRow({ account, trends, start, now, controls, headingLevel = 3 }: AccountRowProps): JSX.Element {
+export function AccountRow({
+  account,
+  trends,
+  start,
+  now,
+  controls,
+  priority,
+  headingLevel = 3,
+}: AccountRowProps): JSX.Element {
   const queryClient = useQueryClient();
   const glowId = useId();
   const pause = useMutation({
@@ -567,6 +576,19 @@ export function AccountRow({ account, trends, start, now, controls, headingLevel
             {stateTone !== 'ok' && (
               <span className="shrink-0">
                 <StatusBadge tone={stateTone}>{label}</StatusBadge>
+              </span>
+            )}
+            {priority && (
+              <span data-testid="priority" className="shrink-0 text-micro whitespace-nowrap">
+                <span className="sr-only">Gateway pick: </span>
+                <span className="font-semibold text-foreground">
+                  {priority.rank === undefined ? priority.standing : ordinal(priority.rank)}
+                </span>
+                {/* A badge already says why an account is held back. On a narrow row only the
+                    place shows, so the name keeps its room; the reason is still heard. */}
+                {!(priority.standing === 'last' && stateTone !== 'ok') && (
+                  <span className="sr-only lg:not-sr-only"> · {priority.reason}</span>
+                )}
               </span>
             )}
           </div>

@@ -1,4 +1,5 @@
 import type { Account, UsageTrend } from '@/api';
+import type { Priority } from '@/lib/priority';
 
 export interface AccountRowProps {
   /** The account to show. */
@@ -15,6 +16,9 @@ export interface AccountRowProps {
 
   /** Whether a broker is configured, so the account can be paused. */
   controls: boolean;
+
+  /** Where the gateway would pick it, and why; absent for an account it does not pick. */
+  priority?: Priority;
 
   /**
    * The level of the row's heading, to fit the page's outline.

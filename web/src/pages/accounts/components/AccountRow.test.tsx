@@ -220,6 +220,29 @@ describe('AccountRow', () => {
     expect(row).toHaveAttribute('data-severity', 'normal');
   });
 
+  it('says where the gateway picks it and why, or only where when its state already says why', () => {
+    const { rerender } = render(
+      <AccountRow
+        {...base}
+        account={seatFixture}
+        priority={{ standing: 'ranked', rank: 1, reason: 'reset lapses in 2d', position: 0 }}
+      />
+    );
+    expect(screen.getByTestId('priority')).toHaveTextContent('Gateway pick: 1st · reset lapses in 2d');
+
+    rerender(
+      <AccountRow
+        {...base}
+        account={pausedSeatFixture}
+        priority={{ standing: 'last', reason: 'paused', position: 3 }}
+      />
+    );
+    expect(screen.getByTestId('priority')).toHaveTextContent(/^Gateway pick: last$/);
+
+    rerender(<AccountRow {...base} account={keyFixture} />);
+    expect(screen.queryByTestId('priority')).not.toBeInTheDocument();
+  });
+
   it('leaves out an organisation named after the account', () => {
     render(
       <AccountRow
